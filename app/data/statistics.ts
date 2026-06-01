@@ -32,19 +32,32 @@ export const resetStatistics =
     );
   };
 
-export const saveFinishedGame = (
-  game: FinishedGame
-) => {
-  const games =
-    getFinishedGames();
+export const saveFinishedGame =
+  async (
+    game: FinishedGame
+  ) => {
+    const games =
+      getFinishedGames();
 
-  games.push(game);
+    games.push(game);
 
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(games)
-  );
-};
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(games)
+    );
+
+    await supabase
+      .from("games")
+      .insert([
+        {
+          winner: game.winner,
+          winner_score:
+            game.winnerScore,
+          players: game.players,
+          scores: game.scores,
+        },
+      ]);
+  };
 
 export const getFinishedGames =
   (): FinishedGame[] => {
