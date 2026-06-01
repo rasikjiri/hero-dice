@@ -1,4 +1,4 @@
-import { players } from "./players";
+import { supabase } from "../lib/supabase";
 
 export type FinishedGame = {
   date: string;
