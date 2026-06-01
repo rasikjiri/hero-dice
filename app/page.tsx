@@ -406,7 +406,7 @@ export default function Home() {
         <>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h1 className="hero-text-glow text-4xl font-black text-yellow-400 md:text-6xl">
-              ⚡️ HERO DICE
+              HERO DICE
             </h1>
 
             <button
