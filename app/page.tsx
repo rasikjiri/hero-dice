@@ -150,7 +150,7 @@ useEffect(() => {
       );
     };
 
-  loadStatistics();
+  loadStatistic s();
 }, []);
 
   const activePlayers = useMemo(() => {
