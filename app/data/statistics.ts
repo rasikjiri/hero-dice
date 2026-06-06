@@ -20,41 +20,17 @@ export type FinishedGame = {
 
 const STORAGE_KEY = "hero-dice-games";
 
-export const syncGamesFromSupabase =
-  async () => {
-    const { data, error } =
-      await supabase
-        .from("games")
-        .select("*")
-        .order("created_at", {
-          ascending: true,
-        });
-
-    if (error || !data) {
-      console.error(error);
-
+export const resetStatistics =
+  (): void => {
+    if (
+      typeof window ===
+      "undefined"
+    ) {
       return;
     }
 
-    const formattedGames =
-      data.map((game) => ({
-        date: game.date,
-
-        winner: game.winner,
-
-        winnerScore:
-          game.winner_score,
-
-        players: game.players,
-
-        scores: game.scores,
-      }));
-
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(
-        formattedGames
-      )
+    localStorage.removeItem(
+      STORAGE_KEY
     );
   };
 
@@ -73,17 +49,16 @@ export const saveFinishedGame =
     );
 
     await supabase
-  .from("games")
-  .insert([
-    {
-      date: game.date,
-      winner: game.winner,
-      winner_score:
-        game.winnerScore,
-      players: game.players,
-      scores: game.scores,
-    },
-  ]);
+      .from("games")
+      .insert([
+        {
+          winner: game.winner,
+          winner_score:
+            game.winnerScore,
+          players: game.players,
+          scores: game.scores,
+        },
+      ]);
   };
 
 export const getFinishedGames =

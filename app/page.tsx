@@ -10,7 +10,7 @@ import { gameCategories } from "./data/gameCategories";
 
 import {
   saveFinishedGame,
-  syncGamesFromSupabase,
+  
   getTopPlayerByWins,
   getTopPlayerByAverage,
   getTopPlayerByPerfects,
@@ -93,73 +93,40 @@ export default function Home() {
       name: "-",
       value: 0,
     });
-
-  const [
-    topAveragePerfects,
-    setTopAveragePerfects,
-  ] = useState({
-    name: "-",
-    value: 0,
-  });
-
+const [
+  topAveragePerfects,
+  setTopAveragePerfects,
+] = useState({
+  name: "-",
+  value: 0,
+});
   const [topScore, setTopScore] =
     useState({
       name: "-",
       value: 0,
     });
 
-  const [topGames, setTopGames] =
-    useState({
-      name: "-",
-      value: 0,
-    });
+    useEffect(() => {
+    setMounted(true);
 
-useEffect(() => {
-  const loadStatistics =
-    async () => {
-      const alreadySynced =
-        localStorage.getItem(
-          "hero-dice-synced"
-        );
+    setTopWins(
+      getTopPlayerByWins()
+    );
 
-      if (!alreadySynced) {
-        await syncGamesFromSupabase();
+    setTopAverage(
+      getTopPlayerByAverage()
+    );
 
-        localStorage.setItem(
-          "hero-dice-synced",
-          "true"
-        );
-
-        window.location.reload();
-
-        return;
-      }
-
-      setMounted(true);
-
-      setTopWins(
-        getTopPlayerByWins()
-      );
-
-      setTopAverage(
-        getTopPlayerByAverage()
-      );
-
-      setTopPerfects(
-        getTopPlayerByPerfects()
-      );
-
-      setTopAveragePerfects(
-        getTopPlayerByAveragePerfects()
-      );
-
-      setTopScore(
-        getTopPlayerByScore()
-      );
-    };
-
-  loadStatistics();
-}, []);
+    setTopPerfects(
+      getTopPlayerByPerfects()
+    );
+setTopAveragePerfects(
+  getTopPlayerByAveragePerfects()
+);
+    setTopScore(
+      getTopPlayerByScore()
+    );
+  }, []);
 
   const activePlayers = useMemo(() => {
     return selectedPlayers
