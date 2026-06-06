@@ -1,4 +1,5 @@
 "use client";
+import { testSupabaseConnection } from "./lib/test-supabase";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -105,7 +106,7 @@ const [
       value: 0,
     });
 
-  useEffect(() => {
+      testSupabaseConnection(); useEffect(() => {
     setMounted(true);
 
     setTopWins(
