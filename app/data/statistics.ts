@@ -49,16 +49,17 @@ export const saveFinishedGame =
     );
 
     await supabase
-      .from("games")
-      .insert([
-        {
-          winner: game.winner,
-          winner_score:
-            game.winnerScore,
-          players: game.players,
-          scores: game.scores,
-        },
-      ]);
+  .from("games")
+  .insert([
+    {
+      date: game.date,
+      winner: game.winner,
+      winner_score:
+        game.winnerScore,
+      players: game.players,
+      scores: game.scores,
+    },
+  ]);
   };
 
 export const getFinishedGames =
