@@ -109,7 +109,23 @@ const [
 useEffect(() => {
   const loadStatistics =
     async () => {
-      await syncGamesFromSupabase();
+      const alreadySynced =
+        localStorage.getItem(
+          "hero-dice-synced"
+        );
+
+      if (!alreadySynced) {
+        await syncGamesFromSupabase();
+
+        localStorage.setItem(
+          "hero-dice-synced",
+          "true"
+        );
+
+        window.location.reload();
+
+        return;
+      }
 
       setMounted(true);
 
