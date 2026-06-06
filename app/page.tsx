@@ -10,6 +10,7 @@ import { gameCategories } from "./data/gameCategories";
 
 import {
   saveFinishedGame,
+  syncGamesFromSupabase,
   getTopPlayerByWins,
   getTopPlayerByAverage,
   getTopPlayerByPerfects,
@@ -105,27 +106,36 @@ const [
       value: 0,
     });
 
-    useEffect(() => {
-    setMounted(true);
+useEffect(() => {
+  const loadStatistics =
+    async () => {
+      await syncGamesFromSupabase();
 
-    setTopWins(
-      getTopPlayerByWins()
-    );
+      setMounted(true);
 
-    setTopAverage(
-      getTopPlayerByAverage()
-    );
+      setTopWins(
+        getTopPlayerByWins()
+      );
 
-    setTopPerfects(
-      getTopPlayerByPerfects()
-    );
-setTopAveragePerfects(
-  getTopPlayerByAveragePerfects()
-);
-    setTopScore(
-      getTopPlayerByScore()
-    );
-  }, []);
+      setTopAverage(
+        getTopPlayerByAverage()
+      );
+
+      setTopPerfects(
+        getTopPlayerByPerfects()
+      );
+
+      setTopAveragePerfects(
+        getTopPlayerByAveragePerfects()
+      );
+
+      setTopScore(
+        getTopPlayerByScore()
+      );
+    };
+
+  loadStatistics();
+}, []);
 
   const activePlayers = useMemo(() => {
     return selectedPlayers
