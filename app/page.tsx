@@ -93,14 +93,22 @@ export default function Home() {
       name: "-",
       value: 0,
     });
-const [
-  topAveragePerfects,
-  setTopAveragePerfects,
-] = useState({
-  name: "-",
-  value: 0,
-});
+
+  const [
+    topAveragePerfects,
+    setTopAveragePerfects,
+  ] = useState({
+    name: "-",
+    value: 0,
+  });
+
   const [topScore, setTopScore] =
+    useState({
+      name: "-",
+      value: 0,
+    });
+
+  const [topGames, setTopGames] =
     useState({
       name: "-",
       value: 0,
