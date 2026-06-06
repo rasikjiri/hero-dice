@@ -429,7 +429,7 @@ const handlePlayerCountChange = (
         <div className="mx-auto flex w-full max-w-6xl flex-col">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h1 className="text-5xl font-black tracking-tight text-yellow-400 md:text-5xl">
-              HERO DICEas
+              HERO DICE
             </h1>
 
             <button
