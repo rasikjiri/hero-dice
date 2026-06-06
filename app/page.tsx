@@ -253,7 +253,7 @@ const handlePlayerCountChange = (
     setScoreInput("");
   };
 
-  const getPlayerTotal = (
+    const getPlayerTotal = (
     playerId: string
   ) => {
     return Object.values(
@@ -264,7 +264,36 @@ const handlePlayerCountChange = (
     );
   };
 
+  const startNewGame = () => {
+    setPlayerCount("");
+
+    setSelectedPlayers([]);
+
+    setGameStarted(false);
+
+    setGameFinished(false);
+
+    setWinner("");
+
+    setWinnerScore(0);
+
+    setShowFinishedGame(false);
+
+    setScores({});
+
+    setScreen("game");
+  };
+
+  const canStartGame =
+    playerCount !== "" &&
+    selectedPlayers.length ===
+      playerCount &&
+    selectedPlayers.every(
+      (player) => player !== ""
+    );
+
   useEffect(() => {
+      const finishGame = async () => {
 
     if (
       !gameStarted ||
@@ -357,10 +386,16 @@ const handlePlayerCountChange = (
 
     setGameFinished(true);
 
-    setShowFinishedGame(true);
-  };
+        setShowFinishedGame(true);
+          };
 
-<<<<<<< HEAD
+  finishGame();
+  }, [
+    scores,
+    gameStarted,
+    gameFinished,
+    selectedPlayers,
+  ]);
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
       {/* HOME */}
@@ -1036,12 +1071,3 @@ const handlePlayerCountChange = (
     </main>
   );
 }
-=======
-  finishGame();
-}, [
-  scores,
-  gameStarted,
-  gameFinished,
-  selectedPlayers,
-]);
->>>>>>> d59ac3b498ccd81cf4c32811f3eeb1521c96a5b1
