@@ -265,6 +265,7 @@ const handlePlayerCountChange = (
   };
 
   useEffect(() => {
+
     if (
       !gameStarted ||
       gameFinished
@@ -342,7 +343,7 @@ const handlePlayerCountChange = (
 
     setWinnerScore(bestScore);
 
-    saveFinishedGame({
+    await saveFinishedGame({
       date: new Date().toISOString(),
 
       winner: bestPlayer,
@@ -357,41 +358,9 @@ const handlePlayerCountChange = (
     setGameFinished(true);
 
     setShowFinishedGame(true);
-  }, [
-    scores,
-    gameStarted,
-    gameFinished,
-    selectedPlayers,
-  ]);
-
-  const canStartGame =
-    playerCount !== "" &&
-    selectedPlayers.length ===
-      playerCount &&
-    selectedPlayers.every(
-      (p) => p !== ""
-    );
-
-  const startNewGame = () => {
-    setPlayerCount("");
-
-    setSelectedPlayers([]);
-
-    setGameStarted(false);
-
-    setGameFinished(false);
-
-    setWinner("");
-
-    setWinnerScore(0);
-
-    setShowFinishedGame(false);
-
-    setScores({});
-
-    setScreen("game");
   };
 
+<<<<<<< HEAD
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
       {/* HOME */}
@@ -1067,3 +1036,12 @@ const handlePlayerCountChange = (
     </main>
   );
 }
+=======
+  finishGame();
+}, [
+  scores,
+  gameStarted,
+  gameFinished,
+  selectedPlayers,
+]);
+>>>>>>> d59ac3b498ccd81cf4c32811f3eeb1521c96a5b1
