@@ -328,3 +328,31 @@ export const getTopPlayerByPerfects =
       value: bestValue,
     };
   };
+export const getTopPlayerByAveragePerfects =
+  () => {
+    let bestPlayer = "-";
+    let bestValue = 0;
+
+    players.forEach((player) => {
+      const averagePerfects =
+        getAveragePerfects(
+          player.id
+        );
+
+      if (
+        averagePerfects >
+        bestValue
+      ) {
+        bestValue =
+          averagePerfects;
+
+        bestPlayer =
+          player.name;
+      }
+    });
+
+    return {
+      name: bestPlayer,
+      value: bestValue,
+    };
+  };

@@ -13,6 +13,7 @@ import {
   getTopPlayerByWins,
   getTopPlayerByAverage,
   getTopPlayerByPerfects,
+  getTopPlayerByAveragePerfects,
   getTopPlayerByScore,
 } from "./data/statistics";
 
@@ -64,14 +65,12 @@ export default function Home() {
     useState<ScoreMap>({});
 
   const [scoreModal, setScoreModal] =
-  useState<{
-    playerId: string;
-    playerName: string;
-    categoryId: string;
-    categoryName: string;
-    min: number;
-    max: number;
-  } | null>(null);
+    useState<{
+      playerId: string;
+      categoryId: string;
+      min: number;
+      max: number;
+    } | null>(null);
 
   const [scoreInput, setScoreInput] =
     useState("");
@@ -93,7 +92,13 @@ export default function Home() {
       name: "-",
       value: 0,
     });
-
+const [
+  topAveragePerfects,
+  setTopAveragePerfects,
+] = useState({
+  name: "-",
+  value: 0,
+});
   const [topScore, setTopScore] =
     useState({
       name: "-",
@@ -114,7 +119,9 @@ export default function Home() {
     setTopPerfects(
       getTopPlayerByPerfects()
     );
-
+setTopAveragePerfects(
+  getTopPlayerByAveragePerfects()
+);
     setTopScore(
       getTopPlayerByScore()
     );
@@ -130,7 +137,7 @@ export default function Home() {
       .filter(Boolean);
   }, [selectedPlayers]);
 
- const handlePlayerCountChange = (
+const handlePlayerCountChange = (
   count: number
 ) => {
   setPlayerCount(count);
@@ -196,29 +203,15 @@ export default function Home() {
       return;
     }
 
-    setScoreInput(
-  String(max)
-);
+    setScoreInput(String(max));
 
     setScoreModal({
-  playerId,
-
-  playerName:
-    players.find(
-      (p) => p.id === playerId
-    )?.name || "",
-
-  categoryId,
-
-  categoryName:
-    gameCategories.find(
-      (c) => c.id === categoryId
-    )?.name || "",
-
-  min,
-  max,
-});
-};
+      playerId,
+      categoryId,
+      min,
+      max,
+    });
+  };
 
   const saveScore = () => {
     if (!scoreModal) return;
@@ -400,12 +393,12 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#111] p-4 text-white md:p-6">
+    <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
       {/* HOME */}
       {screen === "home" && (
-        <>
+        <div className="mx-auto flex w-full max-w-6xl flex-col">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h1 className="hero-text-glow text-4xl font-black text-yellow-400 md:text-6xl">
+            <h1 className="text-5xl font-black tracking-tight text-yellow-400 md:text-5xl">
               HERO DICE
             </h1>
 
@@ -413,108 +406,143 @@ export default function Home() {
               onClick={() =>
                 setShowStatistics(true)
               }
-              className="hero-button hero-button-green rounded-xl px-6 py-3 text-lg font-bold md:text-xl"
+              className="self-start rounded-2xl bg-green-600 px-6 py-3 text-lg font-bold transition hover:bg-green-700 md:self-auto md:text-xl"
             >
               Statistiky
             </button>
           </div>
 
-          <div className="mt-12 md:mt-16">
+          <div className="mt-8 md:mt-10">
             <button
               onClick={startNewGame}
-              className="hero-button hero-pulse rounded-2xl bg-yellow-400 px-8 py-4 text-2xl font-black text-black hover:bg-yellow-300 md:px-10 md:py-5 md:text-3xl"
+              className="rounded-3xl bg-yellow-500 px-8 py-5 text-2xl font-black text-black transition hover:scale-[1.02] hover:bg-yellow-400 md:px-10 md:text-3xl"
             >
               ▶ Nová hra
             </button>
           </div>
 
-          <div className="mt-16 md:mt-20">
-            <h2 className="mb-8 text-3xl font-bold md:text-4xl">
+          <div className="mt-10 md:mt-12">
+            <h2 className="mb-6 text-3xl font-bold text-zinc-300 md:text-4xl">
               TOP HRÁČI
             </h2>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="hero-card hero-glow-green p-6">
-                <div className="text-zinc-400">
-                  Nejvíce výher
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="rounded-3xl bg-zinc-900 p-6">
+                <div className="text-yellow-400">
+                  Výhry
                 </div>
 
-                <div className="mt-2 text-3xl font-bold">
+                <div className="mt-3 text-3xl font-black text-white">
                   {mounted
                     ? topWins.name
                     : "-"}
                 </div>
 
-                <div className="text-green-400">
+                <div className="mt-2 text-2xl font-black text-yellow-400">
                   {mounted
                     ? topWins.value
                     : "-"}
                 </div>
               </div>
 
-              <div className="hero-card hero-glow-gold p-6">
-                <div className="text-zinc-400">
+              <div className="rounded-3xl bg-zinc-900 p-6">
+                <div className="text-yellow-400">
                   Nejlepší skóre
                 </div>
 
-                <div className="mt-2 text-3xl font-bold">
+                <div className="mt-3 text-3xl font-black text-white">
                   {mounted
                     ? topScore.name
                     : "-"}
                 </div>
 
-                <div className="text-yellow-400">
+                <div className="mt-2 text-2xl font-black text-yellow-400">
                   {mounted
                     ? topScore.value
                     : "-"}
                 </div>
               </div>
 
-              <div className="hero-card hero-glow-blue p-6">
-                <div className="text-zinc-400">
-                  Nejlepší průměr
+              <div className="rounded-3xl bg-zinc-900 p-6">
+                <div className="text-yellow-400">
+                  Počet her
                 </div>
 
-                <div className="mt-2 text-3xl font-bold">
+                <div className="mt-3 text-3xl font-black text-white">
+                  {mounted
+                    ? topWins.name
+                    : "-"}
+                </div>
+
+                <div className="mt-2 text-2xl font-black text-yellow-400">
+                  {mounted
+                    ? topWins.value
+                    : "-"}
+                </div>
+              </div>
+
+              <div className="rounded-3xl bg-zinc-900 p-6">
+                <div className="text-yellow-400">
+                  Průměrné skóre
+                </div>
+
+                <div className="mt-3 text-3xl font-black text-white">
                   {mounted
                     ? topAverage.name
                     : "-"}
                 </div>
 
-                <div className="text-blue-400">
+                <div className="mt-2 text-2xl font-black text-yellow-400">
                   {mounted
                     ? topAverage.value
                     : "-"}
                 </div>
               </div>
 
-              <div className="hero-card hero-glow-red p-6">
-                <div className="text-zinc-400">
+              <div className="rounded-3xl bg-zinc-900 p-6">
+                <div className="text-yellow-400">
                   Perfektní kategorie
                 </div>
 
-                <div className="mt-2 text-3xl font-bold">
+                <div className="mt-3 text-3xl font-black text-white">
                   {mounted
                     ? topPerfects.name
                     : "-"}
                 </div>
 
-                <div className="text-red-400">
+                <div className="mt-2 text-2xl font-black text-yellow-400">
                   {mounted
                     ? topPerfects.value
                     : "-"}
                 </div>
               </div>
+
+              <div className="rounded-3xl bg-zinc-900 p-6">
+                <div className="text-yellow-400">
+                  Průměr perfektních
+                </div>
+
+                <div className="mt-3 text-3xl font-black text-white">
+                  {mounted
+                    ? topAveragePerfects.name
+                    : "-"}
+                </div>
+
+                <div className="mt-2 text-2xl font-black text-yellow-400">
+                  {mounted
+                    ? topAveragePerfects.value
+                    : "-"}
+                </div>
+              </div>
             </div>
           </div>
-        </>
+        </div>
       )}
-
       {/* GAME */}
       {screen === "game" && (
-        <>
+        <div className="mx-auto flex w-full max-w-6xl flex-col">
           <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h1 className="hero-text-glow text-4xl font-black text-yellow-400 md:text-5xl">
+            <h1 className="text-5xl font-black tracking-tight text-yellow-400">
               HERO DICE
             </h1>
 
@@ -531,56 +559,70 @@ export default function Home() {
                   setScreen("home");
                 }
               }}
-              className="hero-button rounded-xl bg-zinc-700 px-5 py-3 transition hover:bg-zinc-600"
+              className="self-start rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600 md:self-auto"
             >
               Domů
             </button>
           </div>
 
           {!gameStarted && (
-            <div className="hero-card hero-glow-blue mb-10 p-8">
-              <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center">
-                <label className="text-xl font-semibold">
-                  Počet hráčů:
-                </label>
+            <div className="mx-auto mb-12 mt-6 w-full max-w-5xl rounded-3xl bg-zinc-900/60 p-6 backdrop-blur md:p-8">
+              <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-sm font-bold uppercase tracking-[0.2em] text-yellow-400">
+                    Nastavení hry
+                  </div>
 
-                <select
-                  value={playerCount}
-                  onChange={(e) =>
-                    handlePlayerCountChange(
-                      Number(
-                        e.target.value
+                  <h2 className="mt-2 text-3xl font-black text-white md:text-4xl">
+                    Nová hra
+                  </h2>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-bold uppercase tracking-wide text-zinc-400">
+                    Počet hráčů
+                  </label>
+
+                  <select
+                    value={playerCount}
+                    onChange={(e) =>
+                      handlePlayerCountChange(
+                        Number(
+                          e.target.value
+                        )
                       )
-                    )
-                  }
-                  className="rounded-lg border border-zinc-600 bg-zinc-900 p-3 text-white"
-                >
-                  <option value="">
-                    Vyber počet hráčů
-                  </option>
+                    }
+                    className="min-w-[220px] rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-lg font-bold text-white outline-none transition focus:border-yellow-400"
+                  >
+                    <option value="">
+                      Vyber počet hráčů
+                    </option>
 
-                  {[2, 3, 4, 5, 6, 7].map(
-                    (count) => (
-                      <option
-                        key={count}
-                        value={count}
-                      >
-                        {count}
-                      </option>
-                    )
-                  )}
-                </select>
+                    {[2, 3, 4, 5, 6, 7].map(
+                      (count) => (
+                        <option
+                          key={count}
+                          value={count}
+                        >
+                          {count}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
               </div>
 
               {playerCount !== "" && (
-                <div className="mb-8 flex flex-wrap gap-4">
+                <div className="mb-10 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                   {Array.from({
                     length: playerCount,
                   }).map((_, index) => (
-                    <div key={index}>
-                      <label className="mb-1 block font-semibold">
-                        Hráč{" "}
-                        {index + 1}
+                    <div
+                      key={index}
+                      className="rounded-2xl border border-zinc-800 bg-black/40 p-5"
+                    >
+                      <label className="mb-3 block text-sm font-bold uppercase tracking-wide text-yellow-400">
+                        Hráč {index + 1}
                       </label>
 
                       <select
@@ -595,7 +637,7 @@ export default function Home() {
                             e.target.value
                           )
                         }
-                        className="min-w-[220px] rounded-lg border border-zinc-600 bg-zinc-900 p-3 text-white"
+                        className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-4 text-lg font-bold text-white outline-none transition focus:border-yellow-400"
                       >
                         <option value="">
                           Vyber hráče
@@ -628,10 +670,10 @@ export default function Home() {
                   setGameStarted(true)
                 }
                 disabled={!canStartGame}
-                className={`hero-button rounded-lg px-6 py-3 font-bold transition ${
+                className={`rounded-2xl px-8 py-4 text-xl font-black transition ${
                   canStartGame
-                    ? "bg-yellow-400 text-black hover:bg-yellow-300"
-: "cursor-not-allowed bg-gray-500 text-gray-300"
+                    ? "bg-yellow-500 text-black hover:scale-[1.02] hover:bg-yellow-400"
+                    : "cursor-not-allowed bg-zinc-700 text-zinc-400"
                 }`}
               >
                 ▶ Začít hru
@@ -640,180 +682,197 @@ export default function Home() {
           )}
 
           {gameStarted && (
-            <div className="overflow-x-auto">
-              <div className="hero-table inline-block min-w-full">
-                <table className="border-collapse">
-                  <thead>
-                    <tr className="bg-green-800">
-                      <th className="min-w-[240px] border border-white p-3 text-left">
-                        Kombinace
-                      </th>
+            <div className="w-full overflow-x-auto rounded-2xl border border-zinc-700 bg-zinc-950">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-green-800">
+                    <th className="w-[28%] border border-white p-3 text-left">
+                      Kombinace
+                    </th>
 
-                      <th className="min-w-[80px] border border-white p-3 text-center">
-                        MIN
-                      </th>
+                    <th className="w-[9%] border border-white p-3 text-center">
+                      MIN
+                    </th>
 
-                      <th className="min-w-[80px] border border-white p-3 text-center">
-                        MAX
-                      </th>
+                    <th className="w-[9%] border border-white p-3 text-center">
+                      MAX
+                    </th>
 
-                      {selectedPlayers.map(
-                        (playerId, index) => (
-                          <th
-                            key={index}
-                            className="min-w-[140px] border border-white p-3 text-center"
-                          >
-                            {
-                              players.find(
-                                (p) =>
-                                  p.id ===
-                                  playerId
-                              )?.name
-                            }
-                          </th>
-                        )
-                      )}
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {gameCategories.map(
-                      (category) => (
-                        <tr
-                          key={category.id}
+                    {selectedPlayers.map(
+                      (playerId, index) => (
+                        <th
+                          key={index}
+                          className="border border-white p-3 text-center"
                         >
-                          <td className="border border-white p-3">
-                            <button
-                              onClick={() =>
-                                setSelectedHelpImage(
-                                  `/help/${category.id}.png`
-                                )
-                              }
-                              className="transition hover:text-yellow-300"
-                            >
-                              {
-                                category.name
-                              }
-                            </button>
-                          </td>
-
-                          <td className="border border-white p-3 text-center">
-                            {category.min}
-                          </td>
-
-                          <td className="border border-white p-3 text-center">
-                            {category.max}
-                          </td>
-
-                          {selectedPlayers.map(
-  (
-    playerId,
-    index
-  ) => {
-    const score =
-      scores[
-        playerId
-      ]?.[
-        category.id
-      ];
-
-    const isPerfect =
-      score === category.max;
-
-    return (
-      <td
-        key={index}
-        className={`border border-white p-3 text-center text-xl font-bold transition ${
-          gameFinished
-            ? "cursor-default"
-            : "cursor-pointer hover:bg-green-800"
-        }`}
-        onClick={() =>
-          openScoreModal(
-            playerId,
-            category.id,
-            category.min,
-            category.max
-          )
-        }
-      >
-        <span
-          className={
-            isPerfect
-              ? "text-red-500"
-              : ""
-          }
-        >
-          {score ?? ""}
-        </span>
-      </td>
-    );
-  }
-)}
-                        </tr>
+                          {
+                            players.find(
+                              (p) =>
+                                p.id ===
+                                playerId
+                            )?.name
+                          }
+                        </th>
                       )
                     )}
+                  </tr>
+                </thead>
 
-                    <tr className="bg-green-950 text-xl font-bold">
-                      <td className="border border-white p-3">
-                        SKÓRE
-                      </td>
-
-                      <td className="border border-white p-3"></td>
-
-                      <td className="border border-white p-3"></td>
-
-                      {selectedPlayers.map(
-                        (
-                          playerId,
-                          index
-                        ) => (
-                          <td
-                            key={index}
-                            className="border border-white p-3 text-center"
+                <tbody>
+                  {gameCategories.map(
+                    (category) => (
+                      <tr
+                        key={category.id}
+                        className="transition hover:bg-zinc-900"
+                      >
+                        <td className="border border-white p-3">
+                          <button
+                            onClick={() =>
+                              setSelectedHelpImage(
+                                `/help/${category.id}.png`
+                              )
+                            }
+                            className="transition hover:text-yellow-300"
                           >
-                            {getPlayerTotal(
-                              playerId
-                            )}
-                          </td>
-                        )
-                      )}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                            {
+                              category.name
+                            }
+                          </button>
+                        </td>
+
+                        <td className="border border-white p-3 text-center">
+                          {category.min}
+                        </td>
+
+                        <td className="border border-white p-3 text-center">
+                          {category.max}
+                        </td>
+
+                        {selectedPlayers.map(
+                          (
+                            playerId,
+                            index
+                          ) => {
+                            const value =
+                              scores[playerId]?.[
+                                category.id
+                              ];
+
+                            const isPerfect =
+                              value ===
+                              category.max;
+
+                            return (
+                              <td
+                                key={index}
+                                className={`border border-white p-3 text-center text-xl font-black transition ${
+                                  gameFinished
+                                    ? "cursor-default"
+                                    : "cursor-pointer hover:bg-green-800"
+                                }`}
+                                onClick={() =>
+                                  openScoreModal(
+                                    playerId,
+                                    category.id,
+                                    category.min,
+                                    category.max
+                                  )
+                                }
+                              >
+                                <span
+                                  className={
+                                    isPerfect
+                                      ? "text-red-500"
+                                      : "text-white"
+                                  }
+                                >
+                                  {value ?? ""}
+                                </span>
+                              </td>
+                            );
+                          }
+                        )}
+                      </tr>
+                    )
+                  )}
+
+                  <tr className="bg-green-950 text-xl font-bold">
+                    <td className="border border-white p-3">
+                      SKÓRE
+                    </td>
+
+                    <td className="border border-white p-3"></td>
+
+                    <td className="border border-white p-3"></td>
+
+                    {selectedPlayers.map(
+                      (
+                        playerId,
+                        index
+                      ) => (
+                        <td
+                          key={index}
+                          className="border border-white p-3 text-center"
+                        >
+                          {getPlayerTotal(
+                            playerId
+                          )}
+                        </td>
+                      )
+                    )}
+                  </tr>
+                </tbody>
+              </table>
             </div>
           )}
-        </>
+        </div>
       )}
-
       {/* SCORE MODAL */}
       {scoreModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="hero-card-strong w-full max-w-[350px] p-8 text-white">
-            <h2 className="mb-2 text-2xl font-bold">
-  Zadat skóre
-</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/30 bg-gradient-to-br from-zinc-900 to-zinc-950 p-8 text-white shadow-2xl">
+            <h2 className="mb-6 text-center text-3xl font-black text-yellow-400">
+              Zadat skóre
+            </h2>
 
-<p className="mb-1 text-lg text-yellow-400 font-bold">
-  {scoreModal.categoryName}
-</p>
+            <div className="mb-6 rounded-2xl border border-yellow-500/20 bg-zinc-900/80 p-5">
+              <div className="mb-2 text-sm uppercase tracking-widest text-zinc-400">
+                Kombinace
+              </div>
 
-<p className="mb-4 text-zinc-300">
-  Hráč:{" "}
-  <strong>
-    {scoreModal.playerName}
-  </strong>
-</p>
+              <div className="text-3xl font-black text-yellow-300">
+                {
+                  gameCategories.find(
+                    (category) =>
+                      category.id ===
+                      scoreModal.categoryId
+                  )?.name
+                }
+              </div>
+            </div>
 
-            <p className="mb-2">
+            <div className="mb-6 rounded-2xl border border-blue-500/20 bg-zinc-900/80 p-5">
+              <div className="mb-2 text-sm uppercase tracking-widest text-zinc-400">
+                Hráč
+              </div>
+
+              <div className="text-2xl font-bold text-blue-300">
+                {
+                  players.find(
+                    (player) =>
+                      player.id ===
+                      scoreModal.playerId
+                  )?.name
+                }
+              </div>
+            </div>
+
+            <div className="mb-4 text-center text-zinc-400">
               Povolené rozmezí:
-              <strong>
-                {" "}
+              <span className="ml-2 font-bold text-green-400">
                 {scoreModal.min} –{" "}
                 {scoreModal.max}
-              </strong>
-            </p>
+              </span>
+            </div>
 
             <input
               type="number"
@@ -825,14 +884,14 @@ export default function Home() {
                   e.target.value
                 )
               }
-              className="mb-4 w-full rounded border border-zinc-700 bg-zinc-900 p-3 text-2xl text-white"
+              className="mb-6 w-full rounded-2xl border border-zinc-700 bg-black/60 p-5 text-center text-5xl font-black text-yellow-300 outline-none transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/40"
               autoFocus
             />
 
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
                 onClick={saveScore}
-                className="hero-button hero-button-green rounded px-4 py-2"
+                className="flex-1 rounded-2xl bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:scale-[1.02] hover:bg-green-500"
               >
                 Uložit
               </button>
@@ -841,7 +900,7 @@ export default function Home() {
                 onClick={() =>
                   setScoreModal(null)
                 }
-                className="hero-button rounded bg-zinc-700 px-4 py-2 hover:bg-zinc-600"
+                className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
               >
                 Zrušit
               </button>
@@ -867,11 +926,11 @@ export default function Home() {
             <img
               src={selectedHelpImage}
               alt="Nápověda"
-              className="max-h-[90vh] max-w-[90vw] rounded-2xl bg-white shadow-2xl"
+              className="max-h-[90vh] max-w-[90vw] rounded-xl bg-white shadow-2xl"
             />
 
             <button
-              className="hero-button hero-button-red absolute right-2 top-2 rounded-lg px-4 py-2 font-bold"
+              className="absolute right-2 top-2 rounded-lg bg-red-600 px-4 py-2 font-bold text-white transition hover:bg-red-700"
               onClick={() =>
                 setSelectedHelpImage(null)
               }
@@ -885,7 +944,7 @@ export default function Home() {
       {/* WINNER MODAL */}
       {showFinishedGame && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="hero-card-strong hero-glow-gold max-w-xl p-10 text-center text-white">
+          <div className="max-w-xl rounded-2xl bg-white p-10 text-center text-black">
             <h2 className="mb-8 text-5xl">
               🏆 Konec hry
             </h2>
@@ -894,7 +953,7 @@ export default function Home() {
               Vítěz
             </p>
 
-            <p className="hero-text-glow mb-6 text-5xl font-black text-yellow-400">
+            <p className="mb-6 text-5xl font-black text-green-700">
               {winner}
             </p>
 
@@ -914,7 +973,7 @@ export default function Home() {
                     false
                   )
                 }
-                className="hero-button hero-button-blue rounded-lg px-5 py-3 font-bold"
+                className="rounded-lg bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-500"
               >
                 Zobrazit hru
               </button>
@@ -925,7 +984,7 @@ export default function Home() {
                     true
                   )
                 }
-                className="hero-button hero-button-gold rounded-lg px-5 py-3 font-bold"
+                className="rounded-lg bg-yellow-500 px-5 py-3 font-bold text-black transition hover:bg-yellow-400"
               >
                 Statistiky
               </button>
@@ -934,16 +993,20 @@ export default function Home() {
                 onClick={
                   startNewGame
                 }
-                className="hero-button hero-button-red rounded-lg px-5 py-3 font-bold"
+                className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
               >
                 Nová hra
               </button>
 
-              <button
-                onClick={() =>
-                  setScreen("home")
-                }
-                className="hero-button rounded-lg bg-zinc-700 px-5 py-3 font-bold hover:bg-zinc-600"
+<button
+  onClick={() => {
+    setShowFinishedGame(
+      false
+    );
+
+    setScreen("home");
+  }}
+                className="rounded-lg bg-zinc-700 px-5 py-3 font-bold text-white transition hover:bg-zinc-600"
               >
                 Domů
               </button>
@@ -955,12 +1018,12 @@ export default function Home() {
       {/* LEAVE CONFIRM */}
       {showLeaveConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="hero-card-strong w-full max-w-[420px] p-8 text-center text-white">
+          <div className="w-full max-w-[420px] rounded-2xl bg-white p-8 text-center text-black">
             <h2 className="mb-6 text-3xl font-black">
               Opravdu ukončit hru?
             </h2>
 
-            <p className="mb-8 text-zinc-400">
+            <p className="mb-8 text-zinc-600">
               Rozehraná hra nebude uložena.
             </p>
 
@@ -971,7 +1034,7 @@ export default function Home() {
                     false
                   )
                 }
-                className="hero-button hero-button-green rounded-lg px-5 py-3 font-bold"
+                className="rounded-lg bg-green-600 px-5 py-3 font-bold text-white transition hover:bg-green-500"
               >
                 Pokračovat
               </button>
@@ -984,7 +1047,7 @@ export default function Home() {
 
                   setScreen("home");
                 }}
-                className="hero-button hero-button-red rounded-lg px-5 py-3 font-bold"
+                className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
               >
                 Domů
               </button>

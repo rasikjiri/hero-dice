@@ -95,7 +95,7 @@ export default function StatisticsModal({
                       {player.name}
                     </td>
 
-                    <td className="p-4 text-center text-green-400">
+                    <td className="p-4 text-center text-yellow-400">
                       {getPlayerWins(
                         player.id
                       )}
@@ -107,23 +107,23 @@ export default function StatisticsModal({
                       )}
                     </td>
 
-                    <td className="p-4 text-center">
+                    <td className="p-4 text-center text-yellow-400">
                       {playerGames}
                     </td>
 
-                    <td className="p-4 text-center text-blue-400">
+                    <td className="p-4 text-center text-yellow-400">
                       {getAverageScore(
                         player.id
                       )}
                     </td>
 
-                    <td className="p-4 text-center text-red-400">
+                    <td className="p-4 text-center text-yellow-400">
                       {getPerfectCategories(
                         player.id
                       )}
                     </td>
 
-                    <td className="p-4 text-center text-pink-400">
+                    <td className="p-4 text-center text-yellow-400">
                       {getAveragePerfects(
                         player.id
                       )}
