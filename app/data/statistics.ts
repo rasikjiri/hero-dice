@@ -497,3 +497,48 @@ export const getTopPlayerByAveragePerfects =
       value: bestValue,
     };
   };
+export const syncGamesFromSupabase =
+  async () => {
+    const { data, error } =
+      await supabase
+        .from("games")
+        .select("*")
+        .order("created_at", {
+          ascending: true,
+        });
+
+    if (error || !data) {
+      console.error(
+        "Supabase sync error",
+        error
+      );
+
+      return;
+    }
+
+    const formattedGames =
+      data.map((game) => ({
+        date:
+          game.created_at ||
+          new Date().toISOString(),
+
+        winner: game.winner,
+
+        winnerScore:
+          game.winner_score,
+
+        players:
+          game.players || [],
+
+        scores:
+          game.scores || [],
+      }));
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(
+        formattedGames
+      )
+    );
+  };
+  
