@@ -33,6 +33,12 @@ export default function Home() {
   const [mounted, setMounted] =
     useState(false);
 
+  const [isUnlocked, setIsUnlocked] =
+  useState(false);
+
+  const [accessCode, setAccessCode] =
+  useState("");  
+  
   const [showStatistics, setShowStatistics] =
     useState(false);
 
@@ -115,7 +121,16 @@ const [
   value: 0,
 });
     
-    useEffect(() => {
+  useEffect(() => {
+  const unlocked =
+    localStorage.getItem(
+      "heroDiceUnlocked"
+    );
+
+  if (unlocked === "true") {
+    setIsUnlocked(true);
+  }
+
   const loadStatistics =
     async () => {
       await syncGamesFromSupabase();
@@ -419,8 +434,56 @@ const handlePlayerCountChange = (
     gameFinished,
     selectedPlayers,
   ]);
-  return (
-    <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
+    return (
+  <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
+    {!isUnlocked && (
+      <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black p-6">
+        <div className="w-full max-w-md rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center shadow-2xl">
+          <h1 className="mb-3 text-5xl font-black text-yellow-400">
+            HERO DICE
+          </h1>
+
+          <p className="mb-8 text-zinc-400">
+            Zadej přístupový kód
+          </p>
+
+          <input
+            type="password"
+            value={accessCode}
+            onChange={(e) =>
+              setAccessCode(
+                e.target.value
+              )
+            }
+            className="mb-5 w-full rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-center text-2xl font-bold text-white outline-none transition focus:border-yellow-400"
+            autoFocus
+          />
+
+          <button
+            onClick={() => {
+              if (
+                accessCode ===
+                process.env.NEXT_PUBLIC_APP_CODE
+              ) {
+                localStorage.setItem(
+                  "heroDiceUnlocked",
+                  "true"
+                );
+
+                setIsUnlocked(true);
+              } else {
+                alert(
+                  "Neplatný kód."
+                );
+              }
+            }}
+            className="w-full rounded-2xl bg-yellow-500 px-6 py-4 text-xl font-black text-black transition hover:bg-yellow-400"
+          >
+            Vstoupit
+          </button>
+        </div>
+      </div>
+    )}
       {/* HOME */}
       {screen === "home" && (
         <div className="mx-auto flex w-full max-w-6xl flex-col">
