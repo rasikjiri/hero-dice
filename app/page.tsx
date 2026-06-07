@@ -344,6 +344,33 @@ const handlePlayerCountChange = (
       (player) => player !== ""
     );
 
+useEffect(() => {
+  const handleBeforeUnload = (
+    event: BeforeUnloadEvent
+  ) => {
+    if (
+      gameStarted &&
+      !gameFinished
+    ) {
+      event.preventDefault();
+
+      event.returnValue = "";
+    }
+  };
+
+  window.addEventListener(
+    "beforeunload",
+    handleBeforeUnload
+  );
+
+  return () => {
+    window.removeEventListener(
+      "beforeunload",
+      handleBeforeUnload
+    );
+  };
+}, [gameStarted, gameFinished]);
+
   useEffect(() => {
       const finishGame = async () => {
 
