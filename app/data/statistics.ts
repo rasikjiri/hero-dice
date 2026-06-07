@@ -267,7 +267,7 @@ export const getTopPlayerByWins =
               player.id
             ) === bestValue
         )
-        .slice(0, 7)
+        .slice(0, 2)
         .map(
           (player) =>
             player.name
@@ -305,7 +305,7 @@ export const getTopPlayerByScore =
               player.id
             ) === bestValue
         )
-        .slice(0, 7)
+        .slice(0, 2)
         .map(
           (player) =>
             player.name
@@ -345,7 +345,7 @@ export const getTopPlayerByAverage =
               player.id
             ) === bestValue
         )
-        .slice(0, 7)
+        .slice(0, 2)
         .map(
           (player) =>
             player.name
@@ -401,7 +401,7 @@ export const getTopPlayerByGamesPlayed =
             bestValue
           );
         })
-        .slice(0, 7)
+        .slice(0, 2)
         .map(
           (player) =>
             player.name
@@ -441,7 +441,7 @@ export const getTopPlayerByPerfects =
               player.id
             ) === bestValue
         )
-        .slice(0, 7)
+        .slice(0, 2)
         .map(
           (player) =>
             player.name
@@ -483,7 +483,7 @@ export const getTopPlayerByAveragePerfects =
               player.id
             ) === bestValue
         )
-        .slice(0, 7)
+        .slice(0, 2)
         .map(
           (player) =>
             player.name
