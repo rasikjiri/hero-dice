@@ -80,6 +80,11 @@ export default function Home() {
       max: number;
     } | null>(null);
 
+  const [
+  showEditConfirm,
+  setShowEditConfirm,
+] = useState(false);
+
   const [scoreInput, setScoreInput] =
     useState("");
 
@@ -234,12 +239,21 @@ const handlePlayerCountChange = (
       scores[playerId]?.[categoryId];
 
     if (existingScore !== undefined) {
-      alert(
-        "Tato kombinace už má zadané skóre."
-      );
+  setScoreInput(
+    String(existingScore)
+  );
 
-      return;
-    }
+  setScoreModal({
+    playerId,
+    categoryId,
+    min,
+    max,
+  });
+
+  setShowEditConfirm(true);
+
+  return;
+}
 
     setScoreInput(String(max));
 
@@ -916,6 +930,46 @@ const handlePlayerCountChange = (
           )}
         </div>
       )}
+
+{/* EDIT CONFIRM MODAL */}
+{showEditConfirm && scoreModal && (
+  <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+    <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/30 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+      <h2 className="mb-5 text-3xl font-black text-yellow-400">
+        Upravit skóre?
+      </h2>
+
+      <p className="mb-8 text-lg text-zinc-300">
+        Tato kombinace už má zadané skóre.
+        <br />
+        Chceš jej upravit?
+      </p>
+
+      <div className="flex gap-4">
+        <button
+        onClick={() => {
+        setShowEditConfirm(false);
+
+    setScoreModal(null);
+  }}
+          className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
+        >
+          Nechat hodnotu
+        </button>
+
+        <button
+          onClick={() =>
+            setShowEditConfirm(false)
+          }
+          className="flex-1 rounded-2xl bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:bg-yellow-400"
+        >
+          Opravit
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
       {/* SCORE MODAL */}
       {scoreModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
