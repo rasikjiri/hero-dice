@@ -318,6 +318,39 @@ export const getTopPlayerByAverage =
     };
   };
 
+export const getTopPlayerByGamesPlayed =
+  () => {
+    let bestPlayer = "-";
+    let bestValue = 0;
+
+    players.forEach((player) => {
+      const gamesPlayed =
+        getFinishedGames().filter(
+          (game) =>
+            game.scores.find(
+              (p) =>
+                p.playerId ===
+                player.id
+            ) !== undefined
+        ).length;
+
+      if (
+        gamesPlayed > bestValue
+      ) {
+        bestValue =
+          gamesPlayed;
+
+        bestPlayer =
+          player.name;
+      }
+    });
+
+    return {
+      name: bestPlayer,
+      value: bestValue,
+    };
+  };
+
 export const getTopPlayerByPerfects =
   () => {
     let bestPlayer = "-";

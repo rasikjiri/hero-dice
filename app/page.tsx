@@ -10,12 +10,13 @@ import { gameCategories } from "./data/gameCategories";
 
 import {
   saveFinishedGame,
-  
+
   getTopPlayerByWins,
   getTopPlayerByAverage,
   getTopPlayerByPerfects,
   getTopPlayerByAveragePerfects,
   getTopPlayerByScore,
+  getTopPlayerByGamesPlayed,
 } from "./data/statistics";
 
 type ScoreMap = {
@@ -106,6 +107,14 @@ const [
       value: 0,
     });
 
+const [
+  topGamesPlayed,
+  setTopGamesPlayed,
+] = useState({
+  name: "-",
+  value: 0,
+});
+    
     useEffect(() => {
     setMounted(true);
 
@@ -126,6 +135,9 @@ setTopAveragePerfects(
     setTopScore(
       getTopPlayerByScore()
     );
+    setTopGamesPlayed(
+  getTopPlayerByGamesPlayed()
+);
   }, []);
 
   const activePlayers = useMemo(() => {
@@ -475,13 +487,13 @@ const handlePlayerCountChange = (
 
                 <div className="mt-3 text-3xl font-black text-white">
                   {mounted
-                    ? topWins.name
+                    ? topGamesPlayed.name
                     : "-"}
                 </div>
 
                 <div className="mt-2 text-2xl font-black text-yellow-400">
                   {mounted
-                    ? topWins.value
+                    ? topGamesPlayed.value
                     : "-"}
                 </div>
               </div>
