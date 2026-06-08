@@ -72,6 +72,11 @@ export default function Home() {
   const [scores, setScores] =
     useState<ScoreMap>({});
 
+  const [
+  showRestoreGame,
+  setShowRestoreGame,
+] = useState(false);
+
   const [scoreModal, setScoreModal] =
     useState<{
       playerId: string;
@@ -317,6 +322,10 @@ const handlePlayerCountChange = (
   };
 
   const startNewGame = () => {
+    localStorage.removeItem(
+  "heroDiceCurrentGame"
+);
+    
     setPlayerCount("");
 
     setSelectedPlayers([]);
@@ -345,6 +354,31 @@ const handlePlayerCountChange = (
     );
 
 useEffect(() => {
+  const savedGame =
+    localStorage.getItem(
+      "heroDiceCurrentGame"
+    );
+
+  if (!savedGame) return;
+
+  try {
+    const parsed =
+      JSON.parse(savedGame);
+
+    if (
+      parsed.gameStarted &&
+      !parsed.gameFinished
+    ) {
+      setShowRestoreGame(true);
+    }
+  } catch {
+    localStorage.removeItem(
+      "heroDiceCurrentGame"
+    );
+  }
+}, []);
+
+useEffect(() => {
   const handleBeforeUnload = (
     event: BeforeUnloadEvent
   ) => {
@@ -370,6 +404,30 @@ useEffect(() => {
     );
   };
 }, [gameStarted, gameFinished]);
+
+useEffect(() => {
+  if (
+    gameStarted &&
+    !gameFinished
+  ) {
+    localStorage.setItem(
+      "heroDiceCurrentGame",
+      JSON.stringify({
+        playerCount,
+        selectedPlayers,
+        scores,
+        gameStarted,
+        gameFinished,
+      })
+    );
+  }
+}, [
+  playerCount,
+  selectedPlayers,
+  scores,
+  gameStarted,
+  gameFinished,
+]);
 
   useEffect(() => {
       const finishGame = async () => {
@@ -465,7 +523,11 @@ useEffect(() => {
 
     setGameFinished(true);
 
-        setShowFinishedGame(true);
+localStorage.removeItem(
+  "heroDiceCurrentGame"
+);
+
+setShowFinishedGame(true);
           };
 
   finishGame();
@@ -991,6 +1053,82 @@ useEffect(() => {
           className="flex-1 rounded-2xl bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:bg-yellow-400"
         >
           Opravit
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* RESTORE GAME MODAL */}
+{showRestoreGame && (
+  <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+      <h2 className="mb-5 text-3xl font-black text-yellow-400">
+        Obnovit hru?
+      </h2>
+
+      <p className="mb-8 text-lg text-zinc-300">
+        Byla nalezena rozehraná hra.
+      </p>
+
+      <div className="flex gap-4">
+        <button
+          onClick={() => {
+            localStorage.removeItem(
+              "heroDiceCurrentGame"
+            );
+
+            setShowRestoreGame(
+              false
+            );
+          }}
+          className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
+        >
+          Zahodit
+        </button>
+
+        <button
+          onClick={() => {
+            const savedGame =
+              localStorage.getItem(
+                "heroDiceCurrentGame"
+              );
+
+            if (!savedGame)
+              return;
+
+            const parsed =
+              JSON.parse(savedGame);
+
+            setPlayerCount(
+              parsed.playerCount
+            );
+
+            setSelectedPlayers(
+              parsed.selectedPlayers
+            );
+
+            setScores(
+              parsed.scores
+            );
+
+            setGameStarted(
+              parsed.gameStarted
+            );
+
+            setGameFinished(
+              parsed.gameFinished
+            );
+
+            setScreen("game");
+
+            setShowRestoreGame(
+              false
+            );
+          }}
+          className="flex-1 rounded-2xl bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:bg-yellow-400"
+        >
+          Obnovit
         </button>
       </div>
     </div>
