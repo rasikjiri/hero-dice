@@ -48,11 +48,31 @@ export default function Home() {
   const [showAdmin, setShowAdmin] =
   useState(false);
 
+  const [
+  deletePlayerId,
+  setDeletePlayerId,
+] = useState<string | null>(
+  null
+);
+
+  const [newPlayerId, setNewPlayerId] =
+  useState("");
+
+  const [newPlayerName, setNewPlayerName] =
+  useState("");
+
   const [, forceUpdate] =
   useState(0);
 
   const [showLeaveConfirm, setShowLeaveConfirm] =
     useState(false);
+
+  const [
+  leaveAction,
+  setLeaveAction,
+] = useState<
+  "home" | "new-game" | null
+>(null);
 
   const [selectedHelpImage, setSelectedHelpImage] =
     useState<string | null>(null);
@@ -206,6 +226,84 @@ const selectablePlayers =
 
   const maxPlayers =
   selectablePlayers.length;
+
+const handleDeletePlayer = (
+  playerId: string
+) => {
+  const updatedPlayers =
+    playersState.filter(
+      (player) =>
+        player.id !== playerId
+    );
+
+  setPlayersState(
+    updatedPlayers
+  );
+
+  localStorage.setItem(
+    "heroDicePlayers",
+    JSON.stringify(
+      updatedPlayers
+    )
+  );
+};
+
+const handleAddPlayer = () => {
+  const trimmedId =
+    newPlayerId.trim();
+
+  const trimmedName =
+    newPlayerName.trim();
+
+  if (
+    !trimmedId ||
+    !trimmedName
+  ) {
+    alert(
+      "Vyplň ID i jméno hráče."
+    );
+
+    return;
+  }
+
+  const exists =
+    playersState.some(
+      (player) =>
+        player.id.toLowerCase() ===
+        trimmedId.toLowerCase()
+    );
+
+  if (exists) {
+    alert(
+      "Player ID už existuje."
+    );
+
+    return;
+  }
+
+  const updatedPlayers = [
+    ...playersState,
+    {
+      id: trimmedId,
+      name: trimmedName,
+      active: true,
+    },
+  ];
+
+  setPlayersState(
+    updatedPlayers
+  );
+
+  localStorage.setItem(
+    "heroDicePlayers",
+    JSON.stringify(
+      updatedPlayers
+    )
+  );
+
+  setNewPlayerId("");
+  setNewPlayerName("");
+};
 
 useEffect(() => {
   const savedPlayers =
@@ -395,6 +493,26 @@ const handlePlayerCountChange = (
       (player) => player !== ""
     );
 
+useEffect(() => {
+  if (
+    selectablePlayers.length ===
+      2 &&
+    !gameStarted &&
+    playerCount !== 2
+  ) {
+    setPlayerCount(2);
+
+    setSelectedPlayers([
+      selectablePlayers[0].id,
+      selectablePlayers[1].id,
+    ]);
+  }
+}, [
+  selectablePlayers.length,
+  gameStarted,
+  playerCount,
+]);
+    
 useEffect(() => {
   const savedGame =
     localStorage.getItem(
@@ -793,32 +911,38 @@ setShowFinishedGame(true);
   </h1>
 
   <div className="flex flex-wrap gap-3">
+  {gameStarted ? (
     <button
-      onClick={() =>
-        setShowAdmin(true)
-      }
-      className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
-    >
-      Admin
-    </button>
-
-  <button
-    onClick={() => {
-      if (
-        gameStarted &&
-        !gameFinished
-      ) {
+      onClick={() => {
         setShowLeaveConfirm(
           true
         );
-      } else {
-        setScreen("home");
-      }
-    }}
-    className="rounded-2xl bg-green-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
-  >
-    Domů
-  </button>
+      }}
+      className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
+    >
+      Ukončit hru
+    </button>
+  ) : (
+    <>
+      <button
+        onClick={() =>
+          setShowAdmin(true)
+        }
+        className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
+      >
+        Admin
+      </button>
+
+      <button
+        onClick={() =>
+          setScreen("home")
+        }
+        className="rounded-2xl bg-green-700 px-6 py-3 text-lg font-bold transition hover:bg-green-600"
+      >
+        Domů
+      </button>
+    </>
+  )}
 </div>
 </div>
 
@@ -1421,31 +1545,54 @@ setShowFinishedGame(true);
               Rozehraná hra nebude uložena.
             </p>
 
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={() =>
-                  setShowLeaveConfirm(
-                    false
-                  )
-                }
-                className="rounded-lg bg-green-600 px-5 py-3 font-bold text-white transition hover:bg-green-500"
-              >
-                Pokračovat
-              </button>
+            <div className="flex flex-wrap justify-center gap-4">
+  <button
+    onClick={() =>
+      setShowLeaveConfirm(
+        false
+      )
+    }
+    className="rounded-lg bg-green-600 px-5 py-3 font-bold text-white transition hover:bg-green-500"
+  >
+    Pokračovat
+  </button>
 
-              <button
-                onClick={() => {
-                  setShowLeaveConfirm(
-                    false
-                  );
+  <button
+    onClick={() => {
+      setShowLeaveConfirm(
+        false
+      );
 
-                  setScreen("home");
-                }}
-                className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
-              >
-                Domů
-              </button>
-            </div>
+      startNewGame();
+    }}
+    className="rounded-lg bg-yellow-500 px-5 py-3 font-bold text-black transition hover:bg-yellow-400"
+  >
+    Nová hra
+  </button>
+
+  <button
+    onClick={() => {
+      setShowLeaveConfirm(
+        false
+      );
+
+      localStorage.removeItem(
+        "heroDiceCurrentGame"
+      );
+
+      setGameStarted(false);
+
+      setGameFinished(false);
+
+      setScores({});
+
+      setScreen("home");
+    }}
+    className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
+  >
+    Domů
+  </button>
+</div>
           </div>
         </div>
       )}
@@ -1476,51 +1623,163 @@ setShowFinishedGame(true);
             className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/40 p-5"
           >
             <div>
-              <div className="text-2xl font-black">
-                {player.name}
-              </div>
+              <input
+  type="text"
+  value={player.name}
+  onChange={(e) => {
+    const updatedPlayers =
+      playersState.map((p) =>
+        p.id === player.id
+          ? {
+              ...p,
+              name: e.target.value,
+            }
+          : p
+      );
+
+    setPlayersState(
+      updatedPlayers
+    );
+  }}
+  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-2xl font-black text-white outline-none transition focus:border-yellow-400"
+/>
 
               <div className="mt-1 text-sm text-zinc-500">
                 ID: {player.id}
               </div>
             </div>
 
-            <button
-  onClick={() => {
-  const updatedPlayers =
-    playersState.map((p) =>
-      p.id === player.id
-        ? {
-            ...p,
-            active:
-              !p.active,
-          }
-        : p
-    );
+            <div className="flex gap-2">
+  <button
+    onClick={() => {
+      const updatedPlayers =
+        playersState.map((p) =>
+          p.id === player.id
+            ? {
+                ...p,
+                active:
+                  !p.active,
+              }
+            : p
+        );
 
-  setPlayersState(
-    updatedPlayers
-  );
+      setPlayersState(
+        updatedPlayers
+      );
 
-  localStorage.setItem(
-    "heroDicePlayers",
-    JSON.stringify(
-      updatedPlayers
-    )
-  );
-}}
-  className={`rounded-xl px-4 py-2 font-bold transition ${
-    player.active
-      ? "bg-green-600 hover:bg-green-500"
-      : "bg-red-600 hover:bg-red-500"
-  }`}
->
-  {player.active
-    ? "Aktivní"
-    : "Neaktivní"}
-</button>
+      localStorage.setItem(
+        "heroDicePlayers",
+        JSON.stringify(
+          updatedPlayers
+        )
+      );
+    }}
+    className={`rounded-xl px-4 py-2 font-bold transition ${
+      player.active
+        ? "bg-green-600 hover:bg-green-500"
+        : "bg-red-600 hover:bg-red-500"
+    }`}
+  >
+    {player.active
+      ? "Aktivní"
+      : "Neaktivní"}
+  </button>
+
+  <button
+    onClick={() =>
+  setDeletePlayerId(
+    player.id
+  )
+}
+    className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white transition hover:bg-red-600"
+  >
+    Smazat
+  </button>
+</div>
           </div>
-        ))}
+                ))}
+
+        <div className="mt-6 rounded-2xl border border-zinc-700 bg-black/40 p-5">
+          <div className="mb-4 text-xl font-black text-yellow-400">
+            Přidat hráče
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <input
+              type="text"
+              placeholder="Player ID"
+              value={newPlayerId}
+              onChange={(e) =>
+                setNewPlayerId(
+                  e.target.value
+                )
+              }
+              className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
+            />
+
+            <input
+              type="text"
+              placeholder="Jméno hráče"
+              value={newPlayerName}
+              onChange={(e) =>
+                setNewPlayerName(
+                  e.target.value
+                )
+              }
+              className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
+            />
+
+            <button
+              onClick={handleAddPlayer}
+              className="rounded-xl bg-green-600 px-5 py-3 font-black text-white transition hover:bg-green-500"
+            >
+              Přidat hráče
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* DELETE PLAYER CONFIRM */}
+{deletePlayerId && (
+  <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-[420px] rounded-3xl bg-zinc-900 p-8 text-center text-white shadow-2xl">
+      <h2 className="mb-5 text-3xl font-black text-red-500">
+        Smazat hráče?
+      </h2>
+
+      <p className="mb-8 text-zinc-300">
+        Opravdu chceš smazat tohoto hráče?
+      </p>
+
+      <div className="flex gap-4">
+        <button
+          onClick={() =>
+            setDeletePlayerId(
+              null
+            )
+          }
+          className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 font-bold transition hover:bg-zinc-600"
+        >
+          Nechat
+        </button>
+
+        <button
+          onClick={() => {
+            handleDeletePlayer(
+              deletePlayerId
+            );
+
+            setDeletePlayerId(
+              null
+            );
+          }}
+          className="flex-1 rounded-2xl bg-red-600 px-5 py-4 font-black text-white transition hover:bg-red-500"
+        >
+          Smazat
+        </button>
       </div>
     </div>
   </div>
