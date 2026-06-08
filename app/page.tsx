@@ -36,6 +36,9 @@ export default function Home() {
   const [isUnlocked, setIsUnlocked] =
   useState(false);
 
+  const [authLoaded, setAuthLoaded] =
+  useState(false);
+
   const [accessCode, setAccessCode] =
   useState("");  
   
@@ -146,6 +149,8 @@ const [
   if (unlocked === "true") {
     setIsUnlocked(true);
   }
+
+setAuthLoaded(true);
 
   const loadStatistics =
     async () => {
@@ -574,7 +579,11 @@ setShowFinishedGame(true);
     gameFinished,
     selectedPlayers,
   ]);
-    return (
+    if (!authLoaded) {
+  return null;
+}
+
+return (
   <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
     {!isUnlocked && (
       <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black p-6">
