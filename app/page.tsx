@@ -42,6 +42,12 @@ export default function Home() {
   const [showStatistics, setShowStatistics] =
     useState(false);
 
+  const [showAdmin, setShowAdmin] =
+  useState(false);
+
+  const [, forceUpdate] =
+  useState(0);
+
   const [showLeaveConfirm, setShowLeaveConfirm] =
     useState(false);
 
@@ -184,6 +190,37 @@ const [
       )
       .filter(Boolean);
   }, [selectedPlayers]);
+
+  const [playersState, setPlayersState] =
+  useState(players);
+
+const selectablePlayers =
+  playersState.filter(
+    (player) => player.active
+  );
+
+  const maxPlayers =
+  selectablePlayers.length;
+
+useEffect(() => {
+  const savedPlayers =
+    localStorage.getItem(
+      "heroDicePlayers"
+    );
+
+  if (!savedPlayers) return;
+
+  try {
+    const parsed =
+      JSON.parse(savedPlayers);
+
+    setPlayersState(parsed);
+  } catch {
+    localStorage.removeItem(
+      "heroDicePlayers"
+    );
+  }
+}, []);
 
 const handlePlayerCountChange = (
   count: number
@@ -588,22 +625,33 @@ setShowFinishedGame(true);
       </div>
     )}
       {/* HOME */}
-      {screen === "home" && (
-        <div className="mx-auto flex w-full max-w-6xl flex-col">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h1 className="text-5xl font-black tracking-tight text-yellow-400 md:text-5xl">
-              HERO DICE
-            </h1>
+{screen === "home" && (
+  <div className="mx-auto flex w-full max-w-6xl flex-col">
+    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <h1 className="text-5xl font-black tracking-tight text-yellow-400 md:text-5xl">
+        HERO DICE
+      </h1>
 
-            <button
-              onClick={() =>
-                setShowStatistics(true)
-              }
-              className="self-start rounded-2xl bg-green-600 px-6 py-3 text-lg font-bold transition hover:bg-green-700 md:self-auto md:text-xl"
-            >
-              Statistiky
-            </button>
-          </div>
+      <div className="flex flex-wrap gap-3">
+  <button
+    onClick={() =>
+      setShowAdmin(true)
+    }
+    className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600 md:text-xl"
+  >
+    Admin
+  </button>
+
+  <button
+  onClick={() =>
+    setShowStatistics(true)
+  }
+  className="rounded-2xl bg-green-600 px-6 py-3 text-lg font-bold transition hover:bg-green-700 md:text-xl"
+>
+  Statistiky
+</button>
+      </div>
+    </div>
 
           <div className="mt-8 md:mt-10">
             <button
@@ -735,28 +783,39 @@ setShowFinishedGame(true);
       {screen === "game" && (
         <div className="mx-auto flex w-full max-w-6xl flex-col">
           <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h1 className="text-5xl font-black tracking-tight text-yellow-400">
-              HERO DICE
-            </h1>
+  <h1 className="text-5xl font-black tracking-tight text-yellow-400">
+    HERO DICE
+  </h1>
 
-            <button
-              onClick={() => {
-                if (
-                  gameStarted &&
-                  !gameFinished
-                ) {
-                  setShowLeaveConfirm(
-                    true
-                  );
-                } else {
-                  setScreen("home");
-                }
-              }}
-              className="self-start rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600 md:self-auto"
-            >
-              Domů
-            </button>
-          </div>
+  <div className="flex flex-wrap gap-3">
+    <button
+      onClick={() =>
+        setShowAdmin(true)
+      }
+      className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
+    >
+      Admin
+    </button>
+
+  <button
+    onClick={() => {
+      if (
+        gameStarted &&
+        !gameFinished
+      ) {
+        setShowLeaveConfirm(
+          true
+        );
+      } else {
+        setScreen("home");
+      }
+    }}
+    className="rounded-2xl bg-green-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
+  >
+    Domů
+  </button>
+</div>
+</div>
 
           {!gameStarted && (
             <div className="mx-auto mb-12 mt-6 w-full max-w-5xl rounded-3xl bg-zinc-900/60 p-6 backdrop-blur md:p-8">
@@ -776,6 +835,20 @@ setShowFinishedGame(true);
                     Počet hráčů
                   </label>
 
+<div className="text-sm text-zinc-500">
+  Maximálně:
+  {" "}
+  {maxPlayers}
+  {" "}
+  aktivní
+  {maxPlayers === 1
+    ? " hráč"
+    : maxPlayers >= 2 &&
+      maxPlayers <= 4
+    ? " hráči"
+    : " hráčů"}
+</div>
+
                   <select
                     value={playerCount}
                     onChange={(e) =>
@@ -791,8 +864,15 @@ setShowFinishedGame(true);
                       Vyber počet hráčů
                     </option>
 
-                    {[2, 3, 4, 5, 6, 7].map(
-                      (count) => (
+                    {Array.from(
+  {
+    length:
+      maxPlayers >= 2
+        ? maxPlayers - 1
+        : 0,
+  },
+  (_, index) => index + 2
+).map((count) => (
                         <option
                           key={count}
                           value={count}
@@ -836,8 +916,8 @@ setShowFinishedGame(true);
                           Vyber hráče
                         </option>
 
-                        {players.map(
-                          (player) => (
+                        {selectablePlayers.map(
+                        (player) => (
                             <option
                               key={
                                 player.id
@@ -1364,6 +1444,82 @@ setShowFinishedGame(true);
           </div>
         </div>
       )}
+
+{/* ADMIN */}
+{showAdmin && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-2xl rounded-3xl bg-zinc-900 p-8 text-white shadow-2xl">
+      <div className="mb-8 flex items-center justify-between">
+        <h2 className="text-4xl font-black text-yellow-400">
+          Administrace hráčů
+        </h2>
+
+        <button
+          onClick={() =>
+            setShowAdmin(false)
+          }
+          className="rounded-xl bg-zinc-700 px-4 py-2 font-bold transition hover:bg-zinc-600"
+        >
+          Zavřít
+        </button>
+      </div>
+
+      <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-2">
+        {playersState.map((player) => (
+          <div
+            key={player.id}
+            className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/40 p-5"
+          >
+            <div>
+              <div className="text-2xl font-black">
+                {player.name}
+              </div>
+
+              <div className="mt-1 text-sm text-zinc-500">
+                ID: {player.id}
+              </div>
+            </div>
+
+            <button
+  onClick={() => {
+  const updatedPlayers =
+    playersState.map((p) =>
+      p.id === player.id
+        ? {
+            ...p,
+            active:
+              !p.active,
+          }
+        : p
+    );
+
+  setPlayersState(
+    updatedPlayers
+  );
+
+  localStorage.setItem(
+    "heroDicePlayers",
+    JSON.stringify(
+      updatedPlayers
+    )
+  );
+}}
+  className={`rounded-xl px-4 py-2 font-bold transition ${
+    player.active
+      ? "bg-green-600 hover:bg-green-500"
+      : "bg-red-600 hover:bg-red-500"
+  }`}
+>
+  {player.active
+    ? "Aktivní"
+    : "Neaktivní"}
+</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
 
       {/* STATISTICS */}
       {showStatistics && (
