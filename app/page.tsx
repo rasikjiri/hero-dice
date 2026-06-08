@@ -579,11 +579,7 @@ setShowFinishedGame(true);
     gameFinished,
     selectedPlayers,
   ]);
-    if (!authLoaded) {
-  return null;
-}
-
-return (
+    return (
   <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
     {!isUnlocked && (
       <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black p-6">
