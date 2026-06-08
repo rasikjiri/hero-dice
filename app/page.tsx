@@ -106,6 +106,11 @@ export default function Home() {
   setShowRestoreGame,
 ] = useState(false);
 
+  const [
+showHomeRestoreModal,
+setShowHomeRestoreModal,
+] = useState(false);
+
   const [scoreModal, setScoreModal] =
     useState<{
       playerId: string;
@@ -461,29 +466,53 @@ const handlePlayerCountChange = (
     );
   };
 
-  const startNewGame = () => {
-    localStorage.removeItem(
-  "heroDiceCurrentGame"
-);
-    
-    setPlayerCount("");
+  const startNewGame = (
+  skipRestoreCheck = false
+) => {
+  if (!skipRestoreCheck) {
+    const savedGame =
+      localStorage.getItem(
+        "heroDiceCurrentGame"
+      );
 
-    setSelectedPlayers([]);
+    if (savedGame) {
+      try {
+        const parsed =
+          JSON.parse(savedGame);
 
-    setGameStarted(false);
+        if (!parsed.gameFinished) {
+          setShowHomeRestoreModal(
+            true
+          );
 
-    setGameFinished(false);
+          return;
+        }
+      } catch {}
+    }
+  }
 
-    setWinner("");
+  localStorage.removeItem(
+    "heroDiceCurrentGame"
+  );
 
-    setWinnerScore(0);
+  setPlayerCount("");
 
-    setShowFinishedGame(false);
+  setSelectedPlayers([]);
 
-    setScores({});
+  setGameStarted(false);
 
-    setScreen("game");
-  };
+  setGameFinished(false);
+
+  setWinner("");
+
+  setWinnerScore(0);
+
+  setShowFinishedGame(false);
+
+  setScores({});
+
+  setScreen("game");
+};
 
   const canStartGame =
     playerCount !== "" &&
@@ -525,10 +554,7 @@ useEffect(() => {
     const parsed =
       JSON.parse(savedGame);
 
-    if (
-      parsed.gameStarted &&
-      !parsed.gameFinished
-    ) {
+    if (!parsed.gameFinished) {
       setShowRestoreGame(true);
     }
   } catch {
@@ -778,7 +804,7 @@ setShowFinishedGame(true);
 
           <div className="mt-8 md:mt-10">
             <button
-              onClick={startNewGame}
+              onClick={() => startNewGame()}
               className="rounded-3xl bg-yellow-500 px-8 py-5 text-2xl font-black text-black transition hover:scale-[1.02] hover:bg-yellow-400 md:px-10 md:text-3xl"
             >
               ▶ Nová hra
@@ -1268,6 +1294,80 @@ setShowFinishedGame(true);
   </div>
 )}
 
+{/* HOME RESTORE MODAL */}
+{showHomeRestoreModal && (
+  <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+      <h2 className="mb-5 text-3xl font-black text-yellow-400">
+        Obnovit hru?
+      </h2>
+
+      <p className="mb-8 text-lg text-zinc-300">
+        Byla nalezena rozehraná hra.
+      </p>
+
+      <div className="flex gap-4">
+        <button
+          onClick={() => {
+            setShowHomeRestoreModal(
+              false
+            );
+
+            startNewGame(true);
+          }}
+          className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
+        >
+          Nová hra
+        </button>
+
+        <button
+          onClick={() => {
+            const savedGame =
+              localStorage.getItem(
+                "heroDiceCurrentGame"
+              );
+
+            if (!savedGame)
+              return;
+
+            const parsed =
+              JSON.parse(savedGame);
+
+            setPlayerCount(
+              parsed.playerCount
+            );
+
+            setSelectedPlayers(
+              parsed.selectedPlayers
+            );
+
+            setScores(
+              parsed.scores
+            );
+
+            setGameStarted(
+              parsed.gameStarted
+            );
+
+            setGameFinished(
+              parsed.gameFinished
+            );
+
+            setScreen("game");
+
+            setShowHomeRestoreModal(
+              false
+            );
+          }}
+          className="flex-1 rounded-2xl bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:bg-yellow-400"
+        >
+          Obnovit
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 {/* RESTORE GAME MODAL */}
 {showRestoreGame && (
   <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
@@ -1508,9 +1608,7 @@ setShowFinishedGame(true);
               </button>
 
               <button
-                onClick={
-                  startNewGame
-                }
+                onClick={() => startNewGame()}
                 className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
               >
                 Nová hra
@@ -1571,27 +1669,17 @@ setShowFinishedGame(true);
   </button>
 
   <button
-    onClick={() => {
-      setShowLeaveConfirm(
-        false
-      );
+  onClick={() => {
+    setShowLeaveConfirm(
+      false
+    );
 
-      localStorage.removeItem(
-        "heroDiceCurrentGame"
-      );
-
-      setGameStarted(false);
-
-      setGameFinished(false);
-
-      setScores({});
-
-      setScreen("home");
-    }}
-    className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
-  >
-    Domů
-  </button>
+    setScreen("home");
+  }}
+  className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
+>
+  Domů
+</button>
 </div>
           </div>
         </div>
