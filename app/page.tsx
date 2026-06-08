@@ -1839,8 +1839,18 @@ setShowFinishedGame(true);
       </h2>
 
       <p className="mb-8 text-zinc-300">
-        Opravdu chceš smazat tohoto hráče?
-      </p>
+  Opravdu chceš smazat hráče{" "}
+  <span className="font-bold text-white">
+    {
+      playersState.find(
+        (player) =>
+          player.id ===
+          deletePlayerId
+      )?.name
+    }
+  </span>
+  ?
+</p>
 
       <div className="flex gap-4">
         <button
