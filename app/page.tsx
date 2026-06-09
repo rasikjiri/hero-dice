@@ -858,9 +858,9 @@ useEffect(() => {
 
     const finishedPlayer =
   selectedPlayers.find(
-    (playerId) => {
+    (player) => {
       const playerScores =
-        scores[playerId] || {};
+        scores[player.id] || {};
 
       return (
         Object.keys(playerScores)
