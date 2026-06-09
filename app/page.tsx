@@ -879,7 +879,7 @@ useEffect(() => {
       selectedPlayers.map(
         (playerId) => {
           const playerScores =
-            scores[playerId] || {};
+            scores[playerId.id] || {};
 
           const total =
             Object.values(
