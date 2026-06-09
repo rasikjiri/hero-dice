@@ -857,18 +857,18 @@ useEffect(() => {
       return;
 
     const finishedPlayer =
-      playersState.find(
-        (playerId) => {
-          const playerScores =
-            scores[playerId.id] || {};
+  selectedPlayers.find(
+    (playerId) => {
+      const playerScores =
+        scores[playerId] || {};
 
-          return (
-            Object.keys(playerScores)
-              .length ===
-            gameCategories.length
-          );
-        }
+      return (
+        Object.keys(playerScores)
+          .length ===
+        gameCategories.length
       );
+    }
+  );
 
     if (!finishedPlayer) return;
 
