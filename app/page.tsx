@@ -860,7 +860,7 @@ useEffect(() => {
       playersState.find(
         (playerId) => {
           const playerScores =
-            scores[playerId] || {};
+            scores[playerId.id] || {};
 
           return (
             Object.keys(playerScores)
