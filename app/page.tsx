@@ -253,9 +253,9 @@ useEffect(() => {
 
   const activePlayers = useMemo(() => {
     return selectedPlayers
-      .map((playerId) =>
+      .map((player) =>
         players.find(
-          (p) => p.id === playerId
+          (p) => p.id === player
         )
       )
       .filter(Boolean);
@@ -401,7 +401,7 @@ const handlePlayerCountChange = (
     if (gameFinished) return;
 
     const existingScore =
-      scores[playerId]?.[categoryId];
+      scores[player.id]?.[categoryId];
 
     if (existingScore !== undefined) {
   setScoreInput(
@@ -474,7 +474,7 @@ const handlePlayerCountChange = (
     playerId: string
   ) => {
     return Object.values(
-      scores[playerId] || {}
+      scores[player.id] || {}
     ).reduce(
       (sum, value) => sum + value,
       0
@@ -487,7 +487,7 @@ const saveGameToSupabase =
       const gameName =
         selectedPlayers
           .map(
-            (playerId) =>
+            (player) =>
               players.find(
                 (p) =>
                   p.id ===
@@ -1437,7 +1437,7 @@ setShowFinishedGame(true);
                             index
                           ) => {
                             const value =
-                              scores[playerId]?.[
+                              scores[player.id]?.[
                                 category.id
                               ];
 
