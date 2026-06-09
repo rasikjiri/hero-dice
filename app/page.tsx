@@ -876,55 +876,56 @@ useEffect(() => {
     let bestScore = -1;
 
     const gameResults =
-      selectedPlayers.map(
-        (playerId) => {
-          const playerScores =
-            scores[playerId.id] || {};
+  selectedPlayers.map(
+    (player) => {
+      const playerScores =
+        scores[player.id] || {};
 
-          const total =
-            Object.values(
-              playerScores
-            ).reduce(
-              (sum, value) =>
-                sum + value,
-              0
-            );
+      const total =
+        Object.values(
+          playerScores
+        ).reduce(
+          (sum, value) =>
+            sum + value,
+          0
+        );
 
-          let perfectCategories = 0;
+      let perfectCategories = 0;
 
-          gameCategories.forEach(
-            (category) => {
-              if (
-                playerScores[
-                  category.id
-                ] === category.max
-              ) {
-                perfectCategories++;
-              }
-            }
-          );
-
-          if (total > bestScore) {
-            bestScore = total;
-
-            bestPlayer = playerId;
+      gameCategories.forEach(
+        (category) => {
+          if (
+            playerScores[
+              category.id
+            ] === category.max
+          ) {
+            perfectCategories++;
           }
-
-          return {
-  playerId,
-
-  playerName:
-    playersState.find(
-      (p) =>
-        p.id === playerId
-    )?.name || playerId,
-
-  total,
-
-  perfectCategories,
-};
         }
       );
+
+      if (total > bestScore) {
+        bestScore = total;
+
+        bestPlayer = player.id;
+      }
+
+      return {
+        playerId: player.id,
+
+        playerName:
+          playersState.find(
+            (p) =>
+              p.id === player.id
+          )?.name ||
+          player.id,
+
+        total,
+
+        perfectCategories,
+      };
+    }
+  );
 
     const winnerName =
   playersState.find(
