@@ -254,7 +254,7 @@ useEffect(() => {
   const activePlayers = useMemo(() => {
     return selectedPlayers
       .map((player) =>
-        players.find(
+        playersState.find(
   (p) => p.id === player
 )
       )
