@@ -251,6 +251,16 @@ useEffect(() => {
   }
 }, [playersState]);
 
+  const activePlayers = useMemo(() => {
+    return selectedPlayers
+      .map((player) =>
+        playersState.find(
+  (p) => p.id === player
+)
+      )
+      .filter(Boolean);
+  }, [selectedPlayers]);
+
 const handleDeletePlayer = (
   playerId: string
 ) => {
