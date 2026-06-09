@@ -255,8 +255,8 @@ useEffect(() => {
     return selectedPlayers
       .map((player) =>
         players.find(
-          (p) => p.id === player
-        )
+  (p) => p.id === player
+)
       )
       .filter(Boolean);
   }, [selectedPlayers]);
@@ -401,7 +401,7 @@ const handlePlayerCountChange = (
     if (gameFinished) return;
 
     const existingScore =
-      scores[player.id]?.[categoryId];
+      scores[playerId]?.[categoryId];
 
     if (existingScore !== undefined) {
   setScoreInput(
@@ -474,7 +474,7 @@ const handlePlayerCountChange = (
     playerId: string
   ) => {
     return Object.values(
-      scores[player.id] || {}
+      scores[playerId] || {}
     ).reduce(
       (sum, value) => sum + value,
       0
@@ -491,8 +491,8 @@ const saveGameToSupabase =
               players.find(
                 (p) =>
                   p.id ===
-                  playerId
-              )?.name || playerId
+                  player
+              )?.name || player
           )
           .join(" vs ");
 
@@ -858,9 +858,9 @@ useEffect(() => {
 
     const finishedPlayer =
   selectedPlayers.find(
-    (player) => {
-  const playerScores =
-    scores[player.id] || {};
+    (playerId) => {
+      const playerScores =
+        scores[playerId] || {};
 
       return (
         Object.keys(playerScores)
@@ -870,16 +870,16 @@ useEffect(() => {
     }
   );
 
-    if (!finishedPlayer) return;
+if (!finishedPlayer) return;
 
-    let bestPlayer = "";
-    let bestScore = -1;
+let bestPlayer = "";
+let bestScore = -1;
 
-    const gameResults =
+const gameResults =
   selectedPlayers.map(
-    (player) => {
+    (playerId) => {
       const playerScores =
-        scores[player.id] || {};
+        scores[playerId] || {};
 
       const total =
         Object.values(
@@ -907,18 +907,18 @@ useEffect(() => {
       if (total > bestScore) {
         bestScore = total;
 
-        bestPlayer = player.id;
+        bestPlayer = playerId;
       }
 
       return {
-        playerId: player.id,
+        playerId,
 
         playerName:
           playersState.find(
             (p) =>
-              p.id === player.id
+              p.id === playerId
           )?.name ||
-          player.id,
+          playerId,
 
         total,
 
@@ -927,28 +927,28 @@ useEffect(() => {
     }
   );
 
-    const winnerName =
+const winnerName =
   playersState.find(
     (p) => p.id === bestPlayer
   )?.name || "";
 
-    setWinner(winnerName);
+setWinner(winnerName);
 
-    setWinnerScore(bestScore);
+setWinnerScore(bestScore);
 
-    await saveFinishedGame({
-      date: new Date().toISOString(),
+await saveFinishedGame({
+  date: new Date().toISOString(),
 
-      winner: bestPlayer,
+  winner: bestPlayer,
 
-      winnerScore: bestScore,
+  winnerScore: bestScore,
 
-      players: selectedPlayers,
+  players: selectedPlayers,
 
-      scores: gameResults,
-    });
+  scores: gameResults,
+});
 
-    setGameFinished(true);
+setGameFinished(true);
 
 localStorage.removeItem(
   "heroDiceCurrentGame"
@@ -1437,7 +1437,7 @@ setShowFinishedGame(true);
                             index
                           ) => {
                             const value =
-                              scores[player.id]?.[
+                              scores[playerId]?.[
                                 category.id
                               ];
 
