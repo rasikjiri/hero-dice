@@ -8,6 +8,8 @@ import { players } from "./data/players";
 
 import { gameCategories } from "./data/gameCategories";
 
+import { supabase } from "./lib/supabase";
+
 import {
   saveFinishedGame,
   getTopPlayerByWins,
@@ -111,6 +113,15 @@ showHomeRestoreModal,
 setShowHomeRestoreModal,
 ] = useState(false);
 
+const [
+savedGames,
+setSavedGames,
+] = useState<any[]>([]);
+
+const [
+showLoadGames,
+setShowLoadGames,
+] = useState(false);
   const [scoreModal, setScoreModal] =
     useState<{
       playerId: string;
@@ -464,6 +475,103 @@ const handlePlayerCountChange = (
       (sum, value) => sum + value,
       0
     );
+  };
+
+const saveGameToSupabase =
+  async () => {
+    try {
+      const gameName =
+        selectedPlayers
+          .map(
+            (playerId) =>
+              players.find(
+                (p) =>
+                  p.id ===
+                  playerId
+              )?.name || playerId
+          )
+          .join(" vs ");
+
+      const { error } =
+        await supabase
+          .from("saved_games")
+          .insert([
+            {
+              name: gameName,
+
+              player_count:
+                playerCount,
+
+              selected_players:
+                selectedPlayers,
+
+              scores,
+
+              game_started:
+                gameStarted,
+
+              game_finished:
+                gameFinished,
+            },
+          ]);
+
+      if (error) {
+        console.error(
+          "SAVE GAME ERROR:",
+          error
+        );
+
+        alert(
+          "Nepodařilo se uložit hru."
+        );
+
+        return;
+      }
+
+      alert("Hra uložena.");
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        "Nepodařilo se uložit hru."
+      );
+    }
+  };
+
+const loadSavedGames =
+  async () => {
+    try {
+      const { data, error } =
+        await supabase
+          .from("saved_games")
+          .select("*")
+          .order(
+            "created_at",
+            {
+              ascending: false,
+            }
+          );
+
+      if (error) {
+        console.error(error);
+
+        alert(
+          "Nepodařilo se načíst hry."
+        );
+
+        return;
+      }
+
+      setSavedGames(data || []);
+
+      setShowLoadGames(true);
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        "Nepodařilo se načíst hry."
+      );
+    }
   };
 
   const startNewGame = (
@@ -938,6 +1046,14 @@ setShowFinishedGame(true);
 
   <div className="flex flex-wrap gap-3">
   {gameStarted ? (
+  <>
+    <button
+      onClick={saveGameToSupabase}
+      className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500"
+    >
+      Uložit hru
+    </button>
+
     <button
       onClick={() => {
         setShowLeaveConfirm(
@@ -948,25 +1064,33 @@ setShowFinishedGame(true);
     >
       Ukončit hru
     </button>
-  ) : (
+  </>
+) : (
     <>
       <button
-        onClick={() =>
-          setShowAdmin(true)
-        }
-        className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
-      >
-        Admin
-      </button>
+  onClick={loadSavedGames}
+  className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500"
+>
+  Načíst hru
+</button>
 
-      <button
-        onClick={() =>
-          setScreen("home")
-        }
-        className="rounded-2xl bg-green-700 px-6 py-3 text-lg font-bold transition hover:bg-green-600"
-      >
-        Domů
-      </button>
+<button
+  onClick={() =>
+    setShowAdmin(true)
+  }
+  className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
+>
+  Admin
+</button>
+
+<button
+  onClick={() =>
+    setScreen("home")
+  }
+  className="rounded-2xl bg-green-700 px-6 py-3 text-lg font-bold transition hover:bg-green-600"
+>
+  Domů
+</button>
     </>
   )}
 </div>
@@ -1363,6 +1487,112 @@ setShowFinishedGame(true);
         >
           Obnovit
         </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* LOAD GAMES MODAL */}
+{showLoadGames && (
+  <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-2xl rounded-3xl bg-zinc-900 p-8 text-white shadow-2xl">
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="text-3xl font-black text-yellow-400">
+          Načíst hru
+        </h2>
+
+        <button
+          onClick={() =>
+            setShowLoadGames(
+              false
+            )
+          }
+          className="rounded-xl bg-zinc-700 px-4 py-2 font-bold transition hover:bg-zinc-600"
+        >
+          Zavřít
+        </button>
+      </div>
+
+      <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-2">
+        {savedGames.length ===
+        0 ? (
+          <div className="rounded-2xl bg-black/40 p-6 text-center text-zinc-400">
+            Žádné uložené hry.
+          </div>
+        ) : (
+          savedGames.map((game) => (
+            <div
+              key={game.id}
+              className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/40 p-5"
+            >
+              <div>
+                <div className="text-xl font-black text-white">
+                  {game.name}
+                </div>
+
+                <div className="mt-1 text-sm text-zinc-400">
+                  {new Date(
+                    game.created_at
+                  ).toLocaleString(
+                    "cs-CZ"
+                  )}
+                </div>
+              </div>
+
+              <button
+  onClick={() => {
+    setPlayerCount(
+      game.player_count
+    );
+
+    setSelectedPlayers(
+      game.selected_players
+    );
+
+    setScores(
+      game.scores
+    );
+
+    setGameStarted(
+      game.game_started
+    );
+
+    setGameFinished(
+      game.game_finished
+    );
+
+    localStorage.setItem(
+      "heroDiceCurrentGame",
+      JSON.stringify({
+        playerCount:
+          game.player_count,
+
+        selectedPlayers:
+          game.selected_players,
+
+        scores: game.scores,
+
+        gameStarted:
+          game.game_started,
+
+        gameFinished:
+          game.game_finished,
+      })
+    );
+
+    setShowLoadGames(
+      false
+    );
+
+    setScreen("game");
+  }}
+  className="rounded-xl bg-yellow-500 px-5 py-3 font-black text-black transition hover:bg-yellow-400"
+>
+  Načíst
+</button>
+            </div>
+          ))
+        )}
       </div>
     </div>
   </div>
