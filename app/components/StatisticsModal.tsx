@@ -1,7 +1,5 @@
 "use client";
 
-import { players } from "../data/players";
-
 import {
   getFinishedGames,
   getPlayerWins,
@@ -12,13 +10,50 @@ import {
 } from "../data/statistics";
 
 type Props = {
+  players: {
+    id: string;
+    name: string;
+    active: boolean;
+  }[];
+
   onClose: () => void;
 };
 
 export default function StatisticsModal({
+  players,
   onClose,
 }: Props) {
   const games = getFinishedGames();
+
+const playersWithGames =
+  Array.from(
+    new Set(
+      games.flatMap((game) =>
+        Array.isArray(
+          game.scores
+        )
+          ? game.scores.map(
+              (score: any) =>
+                score.playerId
+            )
+          : []
+      )
+    )
+  ).map((playerId) => {
+    const existingPlayer =
+      (players || []).find(
+        (p) =>
+          p.id === playerId
+      );
+
+    return {
+      id: playerId,
+      name:
+        existingPlayer?.name ||
+        playerId,
+      active: true,
+    };
+  });
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/90 p-6 text-white">
@@ -72,7 +107,8 @@ export default function StatisticsModal({
             </thead>
 
             <tbody>
-              {players.map((player) => {
+              {playersWithGames.map(
+  (player) => {
                 const playerGames =
                   games.filter((game) =>
                     Array.isArray(
@@ -92,8 +128,11 @@ export default function StatisticsModal({
                     className="border-t border-zinc-700"
                   >
                     <td className="p-4 text-xl font-bold">
-                      {player.name}
-                    </td>
+  {(players || []).find(
+    (p) =>
+      p.id === player.id
+  )?.name || player.id}
+</td>
 
                     <td className="p-4 text-center text-yellow-400">
                       {getPlayerWins(
@@ -147,11 +186,12 @@ export default function StatisticsModal({
               .reverse()
               .map((game, index) => {
                 const winnerName =
-                  players.find(
-                    (p) =>
-                      p.id ===
-                      game.winner
-                  )?.name || "-";
+  (players || []).find(
+    (p) =>
+      p.id ===
+      game.winner
+  )?.name ||
+  game.winner;
 
                 return (
                   <div
@@ -191,14 +231,12 @@ export default function StatisticsModal({
                             idx: number
                           ) => {
                             const playerName =
-                              players.find(
-                                (
-                                  p
-                                ) =>
-                                  p.id ===
-                                  score.playerId
-                              )?.name ||
-                              "-";
+  (players || []).find(
+    (p) =>
+      p.id ===
+      score.playerId
+  )?.name ||
+  score.playerId;
 
                             return (
                               <div

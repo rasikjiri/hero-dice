@@ -175,7 +175,18 @@ const [
   name: "-",
   value: 0,
 });
-    
+   
+const [playersState, setPlayersState] =
+  useState(players);
+
+const selectablePlayers =
+  playersState.filter(
+    (player) => player.active
+  );
+
+  const maxPlayers =
+  selectablePlayers.length;
+
   useEffect(() => {
   const unlocked =
     localStorage.getItem(
@@ -186,41 +197,59 @@ const [
     setIsUnlocked(true);
   }
 
-setAuthLoaded(true);
+  setAuthLoaded(true);
+}, []);
 
+useEffect(() => {
   const loadStatistics =
     async () => {
       await syncGamesFromSupabase();
 
-      setMounted(true);
-
       setTopWins(
-        getTopPlayerByWins()
+        getTopPlayerByWins(
+          playersState
+        )
       );
 
       setTopAverage(
-        getTopPlayerByAverage()
+        getTopPlayerByAverage(
+          playersState
+        )
       );
 
       setTopPerfects(
-        getTopPlayerByPerfects()
+        getTopPlayerByPerfects(
+          playersState
+        )
       );
 
       setTopAveragePerfects(
-        getTopPlayerByAveragePerfects()
+        getTopPlayerByAveragePerfects(
+          playersState
+        )
       );
 
       setTopScore(
-        getTopPlayerByScore()
+        getTopPlayerByScore(
+          playersState
+        )
       );
 
       setTopGamesPlayed(
-        getTopPlayerByGamesPlayed()
+        getTopPlayerByGamesPlayed(
+          playersState
+        )
       );
+
+      setMounted(true);
     };
 
-  loadStatistics();
-}, []);
+  if (
+    playersState.length > 0
+  ) {
+    loadStatistics();
+  }
+}, [playersState]);
 
   const activePlayers = useMemo(() => {
     return selectedPlayers
@@ -231,17 +260,6 @@ setAuthLoaded(true);
       )
       .filter(Boolean);
   }, [selectedPlayers]);
-
-  const [playersState, setPlayersState] =
-  useState(players);
-
-const selectablePlayers =
-  playersState.filter(
-    (player) => player.active
-  );
-
-  const maxPlayers =
-  selectablePlayers.length;
 
 const handleDeletePlayer = (
   playerId: string
@@ -255,7 +273,9 @@ const handleDeletePlayer = (
   setPlayersState(
     updatedPlayers
   );
-
+deletePlayerFromSupabase(
+  playerId
+);
   localStorage.setItem(
     "heroDicePlayers",
     JSON.stringify(
@@ -265,6 +285,7 @@ const handleDeletePlayer = (
 };
 
 const handleAddPlayer = () => {
+  
   const trimmedId =
     newPlayerId.trim();
 
@@ -297,48 +318,38 @@ const handleAddPlayer = () => {
     return;
   }
 
-  const updatedPlayers = [
-    ...playersState,
-    {
-      id: trimmedId,
-      name: trimmedName,
-      active: true,
-    },
-  ];
+  const newPlayer = {
+  id: trimmedId,
+  name: trimmedName,
+  active: true,
+};
 
-  setPlayersState(
+const updatedPlayers = [
+  ...playersState,
+  newPlayer,
+];
+
+setPlayersState(
+  updatedPlayers
+);
+
+addPlayerToSupabase(
+  newPlayer
+);
+
+localStorage.setItem(
+  "heroDicePlayers",
+  JSON.stringify(
     updatedPlayers
-  );
-
-  localStorage.setItem(
-    "heroDicePlayers",
-    JSON.stringify(
-      updatedPlayers
-    )
-  );
+  )
+);
 
   setNewPlayerId("");
   setNewPlayerName("");
 };
 
 useEffect(() => {
-  const savedPlayers =
-    localStorage.getItem(
-      "heroDicePlayers"
-    );
-
-  if (!savedPlayers) return;
-
-  try {
-    const parsed =
-      JSON.parse(savedPlayers);
-
-    setPlayersState(parsed);
-  } catch {
-    localStorage.removeItem(
-      "heroDicePlayers"
-    );
-  }
+  loadPlayersFromSupabase();
 }, []);
 
 const handlePlayerCountChange = (
@@ -346,23 +357,16 @@ const handlePlayerCountChange = (
 ) => {
   setPlayerCount(count);
 
-  setSelectedPlayers(
-    (prev) => {
-      const updated = [
-        ...prev,
-      ];
-
-      while (
-        updated.length < count
-      ) {
-        updated.push("");
-      }
-
-      return updated.slice(
-        0,
-        count
+  const autoSelected =
+    selectablePlayers
+      .slice(0, count)
+      .map(
+        (player) =>
+          player.id
       );
-    }
+
+  setSelectedPlayers(
+    autoSelected
   );
 };
 
@@ -574,6 +578,126 @@ const loadSavedGames =
     }
   };
 
+const loadPlayersFromSupabase =
+  async () => {
+    try {
+      const { data, error } =
+        await supabase
+          .from("players")
+          .select("*")
+          .order("created_at", {
+            ascending: true,
+          });
+
+      if (error) {
+        console.error(
+          "PLAYERS LOAD ERROR:",
+          error
+        );
+
+        return;
+      }
+
+      if (
+        data &&
+        data.length > 0
+      ) {
+        setPlayersState(data);
+
+        localStorage.setItem(
+          "heroDicePlayers",
+          JSON.stringify(data)
+        );
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+const addPlayerToSupabase =
+  async (
+    player: {
+      id: string;
+      name: string;
+      active: boolean;
+    }
+  ) => {
+    try {
+      const { error } =
+        await supabase
+          .from("players")
+          .insert([
+            {
+              id: player.id,
+              name: player.name,
+              active:
+                player.active,
+            },
+          ]);
+
+      if (
+  error &&
+  error.code !==
+    "23505"
+) {
+  console.error(
+    "ADD PLAYER ERROR:",
+    error
+  );
+}
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+const updatePlayerInSupabase =
+  async (
+    playerId: string,
+    updates: {
+      name?: string;
+      active?: boolean;
+    }
+  ) => {
+    try {
+      const { error } =
+        await supabase
+          .from("players")
+          .update(updates)
+          .eq("id", playerId);
+
+      if (error) {
+        console.error(
+          "UPDATE PLAYER ERROR:",
+          error
+        );
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+const deletePlayerFromSupabase =
+  async (
+    playerId: string
+  ) => {
+    try {
+      const { error } =
+        await supabase
+          .from("players")
+          .delete()
+          .eq("id", playerId);
+
+      if (error) {
+        console.error(
+          "DELETE PLAYER ERROR:",
+          error
+        );
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const startNewGame = (
   skipRestoreCheck = false
 ) => {
@@ -733,7 +857,7 @@ useEffect(() => {
       return;
 
     const finishedPlayer =
-      selectedPlayers.find(
+      playersState.find(
         (playerId) => {
           const playerScores =
             scores[playerId] || {};
@@ -787,17 +911,25 @@ useEffect(() => {
           }
 
           return {
-            playerId,
-            total,
-            perfectCategories,
-          };
+  playerId,
+
+  playerName:
+    playersState.find(
+      (p) =>
+        p.id === playerId
+    )?.name || playerId,
+
+  total,
+
+  perfectCategories,
+};
         }
       );
 
     const winnerName =
-      players.find(
-        (p) => p.id === bestPlayer
-      )?.name || "";
+  playersState.find(
+    (p) => p.id === bestPlayer
+  )?.name || "";
 
     setWinner(winnerName);
 
@@ -1257,12 +1389,11 @@ setShowFinishedGame(true);
                           className="border border-white p-3 text-center"
                         >
                           {
-                            players.find(
-                              (p) =>
-                                p.id ===
-                                playerId
-                            )?.name
-                          }
+  playersState.find(
+    (player) =>
+      player.id === playerId
+  )?.name
+}
                         </th>
                       )
                     )}
@@ -1705,7 +1836,7 @@ setShowFinishedGame(true);
 
               <div className="text-2xl font-bold text-blue-300">
                 {
-                  players.find(
+                  playersState.find(
                     (player) =>
                       player.id ===
                       scoreModal.playerId
@@ -1945,6 +2076,12 @@ setShowFinishedGame(true);
   type="text"
   value={player.name}
   onChange={(e) => {
+    updatePlayerInSupabase(
+  player.id,
+  {
+    name: e.target.value,
+  }
+);
     const updatedPlayers =
       playersState.map((p) =>
         p.id === player.id
@@ -1970,28 +2107,36 @@ setShowFinishedGame(true);
             <div className="flex gap-2">
   <button
     onClick={() => {
-      const updatedPlayers =
-        playersState.map((p) =>
-          p.id === player.id
-            ? {
-                ...p,
-                active:
-                  !p.active,
-              }
-            : p
-        );
+  const updatedPlayers =
+    playersState.map((p) =>
+      p.id === player.id
+        ? {
+            ...p,
+            active:
+              !p.active,
+          }
+        : p
+    );
 
-      setPlayersState(
-        updatedPlayers
-      );
+  setPlayersState(
+    updatedPlayers
+  );
 
-      localStorage.setItem(
-        "heroDicePlayers",
-        JSON.stringify(
-          updatedPlayers
-        )
-      );
-    }}
+  updatePlayerInSupabase(
+    player.id,
+    {
+      active:
+        !player.active,
+    }
+  );
+
+  localStorage.setItem(
+    "heroDicePlayers",
+    JSON.stringify(
+      updatedPlayers
+    )
+  );
+}}
     className={`rounded-xl px-4 py-2 font-bold transition ${
       player.active
         ? "bg-green-600 hover:bg-green-500"
@@ -2116,10 +2261,11 @@ setShowFinishedGame(true);
       {/* STATISTICS */}
       {showStatistics && (
         <StatisticsModal
-          onClose={() =>
-            setShowStatistics(false)
-          }
-        />
+  players={playersState}
+  onClose={() =>
+    setShowStatistics(false)
+  }
+/>
       )}
     </main>
   );

@@ -12,10 +12,11 @@ export type FinishedGame = {
   players: string[];
 
   scores: {
-    playerId: string;
-    total: number;
-    perfectCategories: number;
-  }[];
+  playerId: string;
+  playerName: string;
+  total: number;
+  perfectCategories: number;
+}[];
 };
 
 const STORAGE_KEY = "hero-dice-games";
@@ -245,22 +246,26 @@ export const getAveragePerfects =
   };
 
 export const getTopPlayerByWins =
-  () => {
+  (players: any[]) => {
     let bestValue = 0;
 
-    players.forEach((player) => {
-      const wins =
-        getPlayerWins(
-          player.id
-        );
+    (players || []).forEach(
+      (player) => {
+        const wins =
+          getPlayerWins(
+            player.id
+          );
 
-      if (wins > bestValue) {
-        bestValue = wins;
+        if (
+          wins > bestValue
+        ) {
+          bestValue = wins;
+        }
       }
-    });
+    );
 
     const bestPlayers =
-      players
+      (players || [])
         .filter(
           (player) =>
             getPlayerWins(
@@ -278,27 +283,32 @@ export const getTopPlayerByWins =
         bestPlayers.join(
           ", "
         ) || "-",
+
       value: bestValue,
     };
   };
 
 export const getTopPlayerByScore =
-  () => {
+  (players: any[]) => {
     let bestValue = 0;
 
-    players.forEach((player) => {
-      const score =
-        getBestScore(
-          player.id
-        );
+    (players || []).forEach(
+      (player) => {
+        const score =
+          getBestScore(
+            player.id
+          );
 
-      if (score > bestValue) {
-        bestValue = score;
+        if (
+          score > bestValue
+        ) {
+          bestValue = score;
+        }
       }
-    });
+    );
 
     const bestPlayers =
-      players
+      (players || [])
         .filter(
           (player) =>
             getBestScore(
@@ -316,29 +326,32 @@ export const getTopPlayerByScore =
         bestPlayers.join(
           ", "
         ) || "-",
+
       value: bestValue,
     };
   };
 
 export const getTopPlayerByAverage =
-  () => {
+  (players: any[]) => {
     let bestValue = 0;
 
-    players.forEach((player) => {
-      const average =
-        getAverageScore(
-          player.id
-        );
+    (players || []).forEach(
+      (player) => {
+        const average =
+          getAverageScore(
+            player.id
+          );
 
-      if (
-        average > bestValue
-      ) {
-        bestValue = average;
+        if (
+          average > bestValue
+        ) {
+          bestValue = average;
+        }
       }
-    });
+    );
 
     const bestPlayers =
-      players
+      (players || [])
         .filter(
           (player) =>
             getAverageScore(
@@ -356,35 +369,39 @@ export const getTopPlayerByAverage =
         bestPlayers.join(
           ", "
         ) || "-",
+
       value: bestValue,
     };
   };
 
 export const getTopPlayerByGamesPlayed =
-  () => {
+  (players: any[]) => {
     let bestValue = 0;
 
-    players.forEach((player) => {
-      const gamesPlayed =
-        getFinishedGames().filter(
-          (game) =>
-            game.scores.find(
-              (p) =>
-                p.playerId ===
-                player.id
-            ) !== undefined
-        ).length;
+    (players || []).forEach(
+      (player) => {
+        const gamesPlayed =
+          getFinishedGames().filter(
+            (game) =>
+              game.scores.find(
+                (p) =>
+                  p.playerId ===
+                  player.id
+              ) !== undefined
+          ).length;
 
-      if (
-        gamesPlayed > bestValue
-      ) {
-        bestValue =
-          gamesPlayed;
+        if (
+          gamesPlayed >
+          bestValue
+        ) {
+          bestValue =
+            gamesPlayed;
+        }
       }
-    });
+    );
 
     const bestPlayers =
-      players
+      (players || [])
         .filter((player) => {
           const gamesPlayed =
             getFinishedGames().filter(
@@ -412,29 +429,33 @@ export const getTopPlayerByGamesPlayed =
         bestPlayers.join(
           ", "
         ) || "-",
+
       value: bestValue,
     };
   };
 
 export const getTopPlayerByPerfects =
-  () => {
+  (players: any[]) => {
     let bestValue = 0;
 
-    players.forEach((player) => {
-      const perfects =
-        getPerfectCategories(
-          player.id
-        );
+    (players || []).forEach(
+      (player) => {
+        const perfects =
+          getPerfectCategories(
+            player.id
+          );
 
-      if (
-        perfects > bestValue
-      ) {
-        bestValue = perfects;
+        if (
+          perfects > bestValue
+        ) {
+          bestValue =
+            perfects;
+        }
       }
-    });
+    );
 
     const bestPlayers =
-      players
+      (players || [])
         .filter(
           (player) =>
             getPerfectCategories(
@@ -452,31 +473,34 @@ export const getTopPlayerByPerfects =
         bestPlayers.join(
           ", "
         ) || "-",
+
       value: bestValue,
     };
   };
 
 export const getTopPlayerByAveragePerfects =
-  () => {
+  (players: any[]) => {
     let bestValue = 0;
 
-    players.forEach((player) => {
-      const averagePerfects =
-        getAveragePerfects(
-          player.id
-        );
+    (players || []).forEach(
+      (player) => {
+        const averagePerfects =
+          getAveragePerfects(
+            player.id
+          );
 
-      if (
-        averagePerfects >
-        bestValue
-      ) {
-        bestValue =
-          averagePerfects;
+        if (
+          averagePerfects >
+          bestValue
+        ) {
+          bestValue =
+            averagePerfects;
+        }
       }
-    });
+    );
 
     const bestPlayers =
-      players
+      (players || [])
         .filter(
           (player) =>
             getAveragePerfects(
@@ -494,6 +518,7 @@ export const getTopPlayerByAveragePerfects =
         bestPlayers.join(
           ", "
         ) || "-",
+
       value: bestValue,
     };
   };
