@@ -120,7 +120,95 @@ const [
 showLoadGames,
 setShowLoadGames,
 ] = useState(false);
-  const [scoreModal, setScoreModal] =
+
+const [
+  showPlayModeSetup,
+  setShowPlayModeSetup,
+] = useState(false);
+
+const [
+  playModeRolls,
+  setPlayModeRolls,
+] = useState(4);
+
+const [
+  playModeAllowRewrite,
+  setPlayModeAllowRewrite,
+] = useState(false);
+
+const [
+  playModeBonusMode,
+  setPlayModeBonusMode,
+] = useState<
+  "general-only" | "all"
+>("general-only");
+
+const [
+  playModeBonusRolls,
+  setPlayModeBonusRolls,
+] = useState(6);
+
+const [
+  isPlayModeActive,
+  setIsPlayModeActive,
+] = useState(false);
+
+const [
+  hasStartedPlayMode,
+  setHasStartedPlayMode,
+] = useState(false);
+
+const [
+  currentPlayPlayerIndex,
+  setCurrentPlayPlayerIndex,
+] = useState(0);
+
+const [
+  playModeDice,
+  setPlayModeDice,
+] = useState<number[]>(
+  [1, 1, 1, 1, 1, 1]
+);
+
+const [
+  lockedDice,
+  setLockedDice,
+] = useState<boolean[]>(
+  [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]
+);
+
+const [
+  confirmedLockedDice,
+  setConfirmedLockedDice,
+] = useState<boolean[]>(
+  [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]
+);
+
+const [
+  remainingRolls,
+  setRemainingRolls,
+] = useState<number>(0);  
+
+const [
+  bonusUsed,
+  setBonusUsed,
+] = useState(false);
+
+const [scoreModal, setScoreModal] =
     useState<{
       playerId: string;
       categoryId: string;
@@ -470,6 +558,79 @@ const handlePlayerCountChange = (
     );
   };
 
+const toggleDiceLock = (
+  index: number
+) => {
+  if (
+    remainingRolls ===
+    playModeRolls
+  ) {
+    return;
+  }
+
+  if (
+    confirmedLockedDice[
+      index
+    ]
+  ) {
+    return;
+  }
+
+  setLockedDice((prev) => {
+    const updated = [...prev];
+
+    updated[index] =
+      !updated[index];
+
+    return updated;
+  });
+};
+
+const bonusDifference =
+  playModeBonusRolls -
+  playModeRolls;
+
+const activateBonus = () => {
+  if (bonusUsed) return;
+
+  setRemainingRolls(
+    (prev) =>
+      prev + bonusDifference
+  );
+
+  setBonusUsed(true);
+};
+
+const rollAllDice = () => {
+  if (remainingRolls <= 0)
+    return;
+
+  const newDice =
+    playModeDice.map(
+      (dice, index) => {
+        if (lockedDice[index]) {
+          return dice;
+        }
+
+        return (
+          Math.floor(
+            Math.random() * 6
+          ) + 1
+        );
+      }
+    );
+
+  setPlayModeDice(newDice);
+
+setConfirmedLockedDice(
+  [...lockedDice]
+);
+
+setRemainingRolls(
+  (prev) => prev - 1
+);
+};
+
 const saveGameToSupabase =
   async () => {
     try {
@@ -689,6 +850,14 @@ const deletePlayerFromSupabase =
   const startNewGame = (
   skipRestoreCheck = false
 ) => {
+setHasStartedPlayMode(
+  false
+);
+
+setIsPlayModeActive(
+  false
+);
+
   if (!skipRestoreCheck) {
     const savedGame =
       localStorage.getItem(
@@ -1168,6 +1337,31 @@ setShowFinishedGame(true);
   <div className="flex flex-wrap gap-3">
   {gameStarted ? (
   <>
+    <button
+  onClick={() => {
+    if (
+      hasStartedPlayMode
+    ) {
+      setIsPlayModeActive(
+        true
+        
+      );
+    setHasStartedPlayMode(
+  true
+);
+
+      return;
+    }
+
+    setShowPlayModeSetup(
+      true
+    );
+  }}
+    className="rounded-2xl bg-purple-600 px-6 py-3 text-lg font-black transition hover:bg-purple-500"
+  >
+    ▶ Play Mode
+  </button>
+
     <button
       onClick={saveGameToSupabase}
       className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500"
@@ -1789,6 +1983,421 @@ setShowFinishedGame(true);
         >
           Obnovit
         </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* PLAY MODE SETUP */}
+{showPlayModeSetup && (
+  <div className="fixed inset-0 z-[140] overflow-y-auto bg-black/90 p-4">
+    <div className="mx-auto my-10 w-full max-w-[560px] rounded-3xl border border-purple-500/30 bg-zinc-900 p-6 text-white shadow-2xl md:p-8">
+      <div className="mb-8 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+  <h2 className="text-4xl font-black text-purple-400">
+    PLAY MODE
+  </h2>
+
+  <div className="group relative">
+    <button
+      className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-sm font-black text-white"
+    >
+      ?
+    </button>
+
+    <div className="pointer-events-none absolute left-1/2 top-11 z-10 w-[260px] -translate-x-1/2 rounded-2xl border border-green-500/20 bg-zinc-950 p-4 text-left text-sm text-zinc-300 opacity-0 shadow-2xl transition duration-200 group-hover:opacity-100">
+      <div className="mb-2 font-black uppercase tracking-wide text-green-400">
+        Ligové statistiky
+      </div>
+
+      <div className="space-y-1">
+        <div>
+          • 4 hody
+        </div>
+
+        <div>
+          • bez přepisování skóre
+        </div>
+
+        <div>
+          • bonus pouze u generála s 6 hody
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+        <button
+          onClick={() =>
+            setShowPlayModeSetup(
+              false
+            )
+          }
+          className="rounded-xl bg-zinc-700 px-4 py-2 font-bold transition hover:bg-zinc-600"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="space-y-5">
+        
+
+        <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+          <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+            Počet hodů
+          </div>
+
+          <div className="flex items-center justify-center gap-6">
+            <button
+              onClick={() =>
+                setPlayModeRolls(
+                  (prev) =>
+                    Math.max(
+                      1,
+                      prev - 1
+                    )
+                )
+              }
+              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
+            >
+              −
+            </button>
+
+            <div
+              className={`min-w-[100px] text-center text-5xl font-black ${
+                playModeRolls === 4
+                  ? "text-green-400"
+                  : "text-yellow-400"
+              }`}
+            >
+              {playModeRolls}
+            </div>
+
+            <button
+              onClick={() =>
+                setPlayModeRolls(
+                  (prev) =>
+                    Math.min(
+                      7,
+                      prev + 1
+                    )
+                )
+              }
+              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+          <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+            Přepisování skóre
+          </div>
+
+          <div className="flex gap-4">
+            <button
+              onClick={() =>
+                setPlayModeAllowRewrite(
+                  false
+                )
+              }
+              className={`flex-1 rounded-2xl px-5 py-4 font-black transition ${
+                !playModeAllowRewrite
+                  ? "bg-green-600 text-white"
+                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+              }`}
+            >
+              Ne
+            </button>
+
+            <button
+              onClick={() =>
+                setPlayModeAllowRewrite(
+                  true
+                )
+              }
+              className={`flex-1 rounded-2xl px-5 py-4 font-black transition ${
+                playModeAllowRewrite
+                  ? "bg-yellow-500 text-black"
+                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+              }`}
+            >
+              Ano
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+          <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+            Bonus
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() =>
+                setPlayModeBonusMode(
+                  "general-only"
+                )
+              }
+              className={`rounded-2xl px-5 py-4 text-left font-black transition ${
+                playModeBonusMode ===
+                "general-only"
+                  ? "bg-green-600 text-white"
+                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+              }`}
+            >
+              Pouze generál
+            </button>
+
+            <button
+              onClick={() =>
+                setPlayModeBonusMode(
+                  "all"
+                )
+              }
+              className={`rounded-2xl px-5 py-4 text-left font-black transition ${
+                playModeBonusMode ===
+                "all"
+                  ? "bg-yellow-500 text-black"
+                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+              }`}
+            >
+              Všechny kombinace
+            </button>
+          </div>
+        </div>
+      </div>
+
+<div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+  <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+    Bonus hody
+  </div>
+
+  <div className="flex items-center justify-center gap-6">
+    <button
+      onClick={() =>
+        setPlayModeBonusRolls(
+          (prev) =>
+            Math.max(
+              1,
+              prev - 1
+            )
+        )
+      }
+      className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
+    >
+      −
+    </button>
+
+    <div
+      className={`min-w-[100px] text-center text-5xl font-black ${
+        playModeBonusRolls ===
+        6
+          ? "text-green-400"
+          : "text-yellow-400"
+      }`}
+    >
+      {playModeBonusRolls}
+    </div>
+
+    <button
+      onClick={() =>
+        setPlayModeBonusRolls(
+          (prev) =>
+            Math.min(
+              10,
+              prev + 1
+            )
+        )
+      }
+      className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
+    >
+      +
+    </button>
+  </div>
+</div>
+
+      <div className="mt-8 flex flex-wrap justify-between gap-4">
+        
+
+        <div className="flex gap-4">
+          <button
+            onClick={() =>
+              setShowPlayModeSetup(
+                false
+              )
+            }
+            className="rounded-2xl bg-zinc-700 px-6 py-4 font-bold transition hover:bg-zinc-600"
+          >
+            Zrušit
+          </button>
+
+          <button
+  onClick={() => {
+  setCurrentPlayPlayerIndex(
+    0
+  );
+
+  setPlayModeDice([
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+  ]);
+
+  setLockedDice([
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]);
+
+setConfirmedLockedDice([
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+]);
+
+  setRemainingRolls(
+    playModeRolls
+  );
+  setBonusUsed(false);
+  setShowPlayModeSetup(
+    false
+  );
+
+  setIsPlayModeActive(
+    true
+  );
+  setHasStartedPlayMode(
+  true
+);
+}}
+  className="rounded-2xl bg-purple-600 px-8 py-4 font-black text-white transition hover:bg-purple-500"
+>
+  ▶ Spustit Play Mode
+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* PLAY MODE */}
+{isPlayModeActive && (
+  <div className="fixed inset-0 z-[150] overflow-y-auto bg-[#111] p-4 text-white">
+    <div className="mx-auto flex w-full max-w-4xl flex-col">
+      <div className="mb-8 flex items-center justify-between gap-4">
+        <div>
+          <div className="text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+            HERO DICE
+          </div>
+
+          <h2 className="mt-2 text-4xl font-black text-white">
+            PLAY MODE
+          </h2>
+        </div>
+
+        <button
+          onClick={() =>
+            setIsPlayModeActive(
+              false
+            )
+          }
+          className="rounded-2xl bg-zinc-800 px-5 py-3 font-bold transition hover:bg-zinc-700"
+        >
+          Zpět
+        </button>
+      </div>
+
+      <div className="rounded-3xl border border-purple-500/20 bg-zinc-900 p-8">
+        <div className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+          Aktuální hráč
+        </div>
+
+        <div className="text-5xl font-black text-yellow-400">
+          {
+            playersState.find(
+              (player) =>
+                player.id ===
+                selectedPlayers[
+                  currentPlayPlayerIndex
+                ]
+            )?.name
+          }
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
+        <div className="mb-5 text-sm font-bold uppercase tracking-[0.2em] text-zinc-400">
+          Kostky
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-4">
+  {playModeDice.map(
+    (dice, index) => (
+      <button
+        key={index}
+        onClick={() =>
+          toggleDiceLock(index)
+        }
+        className={`flex h-20 w-20 items-center justify-center rounded-2xl border text-4xl font-black transition ${
+          lockedDice[index]
+            ? "scale-110 border-yellow-400 bg-yellow-500 text-black shadow-lg shadow-yellow-500/30"
+            : "border-zinc-700 bg-black text-white hover:border-purple-400"
+        }`}
+      >
+        {dice}
+      </button>
+    )
+  )}
+</div>
+
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
+          
+          <button
+  onClick={activateBonus}
+  disabled={bonusUsed}
+  className={`rounded-2xl px-8 py-5 text-2xl font-black transition ${
+    bonusUsed
+      ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
+      : playModeBonusMode ===
+          "general-only"
+        ? "bg-green-600 text-white hover:bg-green-500"
+        : "bg-yellow-500 text-black hover:bg-yellow-400"
+  }`}
+>
+  {playModeBonusMode ===
+  "general-only"
+    ? `⭐ Bonus generál (+${bonusDifference})`
+    : `⭐ Bonus (+${bonusDifference})`}
+</button>
+
+          <button
+  onClick={rollAllDice}
+  className={`rounded-2xl px-8 py-5 text-2xl font-black text-white transition ${
+    playModeRolls === 4 &&
+    !playModeAllowRewrite &&
+    playModeBonusMode ===
+      "general-only" &&
+    playModeBonusRolls === 6
+      ? "bg-green-600 hover:bg-green-500"
+      : "bg-purple-600 hover:bg-purple-500"
+  }`}
+>
+  🎲 Házet
+  {" "}
+  ({remainingRolls})
+</button>
+        </div>
       </div>
     </div>
   </div>
