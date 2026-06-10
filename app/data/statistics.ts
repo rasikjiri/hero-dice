@@ -249,7 +249,11 @@ export const getTopPlayerByWins =
   (players: any[]) => {
     let bestValue = 0;
 
-    (players || []).forEach(
+    (players || [])
+  .filter(
+    (player) => player.active
+  )
+  .forEach(
       (player) => {
         const wins =
           getPlayerWins(
@@ -279,20 +283,24 @@ export const getTopPlayerByWins =
         );
 
     return {
-      name:
-        bestPlayers.join(
-          ", "
-        ) || "-",
+  name:
+    bestValue > 0
+      ? bestPlayers.join(", ")
+      : "-",
 
-      value: bestValue,
-    };
+  value: bestValue,
+};
   };
 
 export const getTopPlayerByScore =
   (players: any[]) => {
     let bestValue = 0;
 
-    (players || []).forEach(
+    (players || [])
+  .filter(
+    (player) => player.active
+  )
+  .forEach(
       (player) => {
         const score =
           getBestScore(
@@ -322,20 +330,24 @@ export const getTopPlayerByScore =
         );
 
     return {
-      name:
-        bestPlayers.join(
-          ", "
-        ) || "-",
+  name:
+    bestValue > 0
+      ? bestPlayers.join(", ")
+      : "-",
 
-      value: bestValue,
-    };
+  value: bestValue,
+};
   };
 
 export const getTopPlayerByAverage =
   (players: any[]) => {
     let bestValue = 0;
 
-    (players || []).forEach(
+    (players || [])
+  .filter(
+    (player) => player.active
+  )
+  .forEach(
       (player) => {
         const average =
           getAverageScore(
@@ -365,20 +377,24 @@ export const getTopPlayerByAverage =
         );
 
     return {
-      name:
-        bestPlayers.join(
-          ", "
-        ) || "-",
+  name:
+    bestValue > 0
+      ? bestPlayers.join(", ")
+      : "-",
 
-      value: bestValue,
-    };
+  value: bestValue,
+};
   };
 
 export const getTopPlayerByGamesPlayed =
   (players: any[]) => {
     let bestValue = 0;
 
-    (players || []).forEach(
+    (players || [])
+  .filter(
+    (player) => player.active
+  )
+  .forEach(
       (player) => {
         const gamesPlayed =
           getFinishedGames().filter(
@@ -425,20 +441,24 @@ export const getTopPlayerByGamesPlayed =
         );
 
     return {
-      name:
-        bestPlayers.join(
-          ", "
-        ) || "-",
+  name:
+    bestValue > 0
+      ? bestPlayers.join(", ")
+      : "-",
 
-      value: bestValue,
-    };
+  value: bestValue,
+};
   };
 
 export const getTopPlayerByPerfects =
   (players: any[]) => {
     let bestValue = 0;
 
-    (players || []).forEach(
+    (players || [])
+  .filter(
+    (player) => player.active
+  )
+  .forEach(
       (player) => {
         const perfects =
           getPerfectCategories(
@@ -469,20 +489,24 @@ export const getTopPlayerByPerfects =
         );
 
     return {
-      name:
-        bestPlayers.join(
-          ", "
-        ) || "-",
+  name:
+    bestValue > 0
+      ? bestPlayers.join(", ")
+      : "-",
 
-      value: bestValue,
-    };
+  value: bestValue,
+};
   };
 
 export const getTopPlayerByAveragePerfects =
   (players: any[]) => {
     let bestValue = 0;
 
-    (players || []).forEach(
+    (players || [])
+  .filter(
+    (player) => player.active
+  )
+  .forEach(
       (player) => {
         const averagePerfects =
           getAveragePerfects(
@@ -514,13 +538,13 @@ export const getTopPlayerByAveragePerfects =
         );
 
     return {
-      name:
-        bestPlayers.join(
-          ", "
-        ) || "-",
+  name:
+    bestValue > 0
+      ? bestPlayers.join(", ")
+      : "-",
 
-      value: bestValue,
-    };
+  value: bestValue,
+};
   };
 export const syncGamesFromSupabase =
   async () => {

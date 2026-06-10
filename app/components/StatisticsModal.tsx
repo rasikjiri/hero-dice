@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 
 import {
   getFinishedGames,
@@ -24,6 +25,29 @@ export default function StatisticsModal({
   onClose,
 }: Props) {
   const games = getFinishedGames();
+
+const [sortKey, setSortKey] =
+  useState("bestScore");
+
+const [sortDirection, setSortDirection] =
+  useState<"asc" | "desc">(
+    "desc"
+  );
+
+const handleSort = (
+  key: string
+) => {
+  if (sortKey === key) {
+    setSortDirection(
+      sortDirection === "asc"
+        ? "desc"
+        : "asc"
+    );
+  } else {
+    setSortKey(key);
+    setSortDirection("desc");
+  }
+};
 
 const playersWithGames =
   Array.from(
@@ -76,38 +100,179 @@ const playersWithGames =
           <table className="w-full">
             <thead className="bg-zinc-800">
               <tr>
-                <th className="p-4 text-left">
-                  Hráč
-                </th>
+                <th
+  onClick={() =>
+    handleSort("name")
+  }
+  className="cursor-pointer p-4 text-left"
+>
+  Hráč ↕
+</th>
 
-                <th className="p-4 text-center">
-                  Výhry
-                </th>
+                <th
+  onClick={() =>
+    handleSort("wins")
+  }
+  className="cursor-pointer p-4 text-center"
+>
+  Výhry ↕
+</th>
 
-                <th className="p-4 text-center">
-                  Nejlepší skóre
-                </th>
+                <th
+  onClick={() =>
+    handleSort(
+      "bestScore"
+    )
+  }
+  className="cursor-pointer p-4 text-center"
+>
+  Nejlepší skóre ↕
+</th>
 
-                <th className="p-4 text-center">
-                  Počet her
-                </th>
+                <th
+  onClick={() =>
+    handleSort("games")
+  }
+  className="cursor-pointer p-4 text-center"
+>
+  Počet her ↕
+</th>
 
-                <th className="p-4 text-center">
-                  Průměrné skóre
-                </th>
+                <th
+  onClick={() =>
+    handleSort(
+      "average"
+    )
+  }
+  className="cursor-pointer p-4 text-center"
+>
+  Průměrné skóre ↕
+</th>
 
-                <th className="p-4 text-center">
-                  Perfektní kategorie
-                </th>
+                <th
+  onClick={() =>
+    handleSort(
+      "perfects"
+    )
+  }
+  className="cursor-pointer p-4 text-center"
+>
+  Perfektní kategorie ↕
+</th>
 
-                <th className="p-4 text-center">
-                  Průměr perfektních
-                </th>
+                <th
+  onClick={() =>
+    handleSort(
+      "averagePerfects"
+    )
+  }
+  className="cursor-pointer p-4 text-center"
+>
+  Průměr perfektních ↕
+</th>
               </tr>
             </thead>
 
             <tbody>
-              {playersWithGames.map(
+              {[...playersWithGames]
+  .sort((a, b) => {
+    const aGames =
+      games.filter((game) =>
+        Array.isArray(
+          game.scores
+        )
+          ? game.scores.some(
+              (p: any) =>
+                p.playerId ===
+                a.id
+            )
+          : false
+      ).length;
+
+    const bGames =
+      games.filter((game) =>
+        Array.isArray(
+          game.scores
+        )
+          ? game.scores.some(
+              (p: any) =>
+                p.playerId ===
+                b.id
+            )
+          : false
+      ).length;
+
+    const values: any = {
+      name: [
+        a.name,
+        b.name,
+      ],
+
+      wins: [
+        getPlayerWins(a.id),
+        getPlayerWins(b.id),
+      ],
+
+      bestScore: [
+        getBestScore(a.id),
+        getBestScore(b.id),
+      ],
+
+      games: [
+        aGames,
+        bGames,
+      ],
+
+      average: [
+        getAverageScore(a.id),
+        getAverageScore(b.id),
+      ],
+
+      perfects: [
+        getPerfectCategories(
+          a.id
+        ),
+        getPerfectCategories(
+          b.id
+        ),
+      ],
+
+      averagePerfects: [
+        getAveragePerfects(
+          a.id
+        ),
+        getAveragePerfects(
+          b.id
+        ),
+      ],
+    };
+
+    const [
+      aValue,
+      bValue,
+    ] =
+      values[sortKey];
+
+    if (
+      typeof aValue ===
+      "string"
+    ) {
+      return sortDirection ===
+        "asc"
+        ? aValue.localeCompare(
+            bValue
+          )
+        : bValue.localeCompare(
+            aValue
+          );
+    }
+
+    return sortDirection ===
+      "asc"
+      ? aValue - bValue
+      : bValue - aValue;
+  })
+  .map(
   (player) => {
                 const playerGames =
                   games.filter((game) =>

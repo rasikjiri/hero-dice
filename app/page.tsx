@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import StatisticsModal from "./components/StatisticsModal";
 
-import { players } from "./data/players";
-
 import { gameCategories } from "./data/gameCategories";
 
 import { supabase } from "./lib/supabase";
@@ -176,29 +174,30 @@ const [
   value: 0,
 });
    
+type Player = {
+  id: string;
+  name: string;
+  active: boolean;
+};
+
 const [playersState, setPlayersState] =
-  useState(players);
+  useState<Player[]>([]);
 
 const selectablePlayers =
-  playersState.filter(
-    (player) => player.active
-  );
-
-  const maxPlayers =
-  selectablePlayers.length;
-
-  useEffect(() => {
-  const unlocked =
-    localStorage.getItem(
-      "heroDiceUnlocked"
+  playersState
+    .filter(
+      (player) =>
+        player.active
+    )
+    .sort((a, b) =>
+      a.name.localeCompare(
+        b.name,
+        "cs"
+      )
     );
 
-  if (unlocked === "true") {
-    setIsUnlocked(true);
-  }
-
-  setAuthLoaded(true);
-}, []);
+const maxPlayers =
+  selectablePlayers.length;
 
 useEffect(() => {
   const loadStatistics =
@@ -478,11 +477,10 @@ const saveGameToSupabase =
         selectedPlayers
           .map(
             (player) =>
-              players.find(
-                (p) =>
-                  p.id ===
-                  player
-              )?.name || player
+              playersState.find(
+  (p) =>
+    p.id === player
+)?.name || player
           )
           .join(" vs ");
 
