@@ -220,6 +220,13 @@ const [
   setBonusUsed,
 ] = useState(false);
 
+const [
+  selectedGeneralValue,
+  setSelectedGeneralValue,
+] = useState<
+  number | null
+>(null);
+
 const [scoreModal, setScoreModal] =
     useState<{
       playerId: string;
@@ -573,10 +580,7 @@ const handlePlayerCountChange = (
 const toggleDiceLock = (
   index: number
 ) => {
-  if (
-    remainingRolls ===
-    playModeRolls
-  ) {
+  if (!hasRolledDice) {
     return;
   }
 
@@ -588,11 +592,49 @@ const toggleDiceLock = (
     return;
   }
 
+  if (
+    bonusUsed &&
+    playModeBonusMode ===
+      "general-only"
+  ) {
+    const clickedValue =
+      playModeDice[index];
+
+    if (
+      selectedGeneralValue !==
+        null &&
+      clickedValue !==
+        selectedGeneralValue
+    ) {
+      return;
+    }
+
+    if (
+      selectedGeneralValue ===
+      null
+    ) {
+      setSelectedGeneralValue(
+        clickedValue
+      );
+    }
+  }
+
   setLockedDice((prev) => {
     const updated = [...prev];
 
     updated[index] =
       !updated[index];
+
+    const anyLocked =
+      updated.some(
+        (dice) => dice
+      );
+
+    if (!anyLocked) {
+      setSelectedGeneralValue(
+        null
+      );
+    }
 
     return updated;
   });
@@ -660,19 +702,62 @@ const endTurn = () => {
   setRemainingRolls(
     playModeRolls
   );
-
+  
+  setBonusUsed(false);
   setHasRolledDice(false);
-
+setSelectedGeneralValue(
+  null
+);
   setBonusUsed(false);
 };
 
 const activateBonus = () => {
   if (bonusUsed) return;
+if (
+  playModeBonusMode ===
+    "general-only"
+) {
+  const lockedValues =
+    playModeDice.filter(
+      (_, index) =>
+        lockedDice[index]
+    );
 
+  const uniqueValues =
+    [...new Set(lockedValues)];
+
+  if (
+    uniqueValues.length > 1
+  ) {
+    return;
+  }
+}
   setRemainingRolls(
     (prev) =>
       prev + bonusDifference
   );
+
+  setConfirmedLockedDice([
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]);
+
+  setLockedDice([
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]);
+
+setSelectedGeneralValue(
+  null
+);
 
   setBonusUsed(true);
 };
@@ -699,9 +784,6 @@ const rollAllDice = () => {
   setPlayModeDice(newDice);
   setHasRolledDice(true);
 
-setConfirmedLockedDice(
-  [...lockedDice]
-);
 
 setRemainingRolls(
   (prev) => prev - 1
@@ -2563,20 +2645,46 @@ hasRolledDice ? (
             }}
             disabled={
   !currentCombination ||
-  !hasRolledDice
+  !hasRolledDice ||
+  (
+    bonusUsed &&
+    playModeBonusMode ===
+      "general-only" &&
+    currentCombination
+      .combination !==
+      "Generál"
+  )
 }
             className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
-              currentCombination &&
-hasRolledDice
-  ? "bg-green-600 text-white hover:bg-green-500"
-                : "cursor-not-allowed bg-zinc-800 text-zinc-600"
-            }`}
+  currentCombination &&
+  hasRolledDice &&
+  !(
+    bonusUsed &&
+    playModeBonusMode ===
+      "general-only" &&
+    currentCombination
+      .combination !==
+      "Generál"
+  )
+    ? "bg-green-600 text-white hover:bg-green-500"
+    : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+}`}
           >
             ✅ Zapsat
           </button>
 
 {remainingRolls <= 0 &&
-!currentCombination && (
+(
+  !currentCombination ||
+  (
+    bonusUsed &&
+    playModeBonusMode ===
+      "general-only" &&
+    currentCombination
+      .combination !==
+      "Generál"
+  )
+) && (
   <button
     onClick={endTurn}
     className="h-24 rounded-2xl bg-yellow-500 px-8 text-2xl font-black text-black transition hover:bg-yellow-400 md:col-span-2"
