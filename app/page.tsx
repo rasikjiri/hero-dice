@@ -8,6 +8,8 @@ import { gameCategories } from "./data/gameCategories";
 
 import { supabase } from "./lib/supabase";
 
+import { detectCombination } from "./lib/playMode";
+
 import {
   saveFinishedGame,
   getTopPlayerByWins,
@@ -156,6 +158,16 @@ const [
 const [
   hasStartedPlayMode,
   setHasStartedPlayMode,
+] = useState(false);
+
+const [
+  hasRolledDice,
+  setHasRolledDice,
+] = useState(false);
+
+const [
+  showPlayModeResult,
+  setShowPlayModeResult,
 ] = useState(false);
 
 const [
@@ -590,6 +602,70 @@ const bonusDifference =
   playModeBonusRolls -
   playModeRolls;
 
+const allDiceLocked =
+  lockedDice.every(
+    (dice) => dice
+  );
+
+const canEvaluateCombination =
+  hasRolledDice;
+
+const currentCombination =
+  hasRolledDice
+    ? detectCombination(
+        playModeDice
+      )
+    : null;
+
+const endTurn = () => {
+  const nextPlayer =
+    currentPlayPlayerIndex +
+    1 >=
+    selectedPlayers.length
+      ? 0
+      : currentPlayPlayerIndex +
+        1;
+
+  setCurrentPlayPlayerIndex(
+    nextPlayer
+  );
+
+  setPlayModeDice([
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+  ]);
+
+  setLockedDice([
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]);
+
+  setConfirmedLockedDice([
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]);
+
+  setRemainingRolls(
+    playModeRolls
+  );
+
+  setHasRolledDice(false);
+
+  setBonusUsed(false);
+};
+
 const activateBonus = () => {
   if (bonusUsed) return;
 
@@ -621,6 +697,7 @@ const rollAllDice = () => {
     );
 
   setPlayModeDice(newDice);
+  setHasRolledDice(true);
 
 setConfirmedLockedDice(
   [...lockedDice]
@@ -2269,6 +2346,7 @@ setConfirmedLockedDice([
   setRemainingRolls(
     playModeRolls
   );
+  setHasRolledDice(false);
   setBonusUsed(false);
   setShowPlayModeSetup(
     false
@@ -2292,6 +2370,59 @@ setConfirmedLockedDice([
 )}
 
 {/* PLAY MODE */}
+
+{showPlayModeResult &&
+currentCombination && (
+  <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-6">
+    <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950 p-8 text-center shadow-2xl">
+      <div className="text-sm font-bold uppercase tracking-[0.25em] text-zinc-500">
+        Zapsaný výsledek hodu
+      </div>
+
+      <div className="mt-6 text-4xl font-black text-green-400">
+        {
+          currentCombination.combination
+        }
+      </div>
+
+      <div className="mt-3 text-xl font-bold text-zinc-300">
+        Hráč:
+        {" "}
+        {
+          playersState.find(
+  (player) =>
+    player.id ===
+    selectedPlayers[
+      currentPlayPlayerIndex
+    ]
+)?.name
+        }
+      </div>
+
+      <div className="mt-2 text-2xl font-black text-white">
+        Score:
+        {" "}
+        {
+          currentCombination.score
+        }
+      </div>
+
+      <button
+        onClick={() => {
+          setShowPlayModeResult(
+            false
+          );
+
+          endTurn();
+        }}
+        className="mt-8 w-full rounded-2xl bg-yellow-500 px-6 py-5 text-xl font-black text-black transition hover:bg-yellow-400"
+      >
+        ▶ Hází další hráč
+      </button>
+    </div>
+  </div>
+)}
+
 {isPlayModeActive && (
   <div className="fixed inset-0 z-[150] overflow-y-auto bg-[#111] p-4 text-white">
     <div className="mx-auto flex w-full max-w-4xl flex-col">
@@ -2342,64 +2473,207 @@ setConfirmedLockedDice([
         </div>
 
         <div className="flex flex-wrap justify-center gap-4">
-  {playModeDice.map(
-    (dice, index) => (
-      <button
-        key={index}
-        onClick={() =>
-          toggleDiceLock(index)
-        }
-        className={`flex h-20 w-20 items-center justify-center rounded-2xl border text-4xl font-black transition ${
-          lockedDice[index]
-            ? "scale-110 border-yellow-400 bg-yellow-500 text-black shadow-lg shadow-yellow-500/30"
-            : "border-zinc-700 bg-black text-white hover:border-purple-400"
-        }`}
-      >
-        {dice}
-      </button>
-    )
-  )}
-</div>
+          {playModeDice.map(
+            (
+              dice,
+              index
+            ) => (
+              <button
+                key={index}
+                onClick={() =>
+                  toggleDiceLock(
+                    index
+                  )
+                }
+                className={`flex h-20 w-20 items-center justify-center rounded-2xl border text-4xl font-black transition ${
+                  lockedDice[
+                    index
+                  ]
+                    ? "scale-110 border-yellow-400 bg-yellow-500 text-black shadow-lg shadow-yellow-500/30"
+                    : "border-zinc-700 bg-black text-white hover:border-purple-400"
+                }`}
+              >
+                {dice}
+              </button>
+            )
+          )}
+        </div>
 
-        <div className="mt-8 flex flex-wrap justify-center gap-4">
-          
+        <div className="mt-6 text-center">
+          <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500">
+            Aktuální kombinace
+          </div>
+
+          {currentCombination &&
+hasRolledDice ? (
+            <div className="mt-3">
+              <div className="text-3xl font-black text-green-400">
+                {
+                  currentCombination.combination
+                }
+              </div>
+
+              <div className="mt-1 text-lg font-bold text-zinc-300">
+                Score:
+                {" "}
+                {
+                  currentCombination.score
+                }
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 text-xl font-black text-zinc-600">
+              —
+            </div>
+          )}
+        </div>
+
+        <div className="mx-auto mt-8 grid w-full max-w-xl grid-cols-1 gap-4 md:grid-cols-2">
           <button
-  onClick={activateBonus}
-  disabled={bonusUsed}
-  className={`rounded-2xl px-8 py-5 text-2xl font-black transition ${
-    bonusUsed
-      ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
-      : playModeBonusMode ===
-          "general-only"
-        ? "bg-green-600 text-white hover:bg-green-500"
-        : "bg-yellow-500 text-black hover:bg-yellow-400"
-  }`}
->
-  {playModeBonusMode ===
-  "general-only"
-    ? `⭐ Bonus generál (+${bonusDifference})`
-    : `⭐ Bonus (+${bonusDifference})`}
-</button>
+            onClick={
+              activateBonus
+            }
+            disabled={
+              bonusUsed
+            }
+            className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
+              bonusUsed
+                ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                : playModeBonusMode ===
+                    "general-only"
+                  ? "bg-green-600 text-white hover:bg-green-500"
+                  : "bg-yellow-500 text-black hover:bg-yellow-400"
+            }`}
+          >
+            {playModeBonusMode ===
+            "general-only"
+              ? `⭐ Bonus generál (+${bonusDifference})`
+              : `⭐ Bonus (+${bonusDifference})`}
+          </button>
 
           <button
-  onClick={rollAllDice}
-  className={`rounded-2xl px-8 py-5 text-2xl font-black text-white transition ${
-    playModeRolls === 4 &&
-    !playModeAllowRewrite &&
-    playModeBonusMode ===
-      "general-only" &&
-    playModeBonusRolls === 6
-      ? "bg-green-600 hover:bg-green-500"
-      : "bg-purple-600 hover:bg-purple-500"
-  }`}
->
-  🎲 Házet
-  {" "}
-  ({remainingRolls})
-</button>
+            onClick={() => {
+              if (
+                currentCombination
+              ) {
+                setShowPlayModeResult(
+                  true
+                );
+              }
+            }}
+            disabled={
+  !currentCombination ||
+  !hasRolledDice
+}
+            className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
+              currentCombination &&
+hasRolledDice
+  ? "bg-green-600 text-white hover:bg-green-500"
+                : "cursor-not-allowed bg-zinc-800 text-zinc-600"
+            }`}
+          >
+            ✅ Zapsat
+          </button>
+
+{remainingRolls <= 0 &&
+!currentCombination && (
+  <button
+    onClick={endTurn}
+    className="h-24 rounded-2xl bg-yellow-500 px-8 text-2xl font-black text-black transition hover:bg-yellow-400 md:col-span-2"
+  >
+    ▶ Hází další hráč
+  </button>
+)}
+{remainingRolls > 0 && (
+          <button
+            onClick={
+              rollAllDice
+            }
+            disabled={
+              remainingRolls <=
+              0
+            }
+            className={`h-24 rounded-2xl px-8 text-2xl font-black text-white transition md:col-span-2 ${
+              remainingRolls <=
+              0
+                ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
+                : playModeRolls ===
+                      4 &&
+                    !playModeAllowRewrite &&
+                    playModeBonusMode ===
+                      "general-only" &&
+                    playModeBonusRolls ===
+                      6
+                  ? "bg-green-600 hover:bg-green-500"
+                  : "bg-purple-600 hover:bg-purple-500"
+            }`}
+          >
+            🎲 Házet
+            {" "}
+            (
+            {
+              remainingRolls
+            }
+            )
+          </button>
+          )}
         </div>
       </div>
     </div>
+
+    {showPlayModeResult &&
+      currentCombination && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-6">
+          <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950 p-8 text-center shadow-2xl">
+            <div className="text-sm font-bold uppercase tracking-[0.25em] text-zinc-500">
+              Zapsaný výsledek hodu
+            </div>
+
+            <div className="mt-6 text-4xl font-black text-green-400">
+              {
+                currentCombination.combination
+              }
+            </div>
+
+            <div className="mt-3 text-xl font-bold text-zinc-300">
+              Hráč:
+              {" "}
+              {
+                playersState.find(
+                  (
+                    player
+                  ) =>
+                    player.id ===
+                    selectedPlayers[
+                      currentPlayPlayerIndex
+                    ]
+                )?.name
+              }
+            </div>
+
+            <div className="mt-2 text-2xl font-black text-white">
+              Score:
+              {" "}
+              {
+                currentCombination.score
+              }
+            </div>
+
+            <button
+              onClick={() => {
+                setShowPlayModeResult(
+                  false
+                );
+
+                endTurn();
+              }}
+              className="mt-8 w-full rounded-2xl bg-yellow-500 px-6 py-5 text-xl font-black text-black transition hover:bg-yellow-400"
+            >
+              ▶ Hází další hráč
+            </button>
+          </div>
+        </div>
+      )}
   </div>
 )}
 
