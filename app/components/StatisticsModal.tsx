@@ -18,11 +18,14 @@ type Props = {
   }[];
 
   onClose: () => void;
+
+  onOpenFunGames: () => void;
 };
 
 export default function StatisticsModal({
   players,
   onClose,
+  onOpenFunGames,
 }: Props) {
   const games = getFinishedGames();
 
@@ -83,17 +86,27 @@ const playersWithGames =
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/90 p-6 text-white">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex items-center justify-between">
-          <h2 className="text-5xl font-black text-yellow-400">
-            Statistiky
-          </h2>
+  <h2 className="text-5xl font-black text-yellow-400">
+    Statistiky
+  </h2>
 
-          <button
-            onClick={onClose}
-            className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-500"
-          >
-            Zavřít
-          </button>
-        </div>
+  <div className="flex gap-3">
+    <button
+  onClick={onOpenFunGames}
+  
+      className="rounded-xl bg-purple-600 px-5 py-3 font-bold hover:bg-purple-500"
+    >
+      Fun hry
+    </button>
+
+    <button
+      onClick={onClose}
+      className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-500"
+    >
+      Zavřít
+    </button>
+  </div>
+</div>
 
         {/* PLAYER STATS */}
         <div className="mb-14 overflow-x-auto rounded-2xl border border-zinc-700 bg-zinc-900">

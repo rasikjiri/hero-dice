@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import StatisticsModal from "./components/StatisticsModal";
 
+import FunGamesModal from "./components/FunGamesModal";
+
 import { gameCategories } from "./data/gameCategories";
 
 import { supabase } from "./lib/supabase";
@@ -46,6 +48,10 @@ export default function Home() {
   
   const [showStatistics, setShowStatistics] =
     useState(false);
+
+  const [showFunGames,
+  setShowFunGames] =
+  useState(false);
 
   const [showAdmin, setShowAdmin] =
   useState(false);
@@ -649,6 +655,24 @@ const allDiceLocked =
     (dice) => dice
   );
 
+const generalBonusBlocked =
+  playModeBonusMode ===
+    "general-only" &&
+  (() => {
+    const lockedValues =
+      playModeDice.filter(
+        (_, index) =>
+          lockedDice[index]
+      );
+
+    const uniqueValues =
+      [...new Set(lockedValues)];
+
+    return (
+      uniqueValues.length > 1
+    );
+  })();
+
 const canEvaluateCombination =
   hasRolledDice;
 
@@ -658,6 +682,101 @@ const currentCombination =
         playModeDice
       )
     : null;
+
+const canStartPlayMode =
+  !selectedPlayers.some(
+    (playerId) => {
+      const playerScores =
+        scores[playerId] || {};
+
+      return (
+        Object.keys(playerScores)
+          .length ===
+        gameCategories.length
+      );
+    }
+  );
+
+const isLeaguePlayMode =
+  playModeRolls === 4 &&
+  !playModeAllowRewrite &&
+  playModeBonusMode ===
+    "general-only" &&
+  playModeBonusRolls === 6;
+
+const playModeCategoryMap: Record<
+  string,
+  string
+> = {
+  Generál: "general",
+  Pyramida: "pyramida",
+  Hrozen: "hrozen",
+  Postupka: "postupka",
+  "4-2": "ctyri_dva",
+  Dvojice: "dvojce",
+  Trojice: "trojce",
+};
+
+const savePlayModeScore =
+  () => {
+    if 
+    (!currentCombination)
+      
+    return true;
+
+    const playerId =
+      selectedPlayers[
+        currentPlayPlayerIndex
+      ];
+
+    const categoryId =
+      playModeCategoryMap[
+        currentCombination
+          .combination
+      ];
+
+    if (!categoryId)
+      return true;
+
+    const existingScore =
+      scores[playerId]?.[
+        categoryId
+      ];
+
+if (
+  existingScore !== undefined &&
+  playModeAllowRewrite &&
+  existingScore >=
+    currentCombination.score
+) {
+  return true;
+}
+
+    if (
+      existingScore !==
+        undefined &&
+      !playModeAllowRewrite
+    ) {
+      alert(
+        "Tato kombinace je již zapsána a Play Mode neumožňuje přepis skóre."
+      );
+
+      return false;
+    }
+
+    setScores((prev) => ({
+      ...prev,
+
+      [playerId]: {
+        ...prev[playerId],
+
+        [categoryId]:
+          currentCombination.score,
+      },
+    }));
+
+    return true;
+  };
 
 const endTurn = () => {
   const nextPlayer =
@@ -789,6 +908,57 @@ setRemainingRolls(
   (prev) => prev - 1
 );
 };
+
+const saveFunGame =
+  async ({
+    winner,
+    winnerScore,
+    players,
+    scores,
+  }: {
+    winner: string;
+    winnerScore: number;
+    players: string[];
+    scores: any;
+  }) => {
+    const { error } =
+      await supabase
+        .from("fun_games")
+        .insert([
+          {
+            date:
+              new Date().toISOString(),
+
+            winner,
+
+            winner_score:
+              winnerScore,
+
+            players,
+
+            scores,
+
+            roll_count:
+              playModeRolls,
+
+            rewrite_enabled:
+              playModeAllowRewrite,
+
+            bonus_mode:
+              playModeBonusMode,
+
+            bonus_rolls:
+              playModeBonusRolls,
+          },
+        ]);
+
+    if (error) {
+      console.error(
+        "Fun game save error:",
+        error
+      );
+    }
+  };
 
 const saveGameToSupabase =
   async () => {
@@ -1252,19 +1422,51 @@ setWinner(winnerName);
 
 setWinnerScore(bestScore);
 
-await saveFinishedGame({
-  date: new Date().toISOString(),
+if (
+  !hasStartedPlayMode ||
+  isLeaguePlayMode
+) {
+  await saveFinishedGame({
+    date:
+      new Date().toISOString(),
 
-  winner: bestPlayer,
+    winner:
+      bestPlayer,
 
-  winnerScore: bestScore,
+    winnerScore:
+      bestScore,
 
-  players: selectedPlayers,
+    players:
+      selectedPlayers,
 
-  scores: gameResults,
-});
+    scores:
+      gameResults,
+  });
+} else {
+  await saveFunGame({
+    winner:
+      bestPlayer,
+
+    winnerScore:
+      bestScore,
+
+    players:
+      selectedPlayers,
+
+    scores:
+      gameResults,
+  });
+}
 
 setGameFinished(true);
+
+setIsPlayModeActive(
+  false
+);
+
+setShowPlayModeResult(
+  false
+);
 
 localStorage.removeItem(
   "heroDiceCurrentGame"
@@ -1503,11 +1705,11 @@ setShowFinishedGame(true);
     ) {
       setIsPlayModeActive(
         true
-        
       );
-    setHasStartedPlayMode(
-  true
-);
+
+      setHasStartedPlayMode(
+        true
+      );
 
       return;
     }
@@ -1516,10 +1718,15 @@ setShowFinishedGame(true);
       true
     );
   }}
-    className="rounded-2xl bg-purple-600 px-6 py-3 text-lg font-black transition hover:bg-purple-500"
-  >
-    ▶ Play Mode
-  </button>
+  disabled={!canStartPlayMode}
+  className={`rounded-2xl px-6 py-3 text-lg font-black transition ${
+    canStartPlayMode
+      ? "bg-purple-600 hover:bg-purple-500"
+      : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+  }`}
+>
+  ▶ Play Mode
+</button>
 
     <button
       onClick={saveGameToSupabase}
@@ -2612,20 +2819,22 @@ hasRolledDice ? (
 
         <div className="mx-auto mt-8 grid w-full max-w-xl grid-cols-1 gap-4 md:grid-cols-2">
           <button
-            onClick={
-              activateBonus
-            }
-            disabled={
-              bonusUsed
-            }
+  onClick={
+    activateBonus
+  }
+  disabled={
+    bonusUsed ||
+    generalBonusBlocked
+  }
             className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
-              bonusUsed
-                ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
-                : playModeBonusMode ===
-                    "general-only"
-                  ? "bg-green-600 text-white hover:bg-green-500"
-                  : "bg-yellow-500 text-black hover:bg-yellow-400"
-            }`}
+  bonusUsed ||
+  generalBonusBlocked
+    ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
+    : playModeBonusMode ===
+        "general-only"
+      ? "bg-green-600 text-white hover:bg-green-500"
+      : "bg-yellow-500 text-black hover:bg-yellow-400"
+}`}
           >
             {playModeBonusMode ===
             "general-only"
@@ -2635,14 +2844,23 @@ hasRolledDice ? (
 
           <button
             onClick={() => {
-              if (
-                currentCombination
-              ) {
-                setShowPlayModeResult(
-                  true
-                );
-              }
-            }}
+  if (
+    !currentCombination
+  ) {
+    return;
+  }
+
+  const saved =
+    savePlayModeScore();
+
+  if (!saved) {
+    return;
+  }
+
+  setShowPlayModeResult(
+    true
+  );
+}}
             disabled={
   !currentCombination ||
   !hasRolledDice ||
@@ -2902,7 +3120,7 @@ hasRolledDice ? (
 
       {/* WINNER MODAL */}
       {showFinishedGame && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4">
           <div className="max-w-xl rounded-2xl bg-white p-10 text-center text-black">
             <h2 className="mb-8 text-5xl">
               🏆 Konec hry
@@ -3239,14 +3457,40 @@ hasRolledDice ? (
 )}
 
       {/* STATISTICS */}
-      {showStatistics && (
-        <StatisticsModal
+{showStatistics && (
+  <StatisticsModal
   players={playersState}
   onClose={() =>
     setShowStatistics(false)
   }
+  onOpenFunGames={() => {
+    setShowStatistics(
+      false
+    );
+
+    setShowFunGames(
+      true
+    );
+  }}
 />
-      )}
+)}
+
+{/* FUN GAMES */}
+{showFunGames && (
+  <FunGamesModal
+    players={playersState}
+    onClose={() => {
+      setShowFunGames(
+        false
+      );
+
+      setShowStatistics(
+        true
+      );
+    }}
+  />
+)}
     </main>
   );
 }
+
