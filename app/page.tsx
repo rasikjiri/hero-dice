@@ -1878,7 +1878,7 @@ setShowFinishedGame(true);
 </div>
 
           {!gameStarted && (
-            <div className="mx-auto mb-12 mt-6 w-full max-w-5xl rounded-3xl bg-zinc-900/60 p-6 backdrop-blur md:p-8">
+            <div className="mx-auto mb-12 mt-6 w-full max-w-5xl rounded-3xl bg-zinc-900/40 p-6 backdrop-blur-sm md:p-8">
               <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="text-sm font-bold uppercase tracking-[0.2em] text-yellow-400">
