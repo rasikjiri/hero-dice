@@ -3209,18 +3209,17 @@ currentCombination && (
             </div>
 
             <input
-              type="number"
-              min={scoreModal.min}
-              max={scoreModal.max}
-              value={scoreInput}
-              onChange={(e) =>
-                setScoreInput(
-                  e.target.value
-                )
-              }
-              className="mb-6 w-full rounded-2xl border border-zinc-700 bg-black/60 p-5 text-center text-5xl font-black text-yellow-300 outline-none transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/40"
-              autoFocus
-            />
+  type="number"
+  min={scoreModal.min}
+  max={scoreModal.max}
+  value={scoreInput}
+  onChange={(e) =>
+    setScoreInput(
+      e.target.value
+    )
+  }
+  className="mb-6 w-full rounded-2xl border border-zinc-700 bg-black/60 p-5 text-center text-5xl font-black text-yellow-300 outline-none transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/40"
+/>
 
             <div className="flex gap-4">
               <button
