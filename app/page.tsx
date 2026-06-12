@@ -594,9 +594,15 @@ const handlePlayerCountChange = (
 
     setScores(updatedScores);
 
-    setScoreModal(null);
+setScoreModal(null);
 
-    setScoreInput("");
+setScoreInput("");
+
+window.scrollTo({
+  top: 0,
+  left: 0,
+  behavior: "instant" as ScrollBehavior,
+});
   };
 
     const getPlayerTotal = (
