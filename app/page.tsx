@@ -124,6 +124,11 @@ savedGames,
 setSavedGames,
 ] = useState<any[]>([]);
 
+console.log(
+  "LOAD GAME",
+  savedGames
+);
+
 const [
 showLoadGames,
 setShowLoadGames,
@@ -133,6 +138,23 @@ const [
   showGameMenu,
   setShowGameMenu,
 ] = useState(false);
+
+const [
+  showSaveGameConfirm,
+  setShowSaveGameConfirm,
+] = useState(false);
+
+const [
+  showGameSavedModal,
+  setShowGameSavedModal,
+] = useState(false);
+
+const [
+  deleteSavedGameId,
+  setDeleteSavedGameId,
+] = useState<string | null>(
+  null
+);
 
 const [
   showPlayModeSetup,
@@ -1015,7 +1037,13 @@ const saveGameToSupabase =
         return;
       }
 
-      alert("Hra uložena.");
+      setShowSaveGameConfirm(
+  false
+);
+
+setShowGameSavedModal(
+  true
+);
     } catch (error) {
       console.error(error);
 
@@ -1063,15 +1091,6 @@ const loadSavedGames =
 
 const deleteSavedGame =
   async (gameId: number) => {
-    const confirmed =
-      confirm(
-        "Opravdu smazat uloženou hru?"
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
     const { error } =
       await supabase
         .from("saved_games")
@@ -1796,7 +1815,10 @@ setShowFinishedGame(true);
 
       <button
         onClick={() => {
-          saveGameToSupabase();
+          setShowSaveGameConfirm(
+            true
+          );
+
           setShowGameMenu(
             false
           );
@@ -1976,19 +1998,21 @@ setShowFinishedGame(true);
                 </div>
               )}
 
-              <button
-                onClick={() =>
-                  setGameStarted(true)
-                }
-                disabled={!canStartGame}
-                className={`rounded-2xl px-8 py-4 text-xl font-black transition ${
-                  canStartGame
-                    ? "bg-yellow-500 text-black hover:scale-[1.02] hover:bg-yellow-400"
-                    : "cursor-not-allowed bg-zinc-700 text-zinc-400"
-                }`}
-              >
-                ▶ Začít hru
-              </button>
+              <div className="flex justify-end">
+  <button
+    onClick={() =>
+      setGameStarted(true)
+    }
+    disabled={!canStartGame}
+    className={`rounded-2xl px-8 py-4 text-xl font-black transition ${
+      canStartGame
+        ? "bg-yellow-500 text-black hover:scale-[1.02] hover:bg-yellow-400"
+        : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+    }`}
+  >
+    ▶ Začít hru
+  </button>
+</div>
             </div>
           )}
 
@@ -2340,10 +2364,10 @@ setShowFinishedGame(true);
       );
 
       setShowLoadGames(
-        false
-      );
+  false
+);
 
-      setScreen("game");
+setScreen("game");
     }}
     className="rounded-xl bg-yellow-500 px-5 py-3 font-black text-black transition hover:bg-yellow-400"
   >
@@ -2351,38 +2375,11 @@ setShowFinishedGame(true);
   </button>
 
   <button
-  onClick={async () => {
-    const confirmed =
-      confirm(
-        `Opravdu smazat hru "${game.name}"?`
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    const { error } =
-      await supabase
-        .from("saved_games")
-        .delete()
-        .eq("id", game.id);
-
-    if (error) {
-      alert(
-        "Nepodařilo se smazat hru."
-      );
-
-      return;
-    }
-
-    setSavedGames(
-      savedGames.filter(
-        (savedGame) =>
-          savedGame.id !==
-          game.id
-      )
-    );
-  }}
+  onClick={() =>
+    setDeleteSavedGameId(
+      game.id
+    )
+  }
   className="rounded-xl bg-red-600 px-5 py-3 font-black text-white transition hover:bg-red-500"
 >
   Smazat
@@ -2468,6 +2465,32 @@ setShowFinishedGame(true);
           Obnovit
         </button>
       </div>
+    </div>
+  </div>
+)}
+
+{/* GAME SAVED MODAL */}
+{showGameSavedModal && (
+  <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-[420px] rounded-3xl border border-green-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+      <h2 className="mb-5 text-3xl font-black text-green-400">
+        Hra uložena
+      </h2>
+
+      <p className="mb-8 text-lg text-zinc-300">
+        Rozehraná hra byla úspěšně uložena.
+      </p>
+
+      <button
+        onClick={() =>
+  setShowGameSavedModal(
+    false
+  )
+}
+        className="w-full rounded-2xl bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:bg-green-500"
+      >
+        OK
+      </button>
     </div>
   </div>
 )}
@@ -3252,10 +3275,36 @@ hasRolledDice ? (
         </div>
       )}
 
+{/* GAME SAVED MODAL */}
+{showGameSavedModal && (
+  <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-[420px] rounded-3xl border border-green-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+      <h2 className="mb-5 text-3xl font-black text-green-400">
+        Hra uložena
+      </h2>
+
+      <p className="mb-8 text-lg text-zinc-300">
+        Rozehraná hra byla úspěšně uložena.
+      </p>
+
+      <button
+        onClick={() =>
+          setShowGameSavedModal(
+            false
+          )
+        }
+        className="w-full rounded-2xl bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:bg-green-500"
+      >
+        OK
+      </button>
+    </div>
+  </div>
+)}
+
       {/* WINNER MODAL */}
       {showFinishedGame && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4">
-          <div className="max-w-xl rounded-2xl bg-white p-10 text-center text-black">
+          <div className="max-w-xl rounded-2xl bg-black p-10 text-center text-white">
             <h2 className="mb-8 text-5xl">
               🏆 Konec hry
             </h2>
@@ -3327,12 +3376,12 @@ hasRolledDice ? (
       {/* LEAVE CONFIRM */}
       {showLeaveConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="w-full max-w-[420px] rounded-2xl bg-white p-8 text-center text-black">
+          <div className="w-full max-w-[420px] rounded-2xl bg-black p-8 text-center text-white">
             <h2 className="mb-6 text-3xl font-black">
               Opravdu ukončit hru?
             </h2>
 
-            <p className="mb-8 text-zinc-600">
+            <p className="mb-8 text-zinc-300">
               Rozehraná hra nebude uložena.
             </p>
 
@@ -3377,6 +3426,108 @@ hasRolledDice ? (
           </div>
         </div>
       )}
+
+{/* SAVE GAME CONFIRM */}
+{showSaveGameConfirm && (
+  <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-[420px] rounded-2xl bg-black p-8 text-center text-white">
+      <h2 className="mb-21 text-3xl font-black">
+        Uložit rozehranou hru?
+      </h2>
+
+      <p className="mb-8 text-zinc-300">
+        Hra bude uložena mezi uložené hry a lze ji později znovu načíst.
+      </p>
+
+      <div className="flex flex-wrap justify-center gap-4">
+        <button
+          onClick={() =>
+            setShowSaveGameConfirm(
+              false
+            )
+          }
+          className="rounded-lg bg-zinc-600 px-5 py-3 font-bold text-white transition hover:bg-zinc-500"
+        >
+          Zrušit
+        </button>
+
+        <button
+          onClick={async () => {
+            await saveGameToSupabase();
+
+            setShowSaveGameConfirm(
+              false
+            );
+          }}
+          className="rounded-lg bg-green-600 px-5 py-3 font-bold text-white transition hover:bg-green-500"
+        >
+          Uložit
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+{deleteSavedGameId !== null && (
+  <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-[520px] rounded-2xl bg-zinc-900 p-8 text-center text-white">
+      <h2 className="mb-6 text-3xl font-black text-red-500">
+        Smazat uloženou hru?
+      </h2>
+
+      <p className="mb-8 text-zinc-300">
+        Opravdu chceš smazat tuto uloženou hru?
+      </p>
+
+      <div className="flex flex-wrap justify-center gap-4">
+        <button
+          onClick={() =>
+            setDeleteSavedGameId(
+              null
+            )
+          }
+          className="rounded-xl bg-zinc-700 px-8 py-4 font-black text-white transition hover:bg-zinc-600"
+        >
+          Nechat
+        </button>
+
+        <button
+          onClick={async () => {
+            const { error } =
+              await supabase
+                .from(
+                  "saved_games"
+                )
+                .delete()
+                .eq(
+                  "id",
+                  deleteSavedGameId
+                );
+
+            if (!error) {
+              setSavedGames(
+                savedGames.filter(
+                  (savedGame) =>
+                    savedGame.id !==
+                    deleteSavedGameId
+                )
+              );
+            }
+
+            setDeleteSavedGameId(
+              null
+            );
+          }}
+          className="rounded-xl bg-red-600 px-8 py-4 font-black text-white transition hover:bg-red-500"
+        >
+          Smazat
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
 {/* ADMIN */}
 {showAdmin && (
