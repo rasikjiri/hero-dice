@@ -130,6 +130,11 @@ setShowLoadGames,
 ] = useState(false);
 
 const [
+  showGameMenu,
+  setShowGameMenu,
+] = useState(false);
+
+const [
   showPlayModeSetup,
   setShowPlayModeSetup,
 ] = useState(false);
@@ -1056,6 +1061,41 @@ const loadSavedGames =
     }
   };
 
+const deleteSavedGame =
+  async (gameId: number) => {
+    const confirmed =
+      confirm(
+        "Opravdu smazat uloženou hru?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const { error } =
+      await supabase
+        .from("saved_games")
+        .delete()
+        .eq("id", gameId);
+
+    if (error) {
+      console.error(error);
+
+      alert(
+        "Nepodařilo se smazat hru."
+      );
+
+      return;
+    }
+
+    setSavedGames((prev) =>
+      prev.filter(
+        (game) =>
+          game.id !== gameId
+      )
+    );
+  };
+
 const loadPlayersFromSupabase =
   async () => {
     try {
@@ -1728,23 +1768,61 @@ setShowFinishedGame(true);
   ▶ Play Mode
 </button>
 
-    <button
-      onClick={saveGameToSupabase}
-      className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500"
-    >
-      Uložit hru
-    </button>
+    <div className="relative">
+  <button
+    onClick={() =>
+      setShowGameMenu(
+        (prev) => !prev
+      )
+    }
+    className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500"
+  >
+    ⚙ Hra
+  </button>
 
-    <button
-      onClick={() => {
-        setShowLeaveConfirm(
-          true
-        );
-      }}
-      className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
-    >
-      Ukončit hru
-    </button>
+  {showGameMenu && (
+    <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl">
+      <button
+        onClick={() => {
+          loadSavedGames();
+          setShowGameMenu(
+            false
+          );
+        }}
+        className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800"
+      >
+        Načíst hru
+      </button>
+
+      <button
+        onClick={() => {
+          saveGameToSupabase();
+          setShowGameMenu(
+            false
+          );
+        }}
+        className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800"
+      >
+        Uložit hru
+      </button>
+
+      <button
+        onClick={() => {
+          setShowLeaveConfirm(
+            true
+          );
+
+          setShowGameMenu(
+            false
+          );
+        }}
+        className="w-full px-5 py-4 text-left font-bold text-red-400 transition hover:bg-zinc-800"
+      >
+        Ukončit hru
+      </button>
+    </div>
+  )}
+</div>
   </>
 ) : (
     <>
@@ -2219,57 +2297,97 @@ setShowFinishedGame(true);
                 </div>
               </div>
 
-              <button
-  onClick={() => {
-    setPlayerCount(
-      game.player_count
+              <div className="flex gap-3">
+  <button
+    onClick={() => {
+      setPlayerCount(
+        game.player_count
+      );
+
+      setSelectedPlayers(
+        game.selected_players
+      );
+
+      setScores(
+        game.scores
+      );
+
+      setGameStarted(
+        game.game_started
+      );
+
+      setGameFinished(
+        game.game_finished
+      );
+
+      localStorage.setItem(
+        "heroDiceCurrentGame",
+        JSON.stringify({
+          playerCount:
+            game.player_count,
+
+          selectedPlayers:
+            game.selected_players,
+
+          scores: game.scores,
+
+          gameStarted:
+            game.game_started,
+
+          gameFinished:
+            game.game_finished,
+        })
+      );
+
+      setShowLoadGames(
+        false
+      );
+
+      setScreen("game");
+    }}
+    className="rounded-xl bg-yellow-500 px-5 py-3 font-black text-black transition hover:bg-yellow-400"
+  >
+    Načíst
+  </button>
+
+  <button
+  onClick={async () => {
+    const confirmed =
+      confirm(
+        `Opravdu smazat hru "${game.name}"?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const { error } =
+      await supabase
+        .from("saved_games")
+        .delete()
+        .eq("id", game.id);
+
+    if (error) {
+      alert(
+        "Nepodařilo se smazat hru."
+      );
+
+      return;
+    }
+
+    setSavedGames(
+      savedGames.filter(
+        (savedGame) =>
+          savedGame.id !==
+          game.id
+      )
     );
-
-    setSelectedPlayers(
-      game.selected_players
-    );
-
-    setScores(
-      game.scores
-    );
-
-    setGameStarted(
-      game.game_started
-    );
-
-    setGameFinished(
-      game.game_finished
-    );
-
-    localStorage.setItem(
-      "heroDiceCurrentGame",
-      JSON.stringify({
-        playerCount:
-          game.player_count,
-
-        selectedPlayers:
-          game.selected_players,
-
-        scores: game.scores,
-
-        gameStarted:
-          game.game_started,
-
-        gameFinished:
-          game.game_finished,
-      })
-    );
-
-    setShowLoadGames(
-      false
-    );
-
-    setScreen("game");
   }}
-  className="rounded-xl bg-yellow-500 px-5 py-3 font-black text-black transition hover:bg-yellow-400"
+  className="rounded-xl bg-red-600 px-5 py-3 font-black text-white transition hover:bg-red-500"
 >
-  Načíst
+  Smazat
 </button>
+</div>
             </div>
           ))
         )}
@@ -2871,6 +2989,20 @@ hasRolledDice ? (
     currentCombination
       .combination !==
       "Generál"
+  ) ||
+  (
+    currentCombination &&
+    !playModeAllowRewrite &&
+    scores[
+      selectedPlayers[
+        currentPlayPlayerIndex
+      ]
+    ]?.[
+      playModeCategoryMap[
+        currentCombination
+          .combination
+      ]
+    ] !== undefined
   )
 }
             className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
@@ -2883,6 +3015,19 @@ hasRolledDice ? (
     currentCombination
       .combination !==
       "Generál"
+  ) &&
+  !(
+    !playModeAllowRewrite &&
+    scores[
+      selectedPlayers[
+        currentPlayPlayerIndex
+      ]
+    ]?.[
+      playModeCategoryMap[
+        currentCombination
+          .combination
+      ]
+    ] !== undefined
   )
     ? "bg-green-600 text-white hover:bg-green-500"
     : "cursor-not-allowed bg-zinc-700 text-zinc-400"
@@ -2891,18 +3036,7 @@ hasRolledDice ? (
             ✅ Zapsat
           </button>
 
-{remainingRolls <= 0 &&
-(
-  !currentCombination ||
-  (
-    bonusUsed &&
-    playModeBonusMode ===
-      "general-only" &&
-    currentCombination
-      .combination !==
-      "Generál"
-  )
-) && (
+{remainingRolls <= 0 && (
   <button
     onClick={endTurn}
     className="h-24 rounded-2xl bg-yellow-500 px-8 text-2xl font-black text-black transition hover:bg-yellow-400 md:col-span-2"
