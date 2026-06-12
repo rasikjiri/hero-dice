@@ -3224,6 +3224,14 @@ currentCombination && (
       e.target.value
     )
   }
+  onFocus={(e) =>
+  e.target.select()
+}
+  onBlur={() => {
+  setTimeout(() => {
+    window.scrollTo(0, 0);
+  }, 50);
+}}
   className="mb-6 w-full rounded-2xl border border-zinc-700 bg-black/60 p-5 text-center text-5xl font-black text-yellow-300 outline-none transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/40"
 />
 
