@@ -3033,7 +3033,7 @@ hasRolledDice ? (
     : "cursor-not-allowed bg-zinc-700 text-zinc-400"
 }`}
           >
-            ✅ Zapsat
+            ZAPSAT SKÓRE
           </button>
 
 {remainingRolls <= 0 && (
@@ -3068,7 +3068,7 @@ hasRolledDice ? (
                   : "bg-purple-600 hover:bg-purple-500"
             }`}
           >
-            🎲 Házet
+            HÁZEJ:) Zbývající hody:
             {" "}
             (
             {
