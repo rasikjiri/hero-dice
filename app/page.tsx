@@ -2856,46 +2856,40 @@ currentCombination && (
 {isPlayModeActive && (
   <div className="fixed inset-0 z-[150] overflow-y-auto bg-[#111] p-4 text-white">
     <div className="mx-auto flex w-full max-w-4xl flex-col">
-      <div className="mb-8 flex items-center justify-between gap-4">
-        <div>
-          <div className="text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
-            HERO DICE
-          </div>
-
-          <h2 className="mt-2 text-4xl font-black text-white">
-            PLAY MODE
-          </h2>
-        </div>
-
-        <button
-          onClick={() =>
-            setIsPlayModeActive(
-              false
-            )
-          }
-          className="rounded-2xl bg-zinc-800 px-5 py-3 font-bold transition hover:bg-zinc-700"
-        >
-          Zpět
-        </button>
-      </div>
+      <div className="mb-4" />
 
       <div className="rounded-3xl border border-purple-500/20 bg-zinc-900 p-8">
-        <div className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
-          Aktuální hráč
-        </div>
-
-        <div className="text-5xl font-black text-yellow-400">
-          {
-            playersState.find(
-              (player) =>
-                player.id ===
-                selectedPlayers[
-                  currentPlayPlayerIndex
-                ]
-            )?.name
-          }
-        </div>
+  <div className="flex items-start justify-between gap-4">
+    <div>
+      <div className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+        Aktuální hráč
       </div>
+
+      <div className="text-5xl font-black text-yellow-400">
+        {
+          playersState.find(
+            (player) =>
+              player.id ===
+              selectedPlayers[
+                currentPlayPlayerIndex
+              ]
+          )?.name
+        }
+      </div>
+    </div>
+
+    <button
+      onClick={() =>
+        setIsPlayModeActive(
+          false
+        )
+      }
+      className="rounded-2xl bg-zinc-800 px-5 py-3 font-bold transition hover:bg-zinc-700"
+    >
+      Scoreboard
+    </button>
+  </div>
+</div>
 
       <div className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
         <div className="mb-5 text-sm font-bold uppercase tracking-[0.2em] text-zinc-400">
@@ -2979,8 +2973,8 @@ hasRolledDice ? (
           >
             {playModeBonusMode ===
             "general-only"
-              ? `⭐ Bonus generál (+${bonusDifference})`
-              : `⭐ Bonus (+${bonusDifference})`}
+              ? `⭐ Bonus generál +${bonusDifference}`
+: `⭐ Bonus +${bonusDifference}`}
           </button>
 
           <button
@@ -3091,13 +3085,11 @@ hasRolledDice ? (
                   : "bg-purple-600 hover:bg-purple-500"
             }`}
           >
-            HÁZEJ:) Zbývající hody:
-            {" "}
-            (
-            {
-              remainingRolls
-            }
-            )
+            HÁZEJ · Zbývá:
+{" "}
+{
+  remainingRolls
+}
           </button>
           )}
         </div>
