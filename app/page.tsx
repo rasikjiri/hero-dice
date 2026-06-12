@@ -2854,7 +2854,7 @@ currentCombination && (
 )}
 
 {isPlayModeActive && (
-  <div className="fixed inset-0 z-[150] overflow-y-auto bg-[#111] p-4 text-white">
+  <div className="fixed inset-0 z-[150] overflow-y-auto bg-black/60 backdrop-blur-sm p-4 text-white">
     <div className="mx-auto flex w-full max-w-4xl flex-col">
       <div className="mb-4" />
 
