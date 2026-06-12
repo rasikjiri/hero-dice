@@ -2859,7 +2859,7 @@ currentCombination && (
       <div className="mb-4" />
 
       <div className="rounded-3xl border border-purple-500/20 bg-zinc-900 p-8">
-  <div className="flex items-start justify-between gap-4">
+  <div className="grid grid-cols-3 items-start gap-8">
     <div>
       <div className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
         Aktuální hráč
@@ -2878,14 +2878,51 @@ currentCombination && (
       </div>
     </div>
 
+    <div className="flex h-full flex-col items-center justify-center text-center">
+      <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500">
+        Aktuální kombinace
+      </div>
+
+      <div className="mt-3 min-h-[84px]">
+        {currentCombination &&
+        hasRolledDice ? (
+          <>
+            <div className="text-3xl font-black text-green-400">
+              {
+                currentCombination.combination
+              }
+            </div>
+
+            <div className="mt-1 text-lg font-bold text-zinc-300">
+              Score:
+              {" "}
+              {
+                currentCombination.score
+              }
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-3xl font-black text-zinc-800">
+              —
+            </div>
+
+            <div className="mt-1 text-lg font-bold text-zinc-800">
+              —
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+
     <button
-      onClick={() =>
-        setIsPlayModeActive(
-          false
-        )
-      }
-      className="rounded-2xl bg-zinc-800 px-5 py-3 font-bold transition hover:bg-zinc-700"
-    >
+  onClick={() =>
+    setIsPlayModeActive(
+      false
+    )
+  }
+  className="justify-self-end rounded-2xl bg-green-800 px-5 py-3 font-bold transition hover:bg-green-700"
+>
       Scoreboard
     </button>
   </div>
@@ -2920,35 +2957,6 @@ currentCombination && (
                 {dice}
               </button>
             )
-          )}
-        </div>
-
-        <div className="mt-6 text-center">
-          <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500">
-            Aktuální kombinace
-          </div>
-
-          {currentCombination &&
-hasRolledDice ? (
-            <div className="mt-3">
-              <div className="text-3xl font-black text-green-400">
-                {
-                  currentCombination.combination
-                }
-              </div>
-
-              <div className="mt-1 text-lg font-bold text-zinc-300">
-                Score:
-                {" "}
-                {
-                  currentCombination.score
-                }
-              </div>
-            </div>
-          ) : (
-            <div className="mt-3 text-xl font-black text-zinc-600">
-              —
-            </div>
           )}
         </div>
 
@@ -3050,7 +3058,7 @@ hasRolledDice ? (
     : "cursor-not-allowed bg-zinc-700 text-zinc-400"
 }`}
           >
-            ZAPSAT SKÓRE
+            Zapsat skóre
           </button>
 
 {remainingRolls <= 0 && (
@@ -3085,7 +3093,7 @@ hasRolledDice ? (
                   : "bg-purple-600 hover:bg-purple-500"
             }`}
           >
-            HÁZEJ · Zbývá:
+            Zbývá hodů:
 {" "}
 {
   remainingRolls
