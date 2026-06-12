@@ -139,6 +139,26 @@ const [
   setShowGameMenu,
 ] = useState(false);
 
+useEffect(() => {
+  const handleClickOutside = () => {
+    setShowGameMenu(false);
+  };
+
+  if (showGameMenu) {
+    document.addEventListener(
+      "click",
+      handleClickOutside
+    );
+  }
+
+  return () => {
+    document.removeEventListener(
+      "click",
+      handleClickOutside
+    );
+  };
+}, [showGameMenu]);
+
 const [
   showSaveGameConfirm,
   setShowSaveGameConfirm,
@@ -159,6 +179,11 @@ const [
 const [
   showPlayModeSetup,
   setShowPlayModeSetup,
+] = useState(false);
+
+const [
+  showPlayModeHelp,
+  setShowPlayModeHelp,
 ] = useState(false);
 
 const [
@@ -1793,7 +1818,12 @@ setShowFinishedGame(true);
   ▶ Play Mode
 </button>
 
-    <div className="relative">
+    <div
+  className="relative"
+  onClick={(e) =>
+    e.stopPropagation()
+  }
+>
   <button
     onClick={() =>
       setShowGameMenu(
@@ -2511,14 +2541,20 @@ setScreen("game");
     PLAY MODE
   </h2>
 
-  <div className="group relative">
-    <button
-      className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-sm font-black text-white"
-    >
-      ?
-    </button>
+  <div className="relative">
+  <button
+    onClick={() =>
+      setShowPlayModeHelp(
+        (prev) => !prev
+      )
+    }
+    className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-sm font-black text-white"
+  >
+    ?
+  </button>
 
-    <div className="pointer-events-none absolute left-1/2 top-11 z-10 w-[260px] -translate-x-1/2 rounded-2xl border border-green-500/20 bg-zinc-950 p-4 text-left text-sm text-zinc-300 opacity-0 shadow-2xl transition duration-200 group-hover:opacity-100">
+  {showPlayModeHelp && (
+    <div className="absolute left-1/2 top-11 z-20 w-[260px] -translate-x-1/2 rounded-2xl border border-green-500/20 bg-zinc-950 p-4 text-left text-sm text-zinc-300 shadow-2xl">
       <div className="mb-2 font-black uppercase tracking-wide text-green-400">
         Ligové statistiky
       </div>
@@ -2537,7 +2573,8 @@ setScreen("game");
         </div>
       </div>
     </div>
-  </div>
+  )}
+</div>
 </div>
 
         <button
