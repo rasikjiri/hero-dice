@@ -244,6 +244,11 @@ const [
 ] = useState(false);
 
 const [
+  isRolling,
+  setIsRolling,
+] = useState(false);
+
+const [
   showPlayModeResult,
   setShowPlayModeResult,
 ] = useState(false);
@@ -676,9 +681,12 @@ window.scrollTo({
 const toggleDiceLock = (
   index: number
 ) => {
-  if (!hasRolledDice) {
-    return;
-  }
+  if (
+  !hasRolledDice ||
+  isRolling
+) {
+  return;
+}
 
   if (
     confirmedLockedDice[
@@ -767,7 +775,8 @@ const canEvaluateCombination =
   hasRolledDice;
 
 const currentCombination =
-  hasRolledDice
+  hasRolledDice &&
+  !isRolling
     ? detectCombination(
         playModeDice
       )
@@ -995,31 +1004,92 @@ setSelectedGeneralValue(
 };
 
 const rollAllDice = () => {
-  if (remainingRolls <= 0)
+  if (
+    remainingRolls <= 0 ||
+    isRolling
+  ) {
     return;
+  }
 
-  const newDice =
-    playModeDice.map(
-      (dice, index) => {
-        if (lockedDice[index]) {
-          return dice;
-        }
+  setIsRolling(true);
 
-        return (
-          Math.floor(
-            Math.random() * 6
-          ) + 1
+  let ticks = 0;
+
+  const interval =
+    setInterval(() => {
+      setPlayModeDice(
+        (prev) =>
+          prev.map(
+            (
+              dice,
+              index
+            ) => {
+              if (
+                lockedDice[
+                  index
+                ]
+              ) {
+                return dice;
+              }
+
+              return (
+                Math.floor(
+                  Math.random() *
+                    6
+                ) + 1
+              );
+            }
+          )
+      );
+
+      ticks++;
+
+      if (ticks >= 8) {
+        clearInterval(
+          interval
+        );
+
+        const finalDice =
+          playModeDice.map(
+            (
+              dice,
+              index
+            ) => {
+              if (
+                lockedDice[
+                  index
+                ]
+              ) {
+                return dice;
+              }
+
+              return (
+                Math.floor(
+                  Math.random() *
+                    6
+                ) + 1
+              );
+            }
+          );
+
+        setPlayModeDice(
+          finalDice
+        );
+
+        setHasRolledDice(
+          true
+        );
+
+        setRemainingRolls(
+          (prev) =>
+            prev - 1
+        );
+
+        setIsRolling(
+          false
         );
       }
-    );
-
-  setPlayModeDice(newDice);
-  setHasRolledDice(true);
-
-
-setRemainingRolls(
-  (prev) => prev - 1
-);
+    }, 133);
 };
 
 const saveFunGame =
