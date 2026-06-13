@@ -3499,14 +3499,14 @@ canSavePlayModeScore &&
 >
           <div className="max-w-xl rounded-2xl bg-black p-10 text-center text-white">
             <h2 className="mb-8 text-5xl">
-              🏆 Konec hry
+              🏆
             </h2>
 
             <p className="mb-3 text-3xl font-bold">
-              Vítěz
+              vítězem se stává
             </p>
 
-            <p className="mb-6 text-5xl font-black text-green-700">
+            <p className="mb-6 text-5xl font-black text-yellow-400">
               {winner}
             </p>
 
