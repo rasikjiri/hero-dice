@@ -760,7 +760,7 @@ const currentCombination =
         playModeDice
       )
     : null;
-
+    
 const canStartPlayMode =
   !selectedPlayers.some(
     (playerId) => {
@@ -794,6 +794,29 @@ const playModeCategoryMap: Record<
   Dvojice: "dvojce",
   Trojice: "trojce",
 };
+
+const currentPlayModeScore =
+  currentCombination
+    ? scores[
+        selectedPlayers[
+          currentPlayPlayerIndex
+        ]
+      ]?.[
+        playModeCategoryMap[
+          currentCombination
+            .combination
+        ]
+      ]
+    : undefined;
+
+const canSavePlayModeScore =
+  !currentCombination ||
+  !playModeAllowRewrite
+    ? true
+    : currentPlayModeScore ===
+        undefined ||
+      currentCombination.score >
+        currentPlayModeScore;
 
 const savePlayModeScore =
   () => {
@@ -1890,7 +1913,7 @@ for (let i = 0; i < 18; i++) {
     }
     className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500"
   >
-    ⚙ Hra
+    Hra
   </button>
 
   {showGameMenu && (
@@ -3088,7 +3111,7 @@ currentCombination && (
     ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
     : playModeBonusMode ===
         "general-only"
-      ? "bg-green-600 text-white hover:bg-green-500"
+      ? "bg-yellow-500 text-white hover:bg-yellow-400"
       : "bg-yellow-500 text-black hover:bg-yellow-400"
 }`}
           >
@@ -3120,6 +3143,7 @@ currentCombination && (
             disabled={
   !currentCombination ||
   !hasRolledDice ||
+  !canSavePlayModeScore ||
   (
     bonusUsed &&
     playModeBonusMode ===
@@ -3145,7 +3169,8 @@ currentCombination && (
 }
             className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
   currentCombination &&
-  hasRolledDice &&
+hasRolledDice &&
+canSavePlayModeScore &&
   !(
     bonusUsed &&
     playModeBonusMode ===
