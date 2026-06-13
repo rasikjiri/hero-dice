@@ -1713,6 +1713,13 @@ for (let i = 0; i < 18; i++) {
 
       <div className="flex flex-wrap gap-3">
   <button
+    onClick={loadSavedGames}
+    className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500 md:text-xl"
+  >
+    Načíst hru
+  </button>
+
+  <button
     onClick={() =>
       setShowAdmin(true)
     }
@@ -1722,14 +1729,14 @@ for (let i = 0; i < 18; i++) {
   </button>
 
   <button
-  onClick={() =>
-    setShowStatistics(true)
-  }
-  className="rounded-2xl bg-green-600 px-6 py-3 text-lg font-bold transition hover:bg-green-700 md:text-xl"
->
-  Statistiky
-</button>
-      </div>
+    onClick={() =>
+      setShowStatistics(true)
+    }
+    className="rounded-2xl bg-green-600 px-6 py-3 text-lg font-bold transition hover:bg-green-700 md:text-xl"
+  >
+    Statistiky
+  </button>
+</div>
     </div>
 
           <div className="mt-8 md:mt-10">
@@ -1965,31 +1972,40 @@ for (let i = 0; i < 18; i++) {
   </>
 ) : (
     <>
-      <button
-  onClick={loadSavedGames}
-  className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500"
->
-  Načíst hru
-</button>
+  <button
+    onClick={() =>
+      setShowStatistics(true)
+    }
+    className="rounded-2xl bg-green-600 px-6 py-3 text-lg font-bold transition hover:bg-green-700"
+  >
+    Statistiky
+  </button>
 
-<button
-  onClick={() =>
-    setShowAdmin(true)
-  }
-  className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
->
-  Admin
-</button>
+  <button
+    onClick={loadSavedGames}
+    className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500"
+  >
+    Načíst hru
+  </button>
 
-<button
-  onClick={() =>
-    setScreen("home")
-  }
-  className="rounded-2xl bg-green-700 px-6 py-3 text-lg font-bold transition hover:bg-green-600"
->
-  Domů
-</button>
-    </>
+  <button
+    onClick={() =>
+      setShowAdmin(true)
+    }
+    className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
+  >
+    Admin
+  </button>
+
+  <button
+    onClick={() =>
+      setScreen("home")
+    }
+    className="rounded-2xl bg-green-700 px-6 py-3 text-lg font-bold transition hover:bg-green-600"
+  >
+    Domů
+  </button>
+</>
   )}
 </div>
 </div>
