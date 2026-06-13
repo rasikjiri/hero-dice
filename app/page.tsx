@@ -1088,7 +1088,7 @@ const rollAllDice = () => {
 
       ticks++;
 
-      if (ticks >= 8) {
+      if (ticks >= 6) {
         clearInterval(
           interval
         );
