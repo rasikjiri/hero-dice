@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import StatisticsModal from "./components/StatisticsModal";
 
@@ -11,6 +16,7 @@ import { gameCategories } from "./data/gameCategories";
 import { supabase } from "./lib/supabase";
 
 import { detectCombination } from "./lib/playMode";
+import confetti from "canvas-confetti";
 
 import {
   saveFinishedGame,
@@ -111,6 +117,14 @@ const winSounds = [
   "/sounds/win/wow2.mp3",
   "/sounds/win/wow3.mp3",
 ];
+
+const celebrationAudioRef =
+  useRef<HTMLAudioElement | null>(
+    null
+  );
+
+const celebrationTimeoutsRef =
+  useRef<number[]>([]);
 
   const [scores, setScores] =
     useState<ScoreMap>({});
@@ -1582,9 +1596,31 @@ const audio = new Audio(
 
 audio.volume = 0.8;
 
+celebrationAudioRef.current =
+  audio;
+
 audio.play().catch(() => {});
 
 setShowFinishedGame(true);
+
+for (let i = 0; i < 18; i++) {
+  const timeoutId =
+    window.setTimeout(() => {
+      confetti({
+        particleCount: 35,
+        spread: 100,
+        startVelocity: 35,
+        origin: {
+          x: Math.random(),
+          y: 0.6,
+        },
+      });
+    }, i * 500);
+
+  celebrationTimeoutsRef.current.push(
+    timeoutId
+  );
+}
           };
 
   finishGame();
@@ -3406,7 +3442,20 @@ currentCombination && (
 
       {/* WINNER MODAL */}
       {showFinishedGame && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4">
+        <div
+  className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
+  onClick={() => {
+    celebrationAudioRef.current?.pause();
+
+    celebrationTimeoutsRef.current.forEach(
+      clearTimeout
+    );
+
+    celebrationTimeoutsRef.current = [];
+
+    setShowFinishedGame(false);
+  }}
+>
           <div className="max-w-xl rounded-2xl bg-black p-10 text-center text-white">
             <h2 className="mb-8 text-5xl">
               🏆 Konec hry
