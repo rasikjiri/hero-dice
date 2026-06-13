@@ -260,6 +260,18 @@ const [
   [1, 1, 1, 1, 1, 1]
 );
 
+const diceImages: Record<
+  number,
+  string
+> = {
+  1: "/dice/1.png",
+  2: "/dice/2.png",
+  3: "/dice/3.png",
+  4: "/dice/4.png",
+  5: "/dice/5.png",
+  6: "/dice/6.png",
+};
+
 const [
   lockedDice,
   setLockedDice,
@@ -3086,31 +3098,38 @@ currentCombination && (
         </div>
 
         <div className="flex flex-wrap justify-center gap-4">
-          {playModeDice.map(
-            (
-              dice,
-              index
-            ) => (
-              <button
-                key={index}
-                onClick={() =>
-                  toggleDiceLock(
-                    index
-                  )
-                }
-                className={`flex h-20 w-20 items-center justify-center rounded-2xl border text-4xl font-black transition ${
-                  lockedDice[
-                    index
-                  ]
-                    ? "scale-110 border-yellow-400 bg-yellow-500 text-black shadow-lg shadow-yellow-500/30"
-                    : "border-zinc-700 bg-black text-white hover:border-purple-400"
-                }`}
-              >
-                {dice}
-              </button>
-            )
-          )}
-        </div>
+  {playModeDice.map(
+    (
+      dice,
+      index
+    ) => (
+      <button
+        key={index}
+        onClick={() =>
+          toggleDiceLock(
+            index
+          )
+        }
+        className={`flex h-20 w-20 items-center justify-center rounded-2xl border-4 transition ${
+  lockedDice[
+    index
+  ]
+    ? "border-black bg-white shadow-xl shadow-yellow-500/70 ring-4 ring-yellow-400"
+    : "border-black bg-white"
+}`}
+      >
+        <img
+          src={
+            diceImages[dice]
+          }
+          alt={`Kostka ${dice}`}
+          className="h-18 w-18 object-contain"
+          draggable={false}
+        />
+      </button>
+    )
+  )}
+</div>
 
         <div className="mx-auto mt-8 grid w-full max-w-xl grid-cols-1 gap-4 md:grid-cols-2">
           <button
