@@ -121,13 +121,13 @@ if (
     };
   }
 
-  // 4-2
+  // Čtyři-dvě
   if (
     values[0] === 4 &&
     values[1] === 2
   ) {
     return {
-      combination: "4-2",
+      combination: "Čtyři-dvě",
       score,
     };
   }

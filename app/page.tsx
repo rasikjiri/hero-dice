@@ -816,7 +816,7 @@ const playModeCategoryMap: Record<
   Pyramida: "pyramida",
   Hrozen: "hrozen",
   Postupka: "postupka",
-  "4-2": "ctyri_dva",
+  "Čtyři-dvě": "ctyri_dva",
   Dvojice: "dvojce",
   Trojice: "trojce",
 };
@@ -2066,7 +2066,7 @@ for (let i = 0; i < 18; i++) {
             false
           );
         }}
-        className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800"
+        className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800 hover:text-yellow-400"
       >
         Načíst hru
       </button>
@@ -2081,10 +2081,25 @@ for (let i = 0; i < 18; i++) {
             false
           );
         }}
-        className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800"
+        className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800 hover:text-yellow-400"
       >
         Uložit hru
       </button>
+      
+      <button
+  onClick={() => {
+    setShowHomeRestoreModal(
+      true
+    );
+
+    setShowGameMenu(
+      false
+    );
+  }}
+  className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800 hover:text-yellow-400"
+>
+  Nová hra
+</button>
 
       <button
         onClick={() => {
@@ -2096,7 +2111,7 @@ for (let i = 0; i < 18; i++) {
             false
           );
         }}
-        className="w-full px-5 py-4 text-left font-bold text-red-400 transition hover:bg-zinc-800"
+        className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800 hover:text-yellow-400"
       >
         Ukončit hru
       </button>
