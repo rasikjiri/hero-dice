@@ -842,6 +842,143 @@ const currentPlayModeScore =
       ]
     : undefined;
 
+const hasLockedDice =
+  lockedDice.some(
+    (dice) => dice
+  );
+
+const hasUsefulFutureMove =
+  useMemo(() => {
+    if (!hasLockedDice) {
+      return null;
+    }
+
+    const playerId =
+      selectedPlayers[
+        currentPlayPlayerIndex
+      ];
+
+    const unlockedIndexes =
+      lockedDice
+        .map(
+          (locked, index) =>
+            locked
+              ? -1
+              : index
+        )
+        .filter(
+          (index) =>
+            index !== -1
+        );
+
+    const testDice = [
+      ...playModeDice,
+    ];
+
+    let foundUsefulMove =
+      false;
+
+    const checkCombination =
+      (
+        position: number
+      ) => {
+        if (
+          foundUsefulMove
+        ) {
+          return;
+        }
+
+        if (
+          position ===
+          unlockedIndexes.length
+        ) {
+          const result =
+            detectCombination(
+              testDice
+            );
+
+          if (!result) {
+            return;
+          }
+
+          const categoryId =
+            playModeCategoryMap[
+              result
+                .combination
+            ];
+
+          if (
+            !categoryId
+          ) {
+            return;
+          }
+
+          const existingScore =
+            scores[playerId]?.[
+              categoryId
+            ];
+
+          if (
+            existingScore ===
+            undefined
+          ) {
+            foundUsefulMove =
+              true;
+
+            return;
+          }
+
+          if (
+            playModeAllowRewrite &&
+            result.score >
+              existingScore
+          ) {
+            foundUsefulMove =
+              true;
+          }
+
+          return;
+        }
+
+        const diceIndex =
+          unlockedIndexes[
+            position
+          ];
+
+        for (
+          let value = 1;
+          value <= 6;
+          value++
+        ) {
+          testDice[
+            diceIndex
+          ] = value;
+
+          checkCombination(
+            position + 1
+          );
+
+          if (
+            foundUsefulMove
+          ) {
+            return;
+          }
+        }
+      };
+
+    checkCombination(0);
+
+    return foundUsefulMove;
+  }, [
+    hasLockedDice,
+    lockedDice,
+    playModeDice,
+    selectedPlayers,
+    currentPlayPlayerIndex,
+    scores,
+    playModeAllowRewrite,
+  ]);
+    
 const canSavePlayModeScore =
   !currentCombination ||
   !playModeAllowRewrite
@@ -3297,15 +3434,26 @@ currentCombination && (
 
       <div className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
         <div className="mb-6 flex items-center justify-between">
-  <div className="text-sm font-bold tracking-[0.3em] text-gray-400">
+  <div className="text-lg font-bold tracking-[0.3em] text-gray-400">
     KOSTKY
   </div>
 
-  {isLeaguePlayMode && (
-    <div className="text-xs font-bold uppercase tracking-[0.25em] text-green-400">
-      LIGOVÁ HRA
+  <div className="flex items-center gap-62">
+    <div className="text-2xl leading-none">
+      {hasUsefulFutureMove ===
+      null
+        ? "🙂"
+        : hasUsefulFutureMove
+          ? "😀"
+          : "☹️"}
     </div>
-  )}
+
+    {isLeaguePlayMode && (
+      <div className="text-lg font-bold uppercase tracking-[0.25em] text-green-400">
+        LIGOVÁ HRA
+      </div>
+    )}
+  </div>
 </div>
 
         <div className="flex flex-wrap justify-center gap-4">
