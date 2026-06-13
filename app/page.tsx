@@ -106,6 +106,12 @@ export default function Home() {
   const [showFinishedGame, setShowFinishedGame] =
     useState(false);
 
+const winSounds = [
+  "/sounds/win/wow1.mp3",
+  "/sounds/win/wow2.mp3",
+  "/sounds/win/wow3.mp3",
+];
+
   const [scores, setScores] =
     useState<ScoreMap>({});
 
@@ -1561,6 +1567,22 @@ setShowPlayModeResult(
 localStorage.removeItem(
   "heroDiceCurrentGame"
 );
+
+const randomSound =
+  winSounds[
+    Math.floor(
+      Math.random() *
+      winSounds.length
+    )
+  ];
+
+const audio = new Audio(
+  randomSound
+);
+
+audio.volume = 0.8;
+
+audio.play().catch(() => {});
 
 setShowFinishedGame(true);
           };
