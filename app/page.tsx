@@ -1914,7 +1914,7 @@ if (celebrationType === 2) {
     onClick={() =>
       setShowStatistics(true)
     }
-    className="rounded-2xl bg-green-600 px-6 py-3 text-lg font-bold transition hover:bg-green-700 md:text-xl"
+    className="rounded-2xl bg-yellow-500 px-6 py-3 text-lg font-bold transition hover:bg-yellow-400 md:text-xl"
   >
     Statistiky
   </button>
@@ -2173,7 +2173,7 @@ if (celebrationType === 2) {
     onClick={() =>
       setShowStatistics(true)
     }
-    className="rounded-2xl bg-green-600 px-6 py-3 text-lg font-bold transition hover:bg-green-700"
+    className="rounded-2xl bg-yellow-500 px-6 py-3 text-lg font-bold transition hover:bg-yellow-400"
   >
     Statistiky
   </button>
@@ -2198,7 +2198,7 @@ if (celebrationType === 2) {
     onClick={() =>
       setScreen("home")
     }
-    className="rounded-2xl bg-green-700 px-6 py-3 text-lg font-bold transition hover:bg-green-600"
+    className="rounded-2xl bg-red-700 px-6 py-3 text-lg font-bold transition hover:bg-red-600"
   >
     Domů
   </button>
