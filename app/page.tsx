@@ -2288,16 +2288,16 @@ for (let i = 0; i < 18; i++) {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-green-800">
-                    <th className="w-[28%] border border-white p-3 text-left">
-                      Kombinace
+                    <th className="w-[14%] border border-white p-3 text-left">
+                    KOMBINACE
                     </th>
 
                     <th className="w-[9%] border border-white p-3 text-center">
-                      MIN
+                      min
                     </th>
 
                     <th className="w-[9%] border border-white p-3 text-center">
-                      MAX
+                      max
                     </th>
 
                     {selectedPlayers.map(
@@ -3281,8 +3281,8 @@ currentCombination && (
           >
             {playModeBonusMode ===
             "general-only"
-              ? `⭐ Bonus generál +${bonusDifference}`
-: `⭐ Bonus +${bonusDifference}`}
+              ? `Bonus generál +${bonusDifference}`
+: `Bonus +${bonusDifference}`}
           </button>
 
           <button
