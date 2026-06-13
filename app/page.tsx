@@ -739,7 +739,14 @@ const toggleDiceLock = (
         (dice) => dice
       );
 
-    if (!anyLocked) {
+    if (
+      !anyLocked &&
+      !(
+        bonusUsed &&
+        playModeBonusMode ===
+          "general-only"
+      )
+    ) {
       setSelectedGeneralValue(
         null
       );
@@ -968,28 +975,6 @@ const activateBonus = () => {
       );
 
       setBonusUsed(false);
-
-      setLockedDice([
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ]);
-
-      setConfirmedLockedDice([
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ]);
-
-      setSelectedGeneralValue(
-        null
-      );
     }
 
     return;
@@ -1017,28 +1002,6 @@ if (
     (prev) =>
       prev + bonusDifference
   );
-
-  setConfirmedLockedDice([
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ]);
-
-  setLockedDice([
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ]);
-
-setSelectedGeneralValue(
-  null
-);
 
   setBonusUsed(true);
 
@@ -1747,8 +1710,13 @@ const randomSound =
     )
   ];
 
-const audio = new Audio(
+console.log(
+  "WIN SOUND:",
   randomSound
+);
+
+const audio = new Audio(
+  `${randomSound}?t=${Date.now()}`
 );
 
 audio.volume = 0.8;
@@ -1760,23 +1728,103 @@ audio.play().catch(() => {});
 
 setShowFinishedGame(true);
 
-for (let i = 0; i < 18; i++) {
-  const timeoutId =
-    window.setTimeout(() => {
-      confetti({
-        particleCount: 35,
-        spread: 100,
-        startVelocity: 35,
-        origin: {
-          x: Math.random(),
-          y: 0.6,
-        },
-      });
-    }, i * 500);
-
-  celebrationTimeoutsRef.current.push(
-    timeoutId
+const celebrationType =
+  Math.floor(
+    Math.random() * 3
   );
+
+if (celebrationType === 0) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 35,
+            spread: 100,
+            startVelocity: 35,
+            origin: {
+              x: Math.random(),
+              y: 0.6,
+            },
+          });
+        },
+        i * 500
+      );
+
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
+}
+
+if (celebrationType === 1) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 60,
+            spread: 180,
+            startVelocity: 60,
+            origin: {
+              x: 0.5,
+              y: 0.6,
+            },
+          });
+        },
+        i * 500
+      );
+
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
+}
+
+if (celebrationType === 2) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 40,
+            angle: 60,
+            spread: 55,
+            origin: {
+              x: 0,
+              y: 0.7,
+            },
+          });
+
+          confetti({
+            particleCount: 40,
+            angle: 120,
+            spread: 55,
+            origin: {
+              x: 1,
+              y: 0.7,
+            },
+          });
+        },
+        i * 250
+      );
+
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
 }
           };
 
@@ -2503,7 +2551,7 @@ for (let i = 0; i < 18; i++) {
 
             startNewGame(true);
           }}
-          className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
+          className="flex-1 rounded-2xl bg-yellow-500 px-5 py-4 text-lg font-bold text-white transition hover:bg-yellow-400"
         >
           Nová hra
         </button>
@@ -2547,9 +2595,9 @@ for (let i = 0; i < 18; i++) {
               false
             );
           }}
-          className="flex-1 rounded-2xl bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:bg-yellow-400"
+          className="flex-1 rounded-2xl bg-green-600 px-5 py-4 text-lg font-black text-black transition hover:bg-green-500"
         >
-          Obnovit
+          Skóre board
         </button>
       </div>
     </div>
@@ -3194,7 +3242,7 @@ currentCombination && (
               }
             </div>
 
-            <div className="mt-1 text-lg font-bold text-zinc-300">
+            <div className="mt-1 text-lg font-bold text-green-400">
               Score:
               {" "}
               {
