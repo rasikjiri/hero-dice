@@ -316,6 +316,11 @@ const [
 ] = useState(false);
 
 const [
+  bonusActivatedThisTurn,
+  setBonusActivatedThisTurn,
+] = useState(false);
+
+const [
   selectedGeneralValue,
   setSelectedGeneralValue,
 ] = useState<
@@ -953,7 +958,42 @@ setSelectedGeneralValue(
 };
 
 const activateBonus = () => {
-  if (bonusUsed) return;
+  if (bonusUsed) {
+  if (
+    bonusActivatedThisTurn
+  ) {
+      setRemainingRolls(
+        (prev) =>
+          prev - bonusDifference
+      );
+
+      setBonusUsed(false);
+
+      setLockedDice([
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]);
+
+      setConfirmedLockedDice([
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]);
+
+      setSelectedGeneralValue(
+        null
+      );
+    }
+
+    return;
+  }
 if (
   playModeBonusMode ===
     "general-only"
@@ -1001,6 +1041,10 @@ setSelectedGeneralValue(
 );
 
   setBonusUsed(true);
+
+setBonusActivatedThisTurn(
+  true
+);
 };
 
 const rollAllDice = () => {
@@ -1085,9 +1129,17 @@ const rollAllDice = () => {
             prev - 1
         );
 
-        setIsRolling(
-          false
-        );
+        setConfirmedLockedDice(
+  [...lockedDice]
+);
+
+setBonusActivatedThisTurn(
+  false
+);
+
+setIsRolling(
+  false
+);
       }
     }, 133);
 };
@@ -3163,9 +3215,17 @@ currentCombination && (
 </div>
 
       <div className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
-        <div className="mb-5 text-sm font-bold uppercase tracking-[0.2em] text-zinc-400">
-          Kostky
-        </div>
+        <div className="mb-6 flex items-center justify-between">
+  <div className="text-sm font-bold tracking-[0.3em] text-gray-400">
+    KOSTKY
+  </div>
+
+  {isLeaguePlayMode && (
+    <div className="text-xs font-bold uppercase tracking-[0.25em] text-green-400">
+      LIGOVÁ HRA
+    </div>
+  )}
+</div>
 
         <div className="flex flex-wrap justify-center gap-4">
   {playModeDice.map(
@@ -3180,11 +3240,11 @@ currentCombination && (
             index
           )
         }
-        className={`flex h-20 w-20 items-center justify-center rounded-2xl border-4 transition ${
+        className={`flex h-20 w-20 items-center justify-center rounded-xl border-0 transition ${
   lockedDice[
     index
   ]
-    ? "border-black bg-white shadow-xl shadow-yellow-500/70 ring-4 ring-yellow-400"
+    ? "border-yellow-400 bg-yellow-400"
     : "border-black bg-white"
 }`}
       >
@@ -3193,7 +3253,7 @@ currentCombination && (
             diceImages[dice]
           }
           alt={`Kostka ${dice}`}
-          className="h-18 w-18 object-contain"
+          className="h-[85%] w-[85%] object-contain"
           draggable={false}
         />
       </button>
@@ -3207,9 +3267,8 @@ currentCombination && (
     activateBonus
   }
   disabled={
-    bonusUsed ||
-    generalBonusBlocked
-  }
+  generalBonusBlocked
+}
             className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
   bonusUsed ||
   generalBonusBlocked
@@ -3332,7 +3391,7 @@ canSavePlayModeScore &&
                       "general-only" &&
                     playModeBonusRolls ===
                       6
-                  ? "bg-green-600 hover:bg-green-500"
+                  ? "bg-purple-600 hover:bg-purple-500"
                   : "bg-purple-600 hover:bg-purple-500"
             }`}
           >
