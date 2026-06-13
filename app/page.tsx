@@ -2355,20 +2355,20 @@ if (celebrationType === 2) {
                     KOMBINACE
                     </th>
 
-                    <th className="w-[9%] border border-white p-3 text-center">
-                      min
-                    </th>
+                    <th className="w-[9%] border border-white p-3 text-center text-zinc-300">
+  min
+</th>
 
-                    <th className="w-[9%] border border-white p-3 text-center">
-                      max
-                    </th>
+<th className="w-[9%] border border-white p-3 text-center text-zinc-300">
+  max
+</th>
 
                     {selectedPlayers.map(
                       (playerId, index) => (
                         <th
-                          key={index}
-                          className="border border-white p-3 text-center"
-                        >
+  key={index}
+  className="border border-white p-3 text-center text-xl font-bold"
+>
                           {
   playersState.find(
     (player) =>
@@ -2403,13 +2403,13 @@ if (celebrationType === 2) {
                           </button>
                         </td>
 
-                        <td className="border border-white p-3 text-center">
-                          {category.min}
-                        </td>
+                        <td className="border border-white p-3 text-center text-zinc-300">
+  {category.min}
+</td>
 
-                        <td className="border border-white p-3 text-center">
-                          {category.max}
-                        </td>
+<td className="border border-white p-3 text-center text-zinc-300">
+  {category.max}
+</td>
 
                         {selectedPlayers.map(
                           (
@@ -2444,10 +2444,10 @@ if (celebrationType === 2) {
                               >
                                 <span
                                   className={
-                                    isPerfect
-                                      ? "text-red-500"
-                                      : "text-white"
-                                  }
+  isPerfect
+    ? "text-red-500"
+    : "text-yellow-400"
+}
                                 >
                                   {value ?? ""}
                                 </span>
@@ -2459,7 +2459,7 @@ if (celebrationType === 2) {
                     )
                   )}
 
-                  <tr className="bg-green-950 text-xl font-bold">
+                  <tr className="bg-green-950 text-xl font-bold text-yellow-400">
                     <td className="border border-white p-3">
                       SKÓRE
                     </td>
@@ -2469,20 +2469,38 @@ if (celebrationType === 2) {
                     <td className="border border-white p-3"></td>
 
                     {selectedPlayers.map(
-                      (
-                        playerId,
-                        index
-                      ) => (
-                        <td
-                          key={index}
-                          className="border border-white p-3 text-center"
-                        >
-                          {getPlayerTotal(
-                            playerId
-                          )}
-                        </td>
-                      )
-                    )}
+  (
+    playerId,
+    index
+  ) => {
+    const playerTotal =
+      getPlayerTotal(
+        playerId
+      );
+
+    const highestScore =
+      Math.max(
+        ...selectedPlayers.map(
+          (id) =>
+            getPlayerTotal(id)
+        )
+      );
+
+    return (
+      <td
+        key={index}
+        className={`border border-white p-3 text-center ${
+          playerTotal ===
+          highestScore
+            ? "text-red-500"
+            : "text-yellow-400"
+        }`}
+      >
+        {playerTotal}
+      </td>
+    );
+  }
+)}
                   </tr>
                 </tbody>
               </table>
