@@ -2288,7 +2288,7 @@ for (let i = 0; i < 18; i++) {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-green-800">
-                    <th className="w-[14%] border border-white p-3 text-left">
+                    <th className="w-[21%] border border-white p-3 text-left">
                     KOMBINACE
                     </th>
 
