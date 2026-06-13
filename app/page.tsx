@@ -1977,7 +1977,7 @@ if (celebrationType === 2) {
     {!isUnlocked && (
       <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black p-6">
         <div className="w-full max-w-md rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center shadow-2xl">
-          <h1 className="mb-3 text-5xl font-black text-yellow-400">
+          <h1 className="mb-3 text-5xl font-black text-yellow-400 tracking-[0.14em]">
             HERO DICE
           </h1>
 
@@ -2026,7 +2026,7 @@ if (celebrationType === 2) {
 {screen === "home" && (
   <div className="mx-auto flex w-full max-w-6xl flex-col">
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <h1 className="text-5xl font-black tracking-tight text-yellow-400 md:text-5xl">
+      <h1 className="text-5xl font-black tracking-[0.14em] text-yellow-400 md:text-5xl">
         HERO DICE
       </h1>
 
@@ -2068,23 +2068,23 @@ if (celebrationType === 2) {
           </div>
 
           <div className="mt-10 md:mt-12">
-            <h2 className="mb-6 text-3xl font-bold text-zinc-300 md:text-4xl">
+            <h2 className="mb-6 text-3xl font-bold text-zinc-300 md:text-4xl tracking-[0.1em]">
               TOP HRÁČI
             </h2>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
               <div className="rounded-3xl bg-zinc-900 p-6">
-                <div className="text-yellow-400">
+                <div className="text-yellow-400 tracking-[0.14em]">
                   Výhry
                 </div>
 
-                <div className="mt-3 text-3xl font-black text-white">
+                <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
                   {mounted
                     ? topWins.name
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400">
+                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.21em] ">
                   {mounted
                     ? topWins.value
                     : "-"}
@@ -2092,17 +2092,17 @@ if (celebrationType === 2) {
               </div>
 
               <div className="rounded-3xl bg-zinc-900 p-6">
-                <div className="text-yellow-400">
+                <div className="text-yellow-400 tracking-[0.14em]">
                   Nejlepší skóre
                 </div>
 
-                <div className="mt-3 text-3xl font-black text-white">
+                <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
                   {mounted
                     ? topScore.name
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400">
+                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.21em]">
                   {mounted
                     ? topScore.value
                     : "-"}
@@ -2110,17 +2110,17 @@ if (celebrationType === 2) {
               </div>
 
               <div className="rounded-3xl bg-zinc-900 p-6">
-                <div className="text-yellow-400">
+                <div className="text-yellow-400 tracking-[0.14em]">
                   Počet her
                 </div>
 
-                <div className="mt-3 text-3xl font-black text-white">
+                <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
                   {mounted
                     ? topGamesPlayed.name
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400">
+                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.21em]">
                   {mounted
                     ? topGamesPlayed.value
                     : "-"}
@@ -2128,17 +2128,17 @@ if (celebrationType === 2) {
               </div>
 
               <div className="rounded-3xl bg-zinc-900 p-6">
-                <div className="text-yellow-400">
+                <div className="text-yellow-400 tracking-[0.14em]">
                   Průměrné skóre
                 </div>
 
-                <div className="mt-3 text-3xl font-black text-white">
+                <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
                   {mounted
                     ? topAverage.name
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400">
+                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.21em]">
                   {mounted
                     ? topAverage.value
                     : "-"}
@@ -2146,17 +2146,17 @@ if (celebrationType === 2) {
               </div>
 
               <div className="rounded-3xl bg-zinc-900 p-6">
-                <div className="text-yellow-400">
+                <div className="text-yellow-400 tracking-[0.14em]">
                   Perfektní kategorie
                 </div>
 
-                <div className="mt-3 text-3xl font-black text-white">
+                <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
                   {mounted
                     ? topPerfects.name
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400">
+                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.21em]">
                   {mounted
                     ? topPerfects.value
                     : "-"}
@@ -2164,17 +2164,17 @@ if (celebrationType === 2) {
               </div>
 
               <div className="rounded-3xl bg-zinc-900 p-6">
-                <div className="text-yellow-400">
+                <div className="text-yellow-400 tracking-[0.14em]">
                   Průměr perfektních
                 </div>
 
-                <div className="mt-3 text-3xl font-black text-white">
+                <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
                   {mounted
                     ? topAveragePerfects.name
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400">
+                <div className="mt-2 text-2xl font-black text-yellow-400  tracking-[0.21em]">
                   {mounted
                     ? topAveragePerfects.value
                     : "-"}
@@ -2188,7 +2188,7 @@ if (celebrationType === 2) {
       {screen === "game" && (
         <div className="mx-auto flex w-full max-w-6xl flex-col">
           <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-  <h1 className="text-5xl font-black tracking-tight text-yellow-400">
+  <h1 className="text-5xl font-black tracking-[0.14em] text-yellow-400">
     HERO DICE
   </h1>
 
@@ -2349,10 +2349,10 @@ if (celebrationType === 2) {
               <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="text-sm font-bold uppercase tracking-[0.2em] text-yellow-400">
-                    Nastavení hry
+                    Nastavení
                   </div>
 
-                  <h2 className="mt-2 text-3xl font-black text-white md:text-4xl">
+                  <h2 className="mt-2 text-3xl font-black text-white md:text-4xl  tracking-[0.14em]">
                     Nová hra
                   </h2>
                 </div>
@@ -2484,7 +2484,7 @@ if (celebrationType === 2) {
           )}
 
           {gameStarted && (
-            <div className="w-full overflow-x-auto rounded-2xl border border-zinc-700 bg-zinc-950">
+            <div className="w-full overflow-x-auto rounded-2xl border border-zinc-700 bg-zinc-950 tracking-[0.14em]">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-green-800">
