@@ -111,6 +111,9 @@ export default function Home() {
   const [winnerScore, setWinnerScore] =
     useState(0);
 
+const [gameId, setGameId] =
+  useState<string>("");
+
   const [showFinishedGame, setShowFinishedGame] =
     useState(false);
 
@@ -189,6 +192,11 @@ const [
 const [
   showGameSavedModal,
   setShowGameSavedModal,
+] = useState(false);
+
+const [
+  showGameVersionModal,
+  setShowGameVersionModal,
 ] = useState(false);
 
 const [
@@ -1313,8 +1321,142 @@ const saveFunGame =
     }
   };
 
-const saveGameToSupabase =
+const checkExistingGameVersion =
   async () => {
+    const { data, error } =
+      await supabase
+        .from("saved_games")
+        .select("id")
+        .eq("game_id", gameId);
+
+    if (error) {
+      console.error(error);
+
+      return false;
+    }
+
+    return (
+      data &&
+      data.length > 0
+    );
+  };
+
+const overwriteGameInSupabase =
+  async () => {
+
+    const test = await supabase
+  .from("saved_games")
+  .select("*")
+  .eq(
+    "game_id",
+    gameId
+  );
+
+console.log(
+  "TEST SELECT",
+  test
+);
+    console.log(
+  "OVERWRITE CLICK",
+  {
+    gameId,
+    scores,
+  }
+);
+    try {
+      const gameName =
+        selectedPlayers
+          .map(
+            (player) =>
+              playersState.find(
+                (p) =>
+                  p.id === player
+              )?.name || player
+          )
+          .join(" vs ");
+
+      const { data, error } =
+  await supabase
+    .from("saved_games")
+    .update({
+            name: gameName,
+
+            player_count:
+              playerCount,
+
+            selected_players:
+              selectedPlayers,
+
+            scores,
+
+            game_started:
+              gameStarted,
+
+            game_finished:
+              gameFinished,
+
+            is_play_mode_active:
+              hasStartedPlayMode,
+
+            play_mode_rolls:
+              playModeRolls,
+
+            play_mode_allow_rewrite:
+              playModeAllowRewrite,
+
+            play_mode_bonus_mode:
+              playModeBonusMode,
+
+            play_mode_bonus_rolls:
+              playModeBonusRolls,
+          })
+          .eq(
+  "game_id",
+  gameId
+)
+.select();
+console.log(
+  "OVERWRITE SUCCESS",
+  data
+);
+
+console.log(
+  "OVERWRITE ERROR",
+  error
+);
+      if (error) {
+        console.error(
+          "OVERWRITE GAME ERROR:",
+          error
+        );
+
+        alert(
+          "Nepodařilo se přepsat hru."
+        );
+
+        return;
+      }
+
+      setShowGameVersionModal(
+        false
+      );
+
+      setShowGameSavedModal(
+        true
+      );
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        "Nepodařilo se přepsat hru."
+      );
+    }
+  };
+
+const saveGameToSupabase =
+  async (
+    overrideGameId?: string
+  ) => {
     try {
       const gameName =
         selectedPlayers
@@ -1331,8 +1473,12 @@ const saveGameToSupabase =
         await supabase
           .from("saved_games")
           .insert([
-            {
-              name: gameName,
+  {
+    game_id:
+  overrideGameId ??
+  gameId,
+
+    name: gameName,
 
               player_count:
                 playerCount,
@@ -1629,6 +1775,10 @@ setIsPlayModeActive(
 
   setScores({});
 
+setGameId(
+  crypto.randomUUID()
+);
+
   setScreen("game");
 };
 
@@ -1717,6 +1867,7 @@ useEffect(() => {
     localStorage.setItem(
   "heroDiceCurrentGame",
   JSON.stringify({
+    gameId,
     playerCount,
     selectedPlayers,
     scores,
@@ -1739,7 +1890,7 @@ playModeBonusRolls,
   scores,
   gameStarted,
   gameFinished,
-
+gameId,
   isPlayModeActive,
   playModeRolls,
   playModeAllowRewrite,
@@ -1939,7 +2090,7 @@ if (celebrationType === 0) {
       window.setTimeout(
         () => {
           confetti({
-            particleCount: 35,
+            particleCount: 333,
             spread: 100,
             startVelocity: 35,
             origin: {
@@ -1967,7 +2118,7 @@ if (celebrationType === 1) {
       window.setTimeout(
         () => {
           confetti({
-            particleCount: 60,
+            particleCount: 333,
             spread: 180,
             startVelocity: 60,
             origin: {
@@ -1995,7 +2146,7 @@ if (celebrationType === 2) {
       window.setTimeout(
         () => {
           confetti({
-            particleCount: 40,
+            particleCount: 333,
             angle: 60,
             spread: 55,
             origin: {
@@ -2005,7 +2156,7 @@ if (celebrationType === 2) {
           });
 
           confetti({
-            particleCount: 40,
+            particleCount: 333,
             angle: 120,
             spread: 55,
             origin: {
@@ -2014,7 +2165,7 @@ if (celebrationType === 2) {
             },
           });
         },
-        i * 250
+        i * 500
       );
 
     celebrationTimeoutsRef.current.push(
@@ -2874,6 +3025,10 @@ if (celebrationType === 2) {
             const parsed =
               JSON.parse(savedGame);
 
+setGameId(
+  parsed.gameId ?? ""
+);
+
             setPlayerCount(
               parsed.playerCount
             );
@@ -2989,6 +3144,11 @@ setPlayModeBonusRolls(
               <div className="flex gap-3">
   <button
     onClick={() => {
+      
+      setGameId(
+  game.game_id ?? ""
+);
+      
       setPlayerCount(
         game.player_count
       );
@@ -3040,6 +3200,10 @@ setPlayModeBonusRolls(
       localStorage.setItem(
   "heroDiceCurrentGame",
   JSON.stringify({
+    
+    gameId:
+  game.game_id,
+    
     playerCount:
       game.player_count,
 
@@ -3141,6 +3305,11 @@ setScreen("game");
 
             const parsed =
               JSON.parse(savedGame);
+
+              setGameId(
+  parsed.gameId ?? ""
+);
+
 
             setPlayerCount(
               parsed.playerCount
@@ -3585,6 +3754,65 @@ if (celebrationType === 2) {
       >
         OK
       </button>
+    </div>
+  </div>
+)}
+
+{/* GAME VERSION MODAL */}
+{showGameVersionModal && (
+  <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-[520px] rounded-3xl bg-zinc-900 p-8 text-center text-white">
+      <h2 className="mb-5 text-3xl font-black text-yellow-400">
+        Hra již existuje
+      </h2>
+
+      <p className="mb-8 text-zinc-300">
+        Tato rozehraná hra už byla dříve uložena.
+      </p>
+
+      <div className="flex flex-wrap justify-center gap-4">
+        <button
+          onClick={() =>
+            setShowGameVersionModal(
+              false
+            )
+          }
+          className="rounded-xl bg-zinc-700 px-6 py-4 font-bold text-white transition hover:bg-zinc-600"
+        >
+          Zrušit
+        </button>
+
+        <button
+          onClick={async () => {
+            const newGameId =
+  crypto.randomUUID();
+
+setGameId(
+  newGameId
+);
+
+setShowGameVersionModal(
+  false
+);
+
+await saveGameToSupabase(
+  newGameId
+);
+          }}
+          className="rounded-xl bg-blue-600 px-6 py-4 font-black text-white transition hover:bg-blue-500"
+        >
+          Nová verze
+        </button>
+
+        <button
+          onClick={async () => {
+  await overwriteGameInSupabase();
+}}
+          className="rounded-xl bg-green-600 px-6 py-4 font-black text-white transition hover:bg-green-500"
+        >
+          Přepsat
+        </button>
+      </div>
     </div>
   </div>
 )}
@@ -4742,12 +4970,23 @@ canSavePlayModeScore &&
 
         <button
           onClick={async () => {
-            await saveGameToSupabase();
+  const exists =
+    await checkExistingGameVersion();
 
-            setShowSaveGameConfirm(
-              false
-            );
-          }}
+  setShowSaveGameConfirm(
+    false
+  );
+
+  if (exists) {
+    setShowGameVersionModal(
+      true
+    );
+
+    return;
+  }
+
+  await saveGameToSupabase();
+}}
           className="rounded-lg bg-green-600 px-5 py-3 font-bold text-white transition hover:bg-green-500"
         >
           Uložit
