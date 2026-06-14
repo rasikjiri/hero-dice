@@ -11,6 +11,8 @@ import StatisticsModal from "./components/StatisticsModal";
 
 import FunGamesModal from "./components/FunGamesModal";
 
+import HelpModal from "./components/HelpModal";
+
 import { gameCategories } from "./data/gameCategories";
 
 import { supabase } from "./lib/supabase";
@@ -190,6 +192,17 @@ const [
 ] = useState(false);
 
 const [
+  showFinishGameConfirm,
+  setShowFinishGameConfirm,
+] = useState(false);
+
+const [
+  pendingFinishedGame,
+  setPendingFinishedGame,
+] = useState<any>(null);
+
+
+const [
   deleteSavedGameId,
   setDeleteSavedGameId,
 ] = useState<string | null>(
@@ -204,6 +217,11 @@ const [
 const [
   showPlayModeHelp,
   setShowPlayModeHelp,
+] = useState(false);
+
+const [
+  showHelp,
+  setShowHelp,
 ] = useState(false);
 
 const [
@@ -1789,10 +1807,22 @@ setWinner(winnerName);
 
 setWinnerScore(bestScore);
 
-if (
-  !hasStartedPlayMode ||
-  isLeaguePlayMode
-) {
+if (!hasStartedPlayMode) {
+  setPendingFinishedGame({
+    winner: bestPlayer,
+    winnerScore: bestScore,
+    players: selectedPlayers,
+    scores: gameResults,
+  });
+
+  setShowFinishGameConfirm(
+    true
+  );
+
+  return;
+}
+
+if (isLeaguePlayMode) {
   await saveFinishedGame({
     date:
       new Date().toISOString(),
@@ -2026,9 +2056,20 @@ if (celebrationType === 2) {
 {screen === "home" && (
   <div className="mx-auto flex w-full max-w-6xl flex-col">
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <h1 className="text-5xl font-black tracking-[0.14em] text-yellow-400 md:text-5xl">
-        HERO DICE
-      </h1>
+      <div className="flex items-center gap-3">
+  <h1 className="text-5xl font-black tracking-[0.14em] text-yellow-400 md:text-5xl">
+    HERO DICE
+  </h1>
+
+  <button
+    onClick={() =>
+      setShowHelp(true)
+    }
+    className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-lg font-black text-black transition hover:bg-green-400"
+  >
+    ?
+  </button>
+</div>
 
       <div className="flex flex-wrap gap-3">
   <button
@@ -2084,7 +2125,7 @@ if (celebrationType === 2) {
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.21em] ">
+                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.12em] ">
                   {mounted
                     ? topWins.value
                     : "-"}
@@ -2102,7 +2143,7 @@ if (celebrationType === 2) {
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.21em]">
+                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.12em]">
                   {mounted
                     ? topScore.value
                     : "-"}
@@ -2120,7 +2161,7 @@ if (celebrationType === 2) {
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.21em]">
+                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.12em]">
                   {mounted
                     ? topGamesPlayed.value
                     : "-"}
@@ -2138,7 +2179,7 @@ if (celebrationType === 2) {
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.21em]">
+                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.12em]">
                   {mounted
                     ? topAverage.value
                     : "-"}
@@ -2156,7 +2197,7 @@ if (celebrationType === 2) {
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.21em]">
+                <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.12em]">
                   {mounted
                     ? topPerfects.value
                     : "-"}
@@ -2174,7 +2215,7 @@ if (celebrationType === 2) {
                     : "-"}
                 </div>
 
-                <div className="mt-2 text-2xl font-black text-yellow-400  tracking-[0.21em]">
+                <div className="mt-2 text-2xl font-black text-yellow-400  tracking-[0.12em]">
                   {mounted
                     ? topAveragePerfects.value
                     : "-"}
@@ -2188,9 +2229,20 @@ if (celebrationType === 2) {
       {screen === "game" && (
         <div className="mx-auto flex w-full max-w-6xl flex-col">
           <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+  <div className="flex items-center gap-3">
   <h1 className="text-5xl font-black tracking-[0.14em] text-yellow-400">
     HERO DICE
   </h1>
+
+  <button
+    onClick={() =>
+      setShowHelp(true)
+    }
+    className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-lg font-black text-black transition hover:bg-greem-400"
+  >
+    ?
+  </button>
+</div>
 
   <div className="flex flex-wrap gap-3">
   {gameStarted ? (
@@ -2362,8 +2414,8 @@ if (celebrationType === 2) {
                     Počet hráčů
                   </label>
 
-<div className="text-sm text-zinc-500">
-  Maximálně:
+<div className="text-sm text-zinc-500 tracking-[0.08em]">
+  Aktuálně: 
   {" "}
   {maxPlayers}
   {" "}
@@ -2954,6 +3006,363 @@ setScreen("game");
   </div>
 )}
 
+{showFinishGameConfirm &&
+  pendingFinishedGame && (
+    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/90 p-4">
+      <div className="w-full max-w-[500px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+        <h2 className="mb-5 text-3xl font-black text-yellow-400">
+          🏁 Blížíte se ke konci hry
+        </h2>
+
+        <p className="mb-8 text-lg text-zinc-300">
+          Tento zápis dokončí hru.
+          <br />
+          <br />
+          Zvolte prosím, jak chcete
+          výsledek uložit.
+        </p>
+
+        <div className="flex flex-col gap-4">
+          <button
+            onClick={async () => {
+              await saveFinishedGame({
+                date:
+                  new Date().toISOString(),
+
+                winner:
+                  pendingFinishedGame.winner,
+
+                winnerScore:
+                  pendingFinishedGame.winnerScore,
+
+                players:
+                  pendingFinishedGame.players,
+
+                scores:
+                  pendingFinishedGame.scores,
+              });
+
+              setShowFinishGameConfirm(
+  false
+);
+
+setPendingFinishedGame(
+  null
+);
+
+setGameFinished(true);
+
+setIsPlayModeActive(
+  false
+);
+
+setShowPlayModeResult(
+  false
+);
+
+localStorage.removeItem(
+  "heroDiceCurrentGame"
+);
+
+const randomSound =
+  winSounds[
+    Math.floor(
+      Math.random() *
+      winSounds.length
+    )
+  ];
+
+const audio = new Audio(
+  `${randomSound}?t=${Date.now()}`
+);
+
+audio.volume = 0.8;
+
+celebrationAudioRef.current =
+  audio;
+
+audio.play().catch(() => {});
+
+setShowFinishedGame(true);
+
+
+const celebrationType =
+  Math.floor(
+    Math.random() * 3
+  );
+
+if (celebrationType === 0) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 35,
+            spread: 100,
+            startVelocity: 35,
+            origin: {
+              x: Math.random(),
+              y: 0.6,
+            },
+          });
+        },
+        i * 500
+      );
+
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
+}
+
+if (celebrationType === 1) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 60,
+            spread: 180,
+            startVelocity: 60,
+            origin: {
+              x: 0.5,
+              y: 0.6,
+            },
+          });
+        },
+        i * 500
+      );
+
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
+}
+
+if (celebrationType === 2) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 40,
+            angle: 60,
+            spread: 55,
+            origin: {
+              x: 0,
+              y: 0.7,
+            },
+          });
+
+          confetti({
+            particleCount: 40,
+            angle: 120,
+            spread: 55,
+            origin: {
+              x: 1,
+              y: 0.7,
+            },
+          });
+        },
+        i * 250
+      );
+
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
+}
+
+             
+            }}
+            className="rounded-2xl bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:bg-green-500"
+          >
+            🟢 Ligová hra
+          </button>
+
+          <button
+            onClick={async () => {
+              await saveFunGame({
+                winner:
+                  pendingFinishedGame.winner,
+
+                winnerScore:
+                  pendingFinishedGame.winnerScore,
+
+                players:
+                  pendingFinishedGame.players,
+
+                scores:
+                  pendingFinishedGame.scores,
+              });
+
+              setShowFinishGameConfirm(
+  false
+);
+
+
+
+setPendingFinishedGame(
+  null
+);
+
+setGameFinished(true);
+
+setIsPlayModeActive(
+  false
+);
+
+setShowPlayModeResult(
+  false
+);
+
+localStorage.removeItem(
+  "heroDiceCurrentGame"
+);
+
+const randomSound =
+  winSounds[
+    Math.floor(
+      Math.random() *
+      winSounds.length
+    )
+  ];
+
+const audio = new Audio(
+  `${randomSound}?t=${Date.now()}`
+);
+
+audio.volume = 0.8;
+
+celebrationAudioRef.current =
+  audio;
+
+audio.play().catch(() => {});
+
+setShowFinishedGame(true);
+
+const celebrationType =
+  Math.floor(
+    Math.random() * 3
+  );
+
+if (celebrationType === 0) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 35,
+            spread: 100,
+            startVelocity: 35,
+            origin: {
+              x: Math.random(),
+              y: 0.6,
+            },
+          });
+        },
+        i * 500
+      );
+
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
+}
+
+if (celebrationType === 1) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 60,
+            spread: 180,
+            startVelocity: 60,
+            origin: {
+              x: 0.5,
+              y: 0.6,
+            },
+          });
+        },
+        i * 500
+      );
+
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
+}
+
+if (celebrationType === 2) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 40,
+            angle: 60,
+            spread: 55,
+            origin: {
+              x: 0,
+              y: 0.7,
+            },
+          });
+
+          confetti({
+            particleCount: 40,
+            angle: 120,
+            spread: 55,
+            origin: {
+              x: 1,
+              y: 0.7,
+            },
+          });
+        },
+        i * 250
+      );
+
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
+}
+              
+            }}
+            className="rounded-2xl bg-purple-600 px-5 py-4 text-lg font-black text-white transition hover:bg-purple-500"
+          >
+            🟣 Fun hra
+          </button>
+        </div>
+      </div>
+    </div>
+)}
+
+
 {/* GAME SAVED MODAL */}
 {showGameSavedModal && (
   <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 p-4">
@@ -3442,10 +3851,10 @@ currentCombination && (
     <div className="text-2xl leading-none">
       {hasUsefulFutureMove ===
       null
-        ? "🙂"
+        ? "😴"
         : hasUsefulFutureMove
           ? "😀"
-          : "☹️"}
+          : "😵"}
     </div>
 
     {isLeaguePlayMode && (
@@ -4102,7 +4511,7 @@ canSavePlayModeScore &&
 {/* ADMIN */}
 {showAdmin && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-2xl rounded-3xl bg-zinc-900 p-8 text-white shadow-2xl">
+    <div className="w-full max-w-3xl rounded-3xl bg-zinc-900 p-8 text-white shadow-2xl">
       <div className="mb-8 flex items-center justify-between">
         <h2 className="text-4xl font-black text-yellow-400">
           Administrace hráčů
@@ -4129,26 +4538,20 @@ canSavePlayModeScore &&
   type="text"
   value={player.name}
   onChange={(e) => {
-    updatePlayerInSupabase(
-  player.id,
-  {
-    name: e.target.value,
-  }
-);
-    const updatedPlayers =
-      playersState.map((p) =>
-        p.id === player.id
-          ? {
-              ...p,
-              name: e.target.value,
-            }
-          : p
-      );
-
-    setPlayersState(
-      updatedPlayers
+  const updatedPlayers =
+    playersState.map((p) =>
+      p.id === player.id
+        ? {
+            ...p,
+            name: e.target.value,
+          }
+        : p
     );
-  }}
+
+  setPlayersState(
+    updatedPlayers
+  );
+}}
   className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-2xl font-black text-white outline-none transition focus:border-yellow-400"
 />
 
@@ -4160,36 +4563,61 @@ canSavePlayModeScore &&
             <div className="flex gap-2">
   <button
     onClick={() => {
-  const updatedPlayers =
-    playersState.map((p) =>
-      p.id === player.id
-        ? {
-            ...p,
-            active:
-              !p.active,
-          }
-        : p
-    );
+      updatePlayerInSupabase(
+        player.id,
+        {
+          name: player.name,
+        }
+      );
+    }}
+    className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white transition hover:bg-blue-500"
+  >
+    Uložit
+  </button>
 
-  setPlayersState(
-    updatedPlayers
-  );
-
-  updatePlayerInSupabase(
-    player.id,
-    {
-      active:
-        !player.active,
+  <button
+    onClick={() =>
+      setDeletePlayerId(
+        player.id
+      )
     }
-  );
+    className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white transition hover:bg-red-600"
+  >
+    Smazat
+  </button>
 
-  localStorage.setItem(
-    "heroDicePlayers",
-    JSON.stringify(
-      updatedPlayers
-    )
-  );
-}}
+  <button
+    onClick={() => {
+      const updatedPlayers =
+        playersState.map((p) =>
+          p.id === player.id
+            ? {
+                ...p,
+                active:
+                  !p.active,
+              }
+            : p
+        );
+
+      setPlayersState(
+        updatedPlayers
+      );
+
+      updatePlayerInSupabase(
+        player.id,
+        {
+          active:
+            !player.active,
+        }
+      );
+
+      localStorage.setItem(
+        "heroDicePlayers",
+        JSON.stringify(
+          updatedPlayers
+        )
+      );
+    }}
     className={`rounded-xl px-4 py-2 font-bold transition ${
       player.active
         ? "bg-green-600 hover:bg-green-500"
@@ -4199,17 +4627,6 @@ canSavePlayModeScore &&
     {player.active
       ? "Aktivní"
       : "Neaktivní"}
-  </button>
-
-  <button
-    onClick={() =>
-  setDeletePlayerId(
-    player.id
-  )
-}
-    className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white transition hover:bg-red-600"
-  >
-    Smazat
   </button>
 </div>
           </div>
@@ -4345,6 +4762,14 @@ canSavePlayModeScore &&
     }}
   />
 )}
+    
+    <HelpModal
+  open={showHelp}
+  onClose={() =>
+    setShowHelp(false)
+  }
+/>
+    
     </main>
   );
 }
