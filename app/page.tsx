@@ -2248,32 +2248,6 @@ if (celebrationType === 2) {
   {gameStarted ? (
   <>
     
-{hasStartedPlayMode && (
-  <div
-    className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-sm font-black whitespace-nowrap ${
-      isLeaguePlayMode
-        ? "text-green-400"
-        : "text-purple-400"
-    }`}
-  >
-    {isLeaguePlayMode
-      ? "4 hody / Bez přepisu / Bonus: Generál +2 hody"
-      : `${playModeRolls} hodů • Přepis: ${
-          playModeAllowRewrite
-            ? "Ano"
-            : "Ne"
-        } • Bonus: ${
-          playModeBonusMode ===
-          "all"
-            ? "Všechny kombinace"
-            : "Generál"
-        } • +${
-          playModeBonusRolls -
-          playModeRolls
-        } hody`}
-  </div>
-)}
-
     <button
   onClick={() => {
     if (
@@ -2724,6 +2698,32 @@ if (celebrationType === 2) {
                 </tbody>
               </table>
             </div>
+            {hasStartedPlayMode && (
+  <div
+    className={`mt-4 text-center text-sm font-black ${
+      isLeaguePlayMode
+        ? "text-green-400"
+        : "text-purple-400"
+    }`}
+  >
+    Aktuální hra:{" "}
+    {isLeaguePlayMode
+      ? "4 hody / Bez přepisu / Bonus: Generál +2 hody"
+      : `${playModeRolls} hodů / Přepis: ${
+          playModeAllowRewrite
+            ? "Ano"
+            : "Ne"
+        } / Bonus: ${
+          playModeBonusMode ===
+          "all"
+            ? "Všechny kombinace"
+            : "Generál"
+        } +${
+          playModeBonusRolls -
+          playModeRolls
+        } body`}
+  </div>
+)}
             </>
           )}
         </div>
