@@ -1346,7 +1346,22 @@ const saveGameToSupabase =
                 gameStarted,
 
               game_finished:
-                gameFinished,
+  gameFinished,
+
+is_play_mode_active:
+  hasStartedPlayMode,
+
+play_mode_rolls:
+  playModeRolls,
+
+play_mode_allow_rewrite:
+  playModeAllowRewrite,
+
+play_mode_bonus_mode:
+  playModeBonusMode,
+
+play_mode_bonus_rolls:
+  playModeBonusRolls,
             },
           ]);
 
@@ -1700,15 +1715,23 @@ useEffect(() => {
     !gameFinished
   ) {
     localStorage.setItem(
-      "heroDiceCurrentGame",
-      JSON.stringify({
-        playerCount,
-        selectedPlayers,
-        scores,
-        gameStarted,
-        gameFinished,
-      })
-    );
+  "heroDiceCurrentGame",
+  JSON.stringify({
+    playerCount,
+    selectedPlayers,
+    scores,
+    gameStarted,
+    gameFinished,
+
+    isPlayModeActive,
+hasStartedPlayMode,
+
+playModeRolls,
+playModeAllowRewrite,
+playModeBonusMode,
+playModeBonusRolls,
+  })
+);
   }
 }, [
   playerCount,
@@ -1716,6 +1739,12 @@ useEffect(() => {
   scores,
   gameStarted,
   gameFinished,
+
+  isPlayModeActive,
+  playModeRolls,
+  playModeAllowRewrite,
+  playModeBonusMode,
+  playModeBonusRolls,
 ]);
 
   useEffect(() => {
@@ -2864,6 +2893,36 @@ if (celebrationType === 2) {
             setGameFinished(
               parsed.gameFinished
             );
+            
+            
+setIsPlayModeActive(
+  parsed.isPlayModeActive ??
+    false
+);
+
+setHasStartedPlayMode(
+  parsed.hasStartedPlayMode ??
+    false
+);
+
+setPlayModeRolls(
+  parsed.playModeRolls ?? 4
+);
+
+setPlayModeAllowRewrite(
+  parsed.playModeAllowRewrite ??
+    false
+);
+
+setPlayModeBonusMode(
+  parsed.playModeBonusMode ??
+    "general-only"
+);
+
+setPlayModeBonusRolls(
+  parsed.playModeBonusRolls ??
+    6
+);
 
             setScreen("game");
 
@@ -2949,25 +3008,68 @@ if (celebrationType === 2) {
       setGameFinished(
         game.game_finished
       );
+setIsPlayModeActive(
+  game.is_play_mode_active ??
+    false
+);
+
+setHasStartedPlayMode(
+  game.is_play_mode_active ??
+    false
+);
+
+setPlayModeRolls(
+  game.play_mode_rolls ?? 4
+);
+
+setPlayModeAllowRewrite(
+  game.play_mode_allow_rewrite ??
+    false
+);
+
+setPlayModeBonusMode(
+  game.play_mode_bonus_mode ??
+    "general-only"
+);
+
+setPlayModeBonusRolls(
+  game.play_mode_bonus_rolls ??
+    6
+);
 
       localStorage.setItem(
-        "heroDiceCurrentGame",
-        JSON.stringify({
-          playerCount:
-            game.player_count,
+  "heroDiceCurrentGame",
+  JSON.stringify({
+    playerCount:
+      game.player_count,
 
-          selectedPlayers:
-            game.selected_players,
+    selectedPlayers:
+      game.selected_players,
 
-          scores: game.scores,
+    scores: game.scores,
 
-          gameStarted:
-            game.game_started,
+    gameStarted:
+      game.game_started,
 
-          gameFinished:
-            game.game_finished,
-        })
-      );
+    gameFinished:
+      game.game_finished,
+
+    isPlayModeActive:
+      game.is_play_mode_active,
+
+    playModeRolls:
+      game.play_mode_rolls,
+
+    playModeAllowRewrite:
+      game.play_mode_allow_rewrite,
+
+    playModeBonusMode:
+      game.play_mode_bonus_mode,
+
+    playModeBonusRolls:
+      game.play_mode_bonus_rolls,
+  })
+);
 
       setShowLoadGames(
   false
@@ -3059,6 +3161,35 @@ setScreen("game");
             setGameFinished(
               parsed.gameFinished
             );
+
+setIsPlayModeActive(
+  parsed.isPlayModeActive ??
+    false
+);
+
+setHasStartedPlayMode(
+  parsed.hasStartedPlayMode ??
+    false
+);
+
+setPlayModeRolls(
+  parsed.playModeRolls ?? 4
+);
+
+setPlayModeAllowRewrite(
+  parsed.playModeAllowRewrite ??
+    false
+);
+
+setPlayModeBonusMode(
+  parsed.playModeBonusMode ??
+    "general-only"
+);
+
+setPlayModeBonusRolls(
+  parsed.playModeBonusRolls ??
+    6
+);
 
             setScreen("game");
 
@@ -4337,89 +4468,199 @@ canSavePlayModeScore &&
 )}
 
       {/* WINNER MODAL */}
-      {showFinishedGame && (
-        <div
-  className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
-  onClick={() => {
-    celebrationAudioRef.current?.pause();
+{showFinishedGame && (
+  <div
+    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
+    onClick={() => {
+      celebrationAudioRef.current?.pause();
 
-    celebrationTimeoutsRef.current.forEach(
-      clearTimeout
-    );
+      celebrationTimeoutsRef.current.forEach(
+        clearTimeout
+      );
 
-    celebrationTimeoutsRef.current = [];
+      celebrationTimeoutsRef.current = [];
 
-    setShowFinishedGame(false);
-  }}
->
-          <div className="max-w-xl rounded-2xl bg-black p-10 text-center text-white">
-            <h2 className="mb-8 text-5xl">
-              🏆
-            </h2>
+      setShowFinishedGame(false);
+    }}
+  >
+    <div className="max-w-xl rounded-2xl bg-black p-10 text-center text-white">
+      <h2
+        className="mb-8 cursor-pointer text-5xl transition hover:scale-110"
+        onClick={(e) => {
+          e.stopPropagation();
 
-            <p className="mb-3 text-3xl font-bold">
-              vítězem se stává
-            </p>
+          const randomSound =
+            winSounds[
+              Math.floor(
+                Math.random() *
+                  winSounds.length
+              )
+            ];
 
-            <p className="mb-6 text-5xl font-black text-yellow-400">
-              {winner}
-            </p>
+          if (
+            celebrationAudioRef.current
+          ) {
+            celebrationAudioRef.current.pause();
+          }
 
-            <p className="mb-3 text-2xl">
-              Skóre:
-              <strong>
-                {" "}
-                {winnerScore}
-              </strong>{" "}
-              bodů
-            </p>
+          const audio =
+            new Audio(
+              randomSound
+            );
 
-            <div className="flex flex-wrap justify-center gap-4">
-              <button
-                onClick={() =>
-                  setShowFinishedGame(
-                    false
-                  )
-                }
-                className="rounded-lg bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-500"
-              >
-                Zobrazit hru
-              </button>
+          celebrationAudioRef.current =
+            audio;
 
-              <button
-                onClick={() =>
-                  setShowStatistics(
-                    true
-                  )
-                }
-                className="rounded-lg bg-yellow-500 px-5 py-3 font-bold text-black transition hover:bg-yellow-400"
-              >
-                Statistiky
-              </button>
+          audio.play().catch(
+            () => {}
+          );
 
-              <button
-                onClick={() => startNewGame()}
-                className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
-              >
-                Nová hra
-              </button>
+          const randomAnimation =
+            Math.floor(
+              Math.random() * 5
+            );
 
-<button
-  onClick={() => {
-    setShowFinishedGame(
-      false
-    );
+          switch (
+            randomAnimation
+          ) {
+            case 0:
+              confetti({
+                particleCount: 200,
+                spread: 120,
+                origin: {
+                  y: 0.6,
+                },
+              });
+              break;
 
-    setScreen("home");
-  }}
-                className="rounded-lg bg-zinc-700 px-5 py-3 font-bold text-white transition hover:bg-zinc-600"
-              >
-                Domů
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            case 1:
+              confetti({
+                particleCount: 120,
+                angle: 60,
+                spread: 80,
+                origin: {
+                  x: 0,
+                  y: 0.7,
+                },
+              });
+              break;
+
+            case 2:
+              confetti({
+                particleCount: 120,
+                angle: 120,
+                spread: 80,
+                origin: {
+                  x: 1,
+                  y: 0.7,
+                },
+              });
+              break;
+
+            case 3:
+              confetti({
+                particleCount: 100,
+                angle: 60,
+                spread: 70,
+                origin: {
+                  x: 0,
+                  y: 0.7,
+                },
+              });
+
+              confetti({
+                particleCount: 100,
+                angle: 120,
+                spread: 70,
+                origin: {
+                  x: 1,
+                  y: 0.7,
+                },
+              });
+              break;
+
+            case 4:
+              confetti({
+                particleCount: 300,
+                spread: 180,
+                startVelocity: 50,
+                origin: {
+                  x: 0.5,
+                  y: 0.5,
+                },
+              });
+              break;
+          }
+        }}
+      >
+        🏆
+      </h2>
+
+      <p className="mb-3 text-3xl font-bold">
+        vítězem se stává
+      </p>
+
+      <p className="mb-2 animate-pulse text-5xl font-black text-yellow-400">
+        {winner}
+      </p>
+
+      <p className="mb-6 text-3xl font-black text-yellow-400">
+        {winnerScore} bodů
+      </p>
+
+      <p className="mb-6 text-sm text-zinc-400">
+        klikni na 🏆 pro další
+        oslavu
+      </p>
+
+      <div className="flex flex-wrap justify-center gap-4">
+        <button
+          onClick={() =>
+            setShowFinishedGame(
+              false
+            )
+          }
+          className="rounded-lg bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-500"
+        >
+          Zobrazit hru
+        </button>
+
+        <button
+          onClick={() =>
+            setShowStatistics(
+              true
+            )
+          }
+          className="rounded-lg bg-yellow-500 px-5 py-3 font-bold text-black transition hover:bg-yellow-400"
+        >
+          Statistiky
+        </button>
+
+        <button
+          onClick={() =>
+            startNewGame()
+          }
+          className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
+        >
+          Nová hra
+        </button>
+
+        <button
+          onClick={() => {
+            setShowFinishedGame(
+              false
+            );
+
+            setScreen("home");
+          }}
+          className="rounded-lg bg-zinc-700 px-5 py-3 font-bold text-white transition hover:bg-zinc-600"
+        >
+          Domů
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* LEAVE CONFIRM */}
       {showLeaveConfirm && (
