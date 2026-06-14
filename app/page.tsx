@@ -2730,7 +2730,41 @@ if (celebrationType === 2) {
       )}
 
 {/* EDIT CONFIRM MODAL */}
-{showEditConfirm && scoreModal && (
+{showEditConfirm &&
+  scoreModal &&
+  hasStartedPlayMode &&
+  !playModeAllowRewrite && (
+  <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+    <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/30 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+      <h2 className="mb-5 text-3xl font-black text-yellow-400">
+        Přepis není povolen
+      </h2>
+
+      <p className="mb-8 text-lg text-zinc-300">
+        Nastavení hry neumožňuje
+        přepsat skóre.
+      </p>
+
+      <button
+        onClick={() => {
+          setShowEditConfirm(
+            false
+          );
+
+          setScoreModal(null);
+        }}
+        className="w-full rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
+      >
+        Zavřít
+      </button>
+    </div>
+  </div>
+)}
+
+{showEditConfirm &&
+  scoreModal &&
+  (!hasStartedPlayMode ||
+    playModeAllowRewrite) && (
   <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
     <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/30 bg-zinc-900 p-8 text-center text-white shadow-2xl">
       <h2 className="mb-5 text-3xl font-black text-yellow-400">
@@ -2745,11 +2779,13 @@ if (celebrationType === 2) {
 
       <div className="flex gap-4">
         <button
-        onClick={() => {
-        setShowEditConfirm(false);
+          onClick={() => {
+            setShowEditConfirm(
+              false
+            );
 
-    setScoreModal(null);
-  }}
+            setScoreModal(null);
+          }}
           className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
         >
           Nechat hodnotu
@@ -2757,7 +2793,9 @@ if (celebrationType === 2) {
 
         <button
           onClick={() =>
-            setShowEditConfirm(false)
+            setShowEditConfirm(
+              false
+            )
           }
           className="flex-1 rounded-2xl bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:bg-yellow-400"
         >
