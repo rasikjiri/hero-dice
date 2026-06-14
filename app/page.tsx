@@ -2228,7 +2228,7 @@ if (celebrationType === 2) {
       {/* GAME */}
       {screen === "game" && (
         <div className="mx-auto flex w-full max-w-6xl flex-col">
-          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="relative mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
   <div className="flex items-center gap-3">
   <h1 className="text-5xl font-black tracking-[0.14em] text-yellow-400">
     HERO DICE
@@ -2247,6 +2247,33 @@ if (celebrationType === 2) {
   <div className="flex flex-wrap gap-3">
   {gameStarted ? (
   <>
+    
+{hasStartedPlayMode && (
+  <div
+    className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-sm font-black whitespace-nowrap ${
+      isLeaguePlayMode
+        ? "text-green-400"
+        : "text-purple-400"
+    }`}
+  >
+    {isLeaguePlayMode
+      ? "4 hody / Bez přepisu / Bonus: Generál +2 hody"
+      : `${playModeRolls} hodů • Přepis: ${
+          playModeAllowRewrite
+            ? "Ano"
+            : "Ne"
+        } • Bonus: ${
+          playModeBonusMode ===
+          "all"
+            ? "Všechny kombinace"
+            : "Generál"
+        } • +${
+          playModeBonusRolls -
+          playModeRolls
+        } hody`}
+  </div>
+)}
+
     <button
   onClick={() => {
     if (
@@ -2536,7 +2563,10 @@ if (celebrationType === 2) {
           )}
 
           {gameStarted && (
-            <div className="w-full overflow-x-auto rounded-2xl border border-zinc-700 bg-zinc-950 tracking-[0.14em]">
+            <>
+            
+
+              <div className="w-full overflow-x-auto rounded-2xl border border-zinc-700 bg-zinc-950 tracking-[0.14em]">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-green-800">
@@ -2694,6 +2724,7 @@ if (celebrationType === 2) {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       )}
