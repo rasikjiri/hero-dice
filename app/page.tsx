@@ -149,11 +149,6 @@ savedGames,
 setSavedGames,
 ] = useState<any[]>([]);
 
-console.log(
-  "LOAD GAME",
-  savedGames
-);
-
 const [
 showLoadGames,
 setShowLoadGames,
@@ -868,6 +863,66 @@ const currentPlayModeScore =
       ]
     : undefined;
 
+const currentGeneralScore =
+  scores[
+    selectedPlayers[
+      currentPlayPlayerIndex
+    ]
+  ]?.general;
+
+const canUseGeneralBonus =
+  (() => {
+    if (
+      playModeBonusMode !==
+      "general-only"
+    ) {
+      return true;
+    }
+
+    if (
+      currentGeneralScore ===
+      undefined
+    ) {
+      return true;
+    }
+
+    if (
+      isLeaguePlayMode
+    ) {
+      return false;
+    }
+
+    if (
+      !playModeAllowRewrite
+    ) {
+      return false;
+    }
+
+    const lockedValues =
+      playModeDice.filter(
+        (_, index) =>
+          lockedDice[index]
+      );
+
+    const sourceValues =
+      lockedValues.length > 0
+        ? lockedValues
+        : playModeDice;
+
+    const highestValue =
+      Math.max(
+        ...sourceValues
+      );
+
+    const potentialGeneralScore =
+      highestValue * 6;
+
+    return (
+      potentialGeneralScore >
+      currentGeneralScore
+    );
+  })();
+
 const hasLockedDice =
   lockedDice.some(
     (dice) => dice
@@ -1344,25 +1399,6 @@ const checkExistingGameVersion =
 const overwriteGameInSupabase =
   async () => {
 
-    const test = await supabase
-  .from("saved_games")
-  .select("*")
-  .eq(
-    "game_id",
-    gameId
-  );
-
-console.log(
-  "TEST SELECT",
-  test
-);
-    console.log(
-  "OVERWRITE CLICK",
-  {
-    gameId,
-    scores,
-  }
-);
     try {
       const gameName =
         selectedPlayers
@@ -1375,55 +1411,90 @@ console.log(
           )
           .join(" vs ");
 
-      const { data, error } =
-  await supabase
-    .from("saved_games")
-    .update({
-            name: gameName,
+      const {
+  data: insertedGame,
+  error,
+} = await supabase
+  .from("saved_games")
+  .insert([
+    {
+      game_id: gameId,
 
-            player_count:
-              playerCount,
+      name: gameName,
 
-            selected_players:
-              selectedPlayers,
+      player_count:
+        playerCount,
 
-            scores,
+      selected_players:
+        selectedPlayers,
 
-            game_started:
-              gameStarted,
+      scores,
 
-            game_finished:
-              gameFinished,
+      game_started:
+        gameStarted,
 
-            is_play_mode_active:
-              hasStartedPlayMode,
+      game_finished:
+        gameFinished,
 
-            play_mode_rolls:
-              playModeRolls,
+      is_play_mode_active:
+        hasStartedPlayMode,
 
-            play_mode_allow_rewrite:
-              playModeAllowRewrite,
+      play_mode_rolls:
+        playModeRolls,
 
-            play_mode_bonus_mode:
-              playModeBonusMode,
+      play_mode_allow_rewrite:
+        playModeAllowRewrite,
 
-            play_mode_bonus_rolls:
-              playModeBonusRolls,
-          })
-          .eq(
-  "game_id",
-  gameId
-)
-.select();
-console.log(
-  "OVERWRITE SUCCESS",
-  data
-);
+      play_mode_bonus_mode:
+        playModeBonusMode,
 
-console.log(
-  "OVERWRITE ERROR",
-  error
-);
+      play_mode_bonus_rolls:
+        playModeBonusRolls,
+    },
+  ])
+  .select()
+  .single();
+
+
+const {
+  data: oldGames,
+  error: findError,
+} = await supabase
+  .from("saved_games")
+  .select("id")
+  .eq(
+    "game_id",
+    gameId
+  );
+
+if (
+  !findError &&
+  oldGames
+) {
+  const idsToDelete =
+    oldGames
+      .filter(
+        (game) =>
+          game.id !==
+          insertedGame.id
+      )
+      .map(
+        (game) =>
+          game.id
+      );
+
+  if (
+    idsToDelete.length > 0
+  ) {
+    await supabase
+      .from("saved_games")
+      .delete()
+      .in(
+        "id",
+        idsToDelete
+      );
+  }
+}
       if (error) {
         console.error(
           "OVERWRITE GAME ERROR:",
@@ -1577,12 +1648,15 @@ const loadSavedGames =
   };
 
 const deleteSavedGame =
-  async (gameId: number) => {
-    const { error } =
-      await supabase
-        .from("saved_games")
-        .delete()
-        .eq("id", gameId);
+  async (gameId: string) => {
+    const result =
+  await supabase
+    .from("saved_games")
+    .delete()
+    .eq("id", gameId);
+
+const { error } =
+  result;
 
     if (error) {
       console.error(error);
@@ -2700,18 +2774,24 @@ if (celebrationType === 2) {
 
               <div className="flex justify-end">
   <button
-    onClick={() =>
-      setGameStarted(true)
-    }
-    disabled={!canStartGame}
-    className={`rounded-2xl px-8 py-4 text-xl font-black transition ${
-      canStartGame
-        ? "bg-yellow-500 text-black hover:scale-[1.02] hover:bg-yellow-400"
-        : "cursor-not-allowed bg-zinc-700 text-zinc-400"
-    }`}
-  >
-    ▶ Začít hru
-  </button>
+  onClick={() => {
+    setGameStarted(
+      true
+    );
+
+    setShowPlayModeSetup(
+      true
+    );
+  }}
+  disabled={!canStartGame}
+  className={`rounded-2xl px-8 py-4 text-xl font-black transition ${
+    canStartGame
+      ? "bg-yellow-500 text-black hover:scale-[1.02] hover:bg-yellow-400"
+      : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+  }`}
+>
+  ▶ Začít hru
+</button>
 </div>
             </div>
           )}
@@ -3784,28 +3864,6 @@ if (celebrationType === 2) {
 
         <button
           onClick={async () => {
-            const newGameId =
-  crypto.randomUUID();
-
-setGameId(
-  newGameId
-);
-
-setShowGameVersionModal(
-  false
-);
-
-await saveGameToSupabase(
-  newGameId
-);
-          }}
-          className="rounded-xl bg-blue-600 px-6 py-4 font-black text-white transition hover:bg-blue-500"
-        >
-          Nová verze
-        </button>
-
-        <button
-          onClick={async () => {
   await overwriteGameInSupabase();
 }}
           className="rounded-xl bg-green-600 px-6 py-4 font-black text-white transition hover:bg-green-500"
@@ -3857,15 +3915,19 @@ await saveGameToSupabase(
 </div>
 
         <button
-          onClick={() =>
-            setShowPlayModeSetup(
-              false
-            )
-          }
-          className="rounded-xl bg-zinc-700 px-4 py-2 font-bold transition hover:bg-zinc-600"
-        >
-          ✕
-        </button>
+  onClick={() => {
+    setShowPlayModeSetup(
+      false
+    );
+
+    setGameStarted(
+      false
+    );
+  }}
+  className="rounded-xl bg-zinc-700 px-4 py-2 font-bold transition hover:bg-zinc-600"
+>
+  ✕
+</button>
       </div>
 
       <div className="space-y-5">
@@ -4052,15 +4114,19 @@ await saveGameToSupabase(
 
         <div className="flex gap-4">
           <button
-            onClick={() =>
-              setShowPlayModeSetup(
-                false
-              )
-            }
-            className="rounded-2xl bg-zinc-700 px-6 py-4 font-bold transition hover:bg-zinc-600"
-          >
-            Zrušit
-          </button>
+  onClick={() => {
+    setShowPlayModeSetup(
+      false
+    );
+
+    setGameStarted(
+      false
+    );
+  }}
+  className="rounded-2xl bg-zinc-700 px-6 py-4 font-bold transition hover:bg-zinc-600"
+>
+  Zrušit
+</button>
 
           <button
   onClick={() => {
@@ -4111,9 +4177,15 @@ setConfirmedLockedDice([
   true
 );
 }}
-  className="rounded-2xl bg-purple-600 px-8 py-4 font-black text-white transition hover:bg-purple-500"
+  className={`rounded-2xl px-8 py-4 font-black text-white transition ${
+    isLeaguePlayMode
+      ? "bg-green-600 hover:bg-green-500"
+      : "bg-purple-600 hover:bg-purple-500"
+  }`}
 >
-  ▶ Spustit Play Mode
+  {isLeaguePlayMode
+    ? "▶ Spustit ligovou hru"
+    : "▶ Začít Fun hru"}
 </button>
         </div>
       </div>
@@ -4234,13 +4306,32 @@ currentCombination && (
               }
             </div>
 
-            <div className="mt-1 text-lg font-bold text-green-400">
-              Score:
-              {" "}
-              {
-                currentCombination.score
-              }
-            </div>
+            <div
+  className={`mt-1 text-lg font-bold ${
+    (() => {
+      const category =
+        gameCategories.find(
+          (c) =>
+            c.name ===
+            currentCombination.combination
+        );
+
+      return (
+        category &&
+        currentCombination.score ===
+          category.max
+      )
+        ? "text-red-500"
+        : "text-green-400";
+    })()
+  }`}
+>
+  Score:
+  {" "}
+  {
+    currentCombination.score
+  }
+</div>
           </>
         ) : (
           <>
@@ -4333,11 +4424,13 @@ currentCombination && (
     activateBonus
   }
   disabled={
-  generalBonusBlocked
+  generalBonusBlocked ||
+  !canUseGeneralBonus
 }
             className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
   bonusUsed ||
-  generalBonusBlocked
+  generalBonusBlocked ||
+  !canUseGeneralBonus
     ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
     : playModeBonusMode ===
         "general-only"
@@ -5022,16 +5115,19 @@ canSavePlayModeScore &&
 
         <button
           onClick={async () => {
-            const { error } =
-              await supabase
-                .from(
-                  "saved_games"
-                )
-                .delete()
-                .eq(
-                  "id",
-                  deleteSavedGameId
-                );
+            const result =
+  await supabase
+    .from(
+      "saved_games"
+    )
+    .delete()
+    .eq(
+      "id",
+      deleteSavedGameId
+    );
+
+const { error } =
+  result;
 
             if (!error) {
               setSavedGames(
