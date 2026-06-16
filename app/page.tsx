@@ -4268,17 +4268,18 @@ currentCombination && (
 
 {isPlayModeActive && (
   <div className="fixed inset-0 z-[150] overflow-y-auto bg-black/60 backdrop-blur-sm p-4 text-white">
-    <div className="mx-auto flex w-full max-w-4xl flex-col">
+    <div className="mx-auto flex w-full max-w-2xl flex-col">
       <div className="mb-4" />
 
-      <div className="rounded-3xl border border-purple-500/20 bg-zinc-900 p-8">
-  <div className="grid grid-cols-3 items-start gap-8">
-    <div>
-      <div className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+      <div className="rounded-3xl border border-purple-500/20 bg-zinc-900 p-6 md:p-8">
+  <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+    
+    <div className="text-center md:text-left">
+      <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500">
         Aktuální hráč
       </div>
 
-      <div className="text-5xl font-black text-yellow-400">
+      <div className="text-3xl font-black text-yellow-400 md:text-4xl">
         {
           playersState.find(
             (player) =>
@@ -4289,9 +4290,21 @@ currentCombination && (
           )?.name
         }
       </div>
+
+      <div
+        className={`mt-2 text-lg font-bold uppercase tracking-[0.25em] ${
+          isLeaguePlayMode
+            ? "text-green-400"
+            : "text-purple-400"
+        }`}
+      >
+        {isLeaguePlayMode
+          ? "LIGOVÁ HRA"
+          : "FUN HRA"}
+      </div>
     </div>
 
-    <div className="flex h-full flex-col items-center justify-center text-center">
+    <div className="text-center">
       <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500">
         Aktuální kombinace
       </div>
@@ -4300,38 +4313,38 @@ currentCombination && (
         {currentCombination &&
         hasRolledDice ? (
           <>
-            <div className="text-3xl font-black text-green-400">
+            <div className="text-2xl font-black text-green-400 md:text-3xl">
               {
                 currentCombination.combination
               }
             </div>
 
             <div
-  className={`mt-1 text-lg font-bold ${
-    (() => {
-      const category =
-        gameCategories.find(
-          (c) =>
-            c.name ===
-            currentCombination.combination
-        );
+              className={`mt-2 text-xl font-bold ${
+                (() => {
+                  const category =
+                    gameCategories.find(
+                      (c) =>
+                        c.name ===
+                        currentCombination.combination
+                    );
 
-      return (
-        category &&
-        currentCombination.score ===
-          category.max
-      )
-        ? "text-red-500"
-        : "text-green-400";
-    })()
-  }`}
->
-  Score:
-  {" "}
-  {
-    currentCombination.score
-  }
-</div>
+                  return (
+                    category &&
+                    currentCombination.score ===
+                      category.max
+                  )
+                    ? "text-red-500"
+                    : "text-green-400";
+                })()
+              }`}
+            >
+              Score:
+              {" "}
+              {
+                currentCombination.score
+              }
+            </div>
           </>
         ) : (
           <>
@@ -4347,41 +4360,30 @@ currentCombination && (
       </div>
     </div>
 
-    <button
-  onClick={() =>
-    setIsPlayModeActive(
-      false
-    )
-  }
-  className="justify-self-end rounded-2xl bg-green-800 px-5 py-3 font-bold transition hover:bg-green-700"
->
-      Scoreboard
-    </button>
   </div>
 </div>
 
       <div className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
-        <div className="mb-6 flex items-center justify-between">
-  <div className="text-lg font-bold tracking-[0.3em] text-gray-400">
-    KOSTKY
+        <div className="relative mb-8 flex items-center justify-end">
+  <div className="absolute left-1/2 -translate-x-1/2 text-4xl leading-none">
+    {hasUsefulFutureMove ===
+    null
+      ? "😴"
+      : hasUsefulFutureMove
+        ? "😀"
+        : "😵"}
   </div>
 
-  <div className="flex items-center gap-62">
-    <div className="text-2xl leading-none">
-      {hasUsefulFutureMove ===
-      null
-        ? "😴"
-        : hasUsefulFutureMove
-          ? "😀"
-          : "😵"}
-    </div>
-
-    {isLeaguePlayMode && (
-      <div className="text-lg font-bold uppercase tracking-[0.25em] text-green-400">
-        LIGOVÁ HRA
-      </div>
-    )}
-  </div>
+  <button
+    onClick={() =>
+      setIsPlayModeActive(
+        false
+      )
+    }
+    className="rounded-2xl bg-green-700 px-5 py-3 font-bold transition hover:bg-green-600"
+  >
+    Scoreboard
+  </button>
 </div>
 
         <div className="flex flex-wrap justify-center gap-4">
