@@ -4322,20 +4322,25 @@ currentCombination && (
             <div
               className={`mt-2 text-xl font-bold ${
                 (() => {
-                  const category =
-                    gameCategories.find(
-                      (c) =>
-                        c.name ===
-                        currentCombination.combination
-                    );
+                  const categoryId =
+  playModeCategoryMap[
+    currentCombination
+      .combination
+  ];
 
-                  return (
-                    category &&
-                    currentCombination.score ===
-                      category.max
-                  )
-                    ? "text-red-500"
-                    : "text-green-400";
+const category =
+  gameCategories.find(
+    (c) =>
+      c.id === categoryId
+  );
+
+return (
+  category &&
+  currentCombination.score ===
+    category.max
+)
+  ? "text-red-500"
+  : "text-green-400";
                 })()
               }`}
             >
