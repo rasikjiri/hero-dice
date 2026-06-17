@@ -174,7 +174,7 @@ export default function HelpModal({
             <br />
             • bonus pouze pro Generála
             <br />
-            • 6 bonusových hodů
+            • 2 bonusové hody
           </Section>
 
           <Section title="Fun hra">

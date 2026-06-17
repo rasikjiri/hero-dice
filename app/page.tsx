@@ -1326,8 +1326,8 @@ useEffect(() => {
 ) {
     const audio =
       new Audio(
-        `/sounds/playmode/nocombination.mp3?t=${Date.now()}`
-      );
+  "/sounds/playmode/nocombination.mp3"
+);
 
     audio.volume = 0.8;
 
