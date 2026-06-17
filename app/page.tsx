@@ -780,10 +780,31 @@ const handlePlayerCountChange = (
       scoreModal.categoryId
   );
 
+  const completedScores =
+  Object.values(
+    updatedScores
+  ).reduce(
+    (sum, playerScores) =>
+      sum +
+      Object.keys(
+        playerScores
+      ).length,
+    0
+  );
+
+const totalScoresNeeded =
+  selectedPlayers.length *
+  gameCategories.length;
+
+const finishesGame =
+  completedScores ===
+  totalScoresNeeded;
+
 if (
   maxScoreSoundEnabled &&
   category &&
-  parsed === category.max
+  parsed === category.max &&
+  !finishesGame
 ) {
   const audio =
     new Audio(
