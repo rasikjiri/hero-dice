@@ -161,6 +161,11 @@ const [
   setNoCombinationSoundPlayed,
 ] = useState(false);
 
+const [
+  suppressNoCombinationSound,
+  setSuppressNoCombinationSound,
+] = useState(false);
+
   const [scores, setScores] =
     useState<ScoreMap>({});
 
@@ -1281,10 +1286,11 @@ useEffect(() => {
 
 useEffect(() => {
   if (
-    hasUsefulFutureMove === false &&
-    !noCombinationSoundPlayed &&
-    noCombinationSoundEnabled
-  ) {
+  hasUsefulFutureMove === false &&
+  !noCombinationSoundPlayed &&
+  noCombinationSoundEnabled &&
+  !suppressNoCombinationSound
+) {
     const audio =
       new Audio(
         `/sounds/playmode/nocombination.mp3?t=${Date.now()}`
@@ -1302,12 +1308,16 @@ useEffect(() => {
   }
 
   if (
-    hasUsefulFutureMove !== false
-  ) {
-    setNoCombinationSoundPlayed(
-      false
-    );
-  }
+  hasUsefulFutureMove !== false
+) {
+  setNoCombinationSoundPlayed(
+    false
+  );
+
+  setSuppressNoCombinationSound(
+    false
+  );
+}
 }, [
   hasUsefulFutureMove,
   noCombinationSoundPlayed,
@@ -1360,6 +1370,10 @@ if (
 
       return false;
     }
+
+setSuppressNoCombinationSound(
+  true
+);
 
     setScores((prev) => ({
       ...prev,
