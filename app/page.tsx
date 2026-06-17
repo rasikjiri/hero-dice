@@ -2476,6 +2476,7 @@ if (celebrationType === 0) {
             particleCount: 333,
             spread: 100,
             startVelocity: 35,
+            zIndex: 9999,
             origin: {
               x: Math.random(),
               y: 0.6,
@@ -2504,6 +2505,7 @@ if (celebrationType === 1) {
             particleCount: 333,
             spread: 180,
             startVelocity: 60,
+            zIndex: 9999,
             origin: {
               x: 0.5,
               y: 0.6,
@@ -2532,6 +2534,7 @@ if (celebrationType === 2) {
             particleCount: 333,
             angle: 60,
             spread: 55,
+            zIndex: 9999,
             origin: {
               x: 0,
               y: 0.7,
@@ -2542,6 +2545,7 @@ if (celebrationType === 2) {
             particleCount: 333,
             angle: 120,
             spread: 55,
+            zIndex: 9999,
             origin: {
               x: 1,
               y: 0.7,
@@ -5276,23 +5280,26 @@ canSavePlayModeScore &&
               )
             ];
 
-          if (
-            celebrationAudioRef.current
-          ) {
-            celebrationAudioRef.current.pause();
-          }
+          const isPlaying =
+            celebrationAudioRef.current &&
+            !celebrationAudioRef.current
+              .paused &&
+            !celebrationAudioRef.current
+              .ended;
 
-          const audio =
-            new Audio(
-              randomSound
+          if (!isPlaying) {
+            const audio =
+              new Audio(
+                randomSound
+              );
+
+            celebrationAudioRef.current =
+              audio;
+
+            audio.play().catch(
+              () => {}
             );
-
-          celebrationAudioRef.current =
-            audio;
-
-          audio.play().catch(
-            () => {}
-          );
+          }
 
           const celebrationType =
   Math.floor(
@@ -5405,9 +5412,15 @@ if (celebrationType === 2) {
         {winner}
       </p>
 
-      <p className="mb-6 text-3xl font-black text-yellow-400">
-        {winnerScore} bodů
-      </p>
+      <p
+  className={`mb-6 text-3xl font-black ${
+    winnerScore === 214
+      ? "text-red-500"
+      : "text-yellow-400"
+  }`}
+>
+  {winnerScore} bodů
+</p>
 
       <p className="mb-6 text-sm text-zinc-400">
         klikni na 🏆 pro další
