@@ -338,7 +338,7 @@ const [
 const [
   playModeBonusRolls,
   setPlayModeBonusRolls,
-] = useState(6);
+] = useState(2);
 
 const [
   isPlayModeActive,
@@ -924,8 +924,7 @@ const toggleDiceLock = (
 };
 
 const bonusDifference =
-  playModeBonusRolls -
-  playModeRolls;
+  playModeBonusRolls;
 
 const allDiceLocked =
   lockedDice.every(
@@ -980,7 +979,7 @@ const isLeaguePlayMode =
   !playModeAllowRewrite &&
   playModeBonusMode ===
     "general-only" &&
-  playModeBonusRolls === 6;
+  playModeBonusRolls === 2;
 
 const playModeCategoryMap: Record<
   string,
@@ -3481,7 +3480,7 @@ setPlayModeBonusMode(
 
 setPlayModeBonusRolls(
   parsed.playModeBonusRolls ??
-    6
+    2
 );
 
             setScreen("game");
@@ -3599,7 +3598,7 @@ setPlayModeBonusMode(
 
 setPlayModeBonusRolls(
   game.play_mode_bonus_rolls ??
-    6
+    2
 );
 
       localStorage.setItem(
@@ -3762,7 +3761,7 @@ setPlayModeBonusMode(
 
 setPlayModeBonusRolls(
   parsed.playModeBonusRolls ??
-    6
+    2
 );
 
             setScreen("game");
@@ -4242,7 +4241,7 @@ if (celebrationType === 2) {
         </div>
 
         <div>
-          • bonus pouze u generála s 6 hody
+          • bonus pouze u generála (2 bonus hody)
         </div>
       </div>
     </div>
@@ -4418,13 +4417,12 @@ if (celebrationType === 2) {
 
     <div
   className={`min-w-[100px] text-center text-5xl font-black ${
-    playModeBonusRolls ===
-    playModeRolls + 2
+    playModeBonusRolls === 2
       ? "text-green-400"
       : "text-yellow-400"
   }`}
 >
-  +{playModeBonusRolls - playModeRolls}
+  {playModeBonusRolls}
 </div>
 
     <button
@@ -4432,7 +4430,7 @@ if (celebrationType === 2) {
         setPlayModeBonusRolls(
           (prev) =>
             Math.min(
-              10,
+              7,
               prev + 1
             )
         )
