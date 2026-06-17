@@ -4370,15 +4370,15 @@ if (celebrationType === 2) {
     </button>
 
     <div
-      className={`min-w-[100px] text-center text-5xl font-black ${
-        playModeBonusRolls ===
-        6
-          ? "text-green-400"
-          : "text-yellow-400"
-      }`}
-    >
-      {playModeBonusRolls}
-    </div>
+  className={`min-w-[100px] text-center text-5xl font-black ${
+    playModeBonusRolls ===
+    playModeRolls + 2
+      ? "text-green-400"
+      : "text-yellow-400"
+  }`}
+>
+  +{playModeBonusRolls - playModeRolls}
+</div>
 
     <button
       onClick={() =>
