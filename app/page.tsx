@@ -131,6 +131,36 @@ const celebrationAudioRef =
 const celebrationTimeoutsRef =
   useRef<number[]>([]);
 
+const [
+  showSettings,
+  setShowSettings,
+] = useState(false);
+
+const [
+  celebrationSoundEnabled,
+  setCelebrationSoundEnabled,
+] = useState(true);
+
+const [
+  maxScoreSoundEnabled,
+  setMaxScoreSoundEnabled,
+] = useState(true);
+
+const [
+  maxScoreSoundPlayed,
+  setMaxScoreSoundPlayed,
+] = useState(false);
+
+const [
+  noCombinationSoundEnabled,
+  setNoCombinationSoundEnabled,
+] = useState(true);
+
+const [
+  noCombinationSoundPlayed,
+  setNoCombinationSoundPlayed,
+] = useState(false);
+
   const [scores, setScores] =
     useState<ScoreMap>({});
 
@@ -178,6 +208,62 @@ useEffect(() => {
     );
   };
 }, [showGameMenu]);
+
+useEffect(() => {
+  const celebration =
+    localStorage.getItem(
+      "heroDiceCelebrationSound"
+    );
+
+  const maxScore =
+    localStorage.getItem(
+      "heroDiceMaxScoreSound"
+    );
+
+  const noCombination =
+    localStorage.getItem(
+      "heroDiceNoCombinationSound"
+    );
+
+  if (celebration !== null) {
+    setCelebrationSoundEnabled(
+      celebration === "true"
+    );
+  }
+
+  if (maxScore !== null) {
+    setMaxScoreSoundEnabled(
+      maxScore === "true"
+    );
+  }
+
+  if (noCombination !== null) {
+    setNoCombinationSoundEnabled(
+      noCombination === "true"
+    );
+  }
+}, []);
+
+const saveSettings = (
+  celebration: boolean,
+  maxScore: boolean,
+  noCombination: boolean
+) => {
+  localStorage.setItem(
+    "heroDiceCelebrationSound",
+    String(celebration)
+  );
+
+  localStorage.setItem(
+    "heroDiceMaxScoreSound",
+    String(maxScore)
+  );
+
+  localStorage.setItem(
+    "heroDiceNoCombinationSound",
+    String(noCombination)
+  );
+};
 
 const [
   showSaveGameConfirm,
@@ -682,6 +768,28 @@ const handlePlayerCountChange = (
 
     setScores(updatedScores);
 
+    const category =
+  gameCategories.find(
+    (c) =>
+      c.id ===
+      scoreModal.categoryId
+  );
+
+if (
+  maxScoreSoundEnabled &&
+  category &&
+  parsed === category.max
+) {
+  const audio =
+    new Audio(
+      `/sounds/win/fanfare.mp3?t=${Date.now()}`
+    );
+
+  audio.volume = 0.9;
+
+  audio.play().catch(() => {});
+}
+
 setScoreModal(null);
 
 setScoreInput("");
@@ -1069,7 +1177,144 @@ const canSavePlayModeScore =
       currentCombination.score >
         currentPlayModeScore;
 
-const savePlayModeScore =
+useEffect(() => {
+  if (
+    !currentCombination ||
+    !maxScoreSoundEnabled
+  ) {
+    setMaxScoreSoundPlayed(
+      false
+    );
+
+    return;
+  }
+
+  const categoryId =
+    playModeCategoryMap[
+      currentCombination
+        .combination
+    ];
+
+  if (!categoryId) {
+    setMaxScoreSoundPlayed(
+      false
+    );
+
+    return;
+  }
+
+  const category =
+    gameCategories.find(
+      (c) =>
+        c.id === categoryId
+    );
+
+  if (!category) {
+    setMaxScoreSoundPlayed(
+      false
+    );
+
+    return;
+  }
+
+  const playerId =
+    selectedPlayers[
+      currentPlayPlayerIndex
+    ];
+
+  const existingScore =
+    scores[playerId]?.[
+      categoryId
+    ];
+
+  const canWrite =
+    existingScore ===
+      undefined ||
+    (
+      playModeAllowRewrite &&
+      currentCombination.score >
+        existingScore
+    );
+
+  const isMaxScore =
+    currentCombination.score ===
+    category.max;
+
+  if (
+    isMaxScore &&
+    canWrite &&
+    !maxScoreSoundPlayed
+  ) {
+    const audio =
+      new Audio(
+        `/sounds/win/fanfare.mp3?t=${Date.now()}`
+      );
+
+    audio.volume = 0.9;
+
+    audio.play().catch(
+      () => {}
+    );
+
+    setMaxScoreSoundPlayed(
+      true
+    );
+  }
+
+  if (
+    !isMaxScore ||
+    !canWrite
+  ) {
+    setMaxScoreSoundPlayed(
+      false
+    );
+  }
+}, [
+  currentCombination,
+  currentPlayPlayerIndex,
+  selectedPlayers,
+  scores,
+  playModeAllowRewrite,
+  maxScoreSoundEnabled,
+  maxScoreSoundPlayed,
+]);
+
+useEffect(() => {
+  if (
+    hasUsefulFutureMove === false &&
+    !noCombinationSoundPlayed &&
+    noCombinationSoundEnabled
+  ) {
+    const audio =
+      new Audio(
+        `/sounds/playmode/nocombination.mp3?t=${Date.now()}`
+      );
+
+    audio.volume = 0.8;
+
+    audio.play().catch(
+      () => {}
+    );
+
+    setNoCombinationSoundPlayed(
+      true
+    );
+  }
+
+  if (
+    hasUsefulFutureMove !== false
+  ) {
+    setNoCombinationSoundPlayed(
+      false
+    );
+  }
+}, [
+  hasUsefulFutureMove,
+  noCombinationSoundPlayed,
+  noCombinationSoundEnabled,
+]);
+
+        const savePlayModeScore =
   () => {
     if 
     (!currentCombination)
@@ -1194,7 +1439,12 @@ const activateBonus = () => {
 
       setBonusUsed(false);
     }
-
+setMaxScoreSoundPlayed(
+  false
+);
+setNoCombinationSoundPlayed(
+  false
+);
     return;
   }
 if (
@@ -1298,17 +1548,24 @@ const rollAllDice = () => {
           );
 
         setPlayModeDice(
-          finalDice
-        );
+  finalDice
+);
 
-        setHasRolledDice(
-          true
-        );
+setHasRolledDice(
+  true
+);
 
-        setRemainingRolls(
-          (prev) =>
-            prev - 1
-        );
+setMaxScoreSoundPlayed(
+  false
+);
+setNoCombinationSoundPlayed(
+  false
+);
+
+setRemainingRolls(
+  (prev) =>
+    prev - 1
+);
 
         setConfirmedLockedDice(
   [...lockedDice]
@@ -2123,29 +2380,35 @@ localStorage.removeItem(
   "heroDiceCurrentGame"
 );
 
-const randomSound =
-  winSounds[
-    Math.floor(
-      Math.random() *
-      winSounds.length
-    )
-  ];
+if (
+  celebrationSoundEnabled
+) {
+  const randomSound =
+    winSounds[
+      Math.floor(
+        Math.random() *
+          winSounds.length
+      )
+    ];
 
-console.log(
-  "WIN SOUND:",
-  randomSound
-);
+  if (
+    celebrationAudioRef.current
+  ) {
+    celebrationAudioRef.current.pause();
+  }
 
-const audio = new Audio(
-  `${randomSound}?t=${Date.now()}`
-);
+  const audio =
+    new Audio(
+      randomSound
+    );
 
-audio.volume = 0.8;
+  celebrationAudioRef.current =
+    audio;
 
-celebrationAudioRef.current =
-  audio;
-
-audio.play().catch(() => {});
+  audio.play().catch(
+    () => {}
+  );
+}
 
 setShowFinishedGame(true);
 
@@ -2551,6 +2814,18 @@ if (celebrationType === 2) {
 
   {showGameMenu && (
     <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl">
+      
+      <button
+  onClick={() => {
+    setShowSettings(true);
+
+    setShowGameMenu(false);
+  }}
+  className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800 hover:text-yellow-400"
+>
+  Zvuk
+</button>
+      
       <button
         onClick={() => {
           loadSavedGames();
@@ -2966,22 +3241,25 @@ if (celebrationType === 2) {
         : "text-purple-400"
     }`}
   >
-    Aktuální hra:{" "}
     {isLeaguePlayMode
-      ? "4 hody / Bez přepisu / Bonus: Generál +2 hody"
-      : `${playModeRolls} hodů / Přepis: ${
-          playModeAllowRewrite
-            ? "Ano"
-            : "Ne"
-        } / Bonus: ${
-          playModeBonusMode ===
-          "all"
-            ? "Všechny kombinace"
-            : "Generál"
-        } +${
-          playModeBonusRolls -
-          playModeRolls
-        } body`}
+  ? "Ligová hra"
+  : "Fun hra"}
+:{" "}
+{isLeaguePlayMode
+  ? "4 hody / Bez přepisu / Bonus: Generál +2 hody"
+  : `${playModeRolls} hodů / Přepis: ${
+      playModeAllowRewrite
+        ? "Ano"
+        : "Ne"
+    } / Bonus: ${
+      playModeBonusMode ===
+      "all"
+        ? "Všechny kombinace"
+        : "Generál"
+    } +${
+      playModeBonusRolls -
+      playModeRolls
+    } body`}
   </div>
 )}
             </>
@@ -3513,24 +3791,29 @@ localStorage.removeItem(
   "heroDiceCurrentGame"
 );
 
-const randomSound =
-  winSounds[
-    Math.floor(
-      Math.random() *
-      winSounds.length
-    )
-  ];
+if (
+  celebrationSoundEnabled
+) {
+  const randomSound =
+    winSounds[
+      Math.floor(
+        Math.random() *
+        winSounds.length
+      )
+    ];
 
-const audio = new Audio(
-  `${randomSound}?t=${Date.now()}`
-);
+  const audio =
+    new Audio(
+      `${randomSound}?t=${Date.now()}`
+    );
 
-audio.volume = 0.8;
+  audio.volume = 0.8;
 
-celebrationAudioRef.current =
-  audio;
+  celebrationAudioRef.current =
+    audio;
 
-audio.play().catch(() => {});
+  audio.play().catch(() => {});
+}
 
 setShowFinishedGame(true);
 
@@ -3681,24 +3964,29 @@ localStorage.removeItem(
   "heroDiceCurrentGame"
 );
 
-const randomSound =
-  winSounds[
-    Math.floor(
-      Math.random() *
-      winSounds.length
-    )
-  ];
+if (
+  celebrationSoundEnabled
+) {
+  const randomSound =
+    winSounds[
+      Math.floor(
+        Math.random() *
+        winSounds.length
+      )
+    ];
 
-const audio = new Audio(
-  `${randomSound}?t=${Date.now()}`
-);
+  const audio =
+    new Audio(
+      `${randomSound}?t=${Date.now()}`
+    );
 
-audio.volume = 0.8;
+  audio.volume = 0.8;
 
-celebrationAudioRef.current =
-  audio;
+  celebrationAudioRef.current =
+    audio;
 
-audio.play().catch(() => {});
+  audio.play().catch(() => {});
+}
 
 setShowFinishedGame(true);
 
@@ -4373,10 +4661,10 @@ return (
   <div className="absolute left-1/2 -translate-x-1/2 text-4xl leading-none">
     {hasUsefulFutureMove ===
     null
-      ? "😴"
+      ? "❌"
       : hasUsefulFutureMove
-        ? "😀"
-        : "😵"}
+        ? "👍🏻"
+        : "❌"}
   </div>
 
   <button
@@ -4795,6 +5083,124 @@ canSavePlayModeScore &&
   </div>
 )}
 
+{showSettings && (
+  <div className="fixed inset-0 z-[170] flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-[520px] rounded-3xl bg-zinc-900 p-8 text-white">
+
+      <h2 className="mb-8 text-3xl font-black text-yellow-400">
+        Nastavení zvuku
+      </h2>
+
+      <div className="space-y-6">
+
+        <div className="flex items-center justify-between">
+          <span className="font-bold">
+            Závěrečná oslava
+          </span>
+
+          <button
+            onClick={() => {
+              const value =
+                !celebrationSoundEnabled;
+
+              setCelebrationSoundEnabled(
+                value
+              );
+
+              saveSettings(
+  value,
+  maxScoreSoundEnabled,
+  noCombinationSoundEnabled
+);
+            }}
+            className={`rounded-xl px-5 py-2 font-black ${
+              celebrationSoundEnabled
+                ? "bg-green-600"
+                : "bg-red-600"
+            }`}
+          >
+            {celebrationSoundEnabled
+              ? "ZAP"
+              : "VYP"}
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="font-bold">
+            Max skóre
+          </span>
+
+          <button
+            onClick={() => {
+              const value =
+                !maxScoreSoundEnabled;
+
+              setMaxScoreSoundEnabled(
+                value
+              );
+
+              saveSettings(
+  celebrationSoundEnabled,
+  value,
+  noCombinationSoundEnabled
+);
+            }}
+            className={`rounded-xl px-5 py-2 font-black ${
+              maxScoreSoundEnabled
+                ? "bg-green-600"
+                : "bg-red-600"
+            }`}
+          >
+            {maxScoreSoundEnabled
+              ? "ZAP"
+              : "VYP"}
+          </button>
+        </div>
+        <div className="flex items-center justify-between">
+  <span className="font-bold">
+    Není kombinace
+  </span>
+
+  <button
+    onClick={() => {
+      const value =
+        !noCombinationSoundEnabled;
+
+      setNoCombinationSoundEnabled(
+        value
+      );
+
+      saveSettings(
+        celebrationSoundEnabled,
+        maxScoreSoundEnabled,
+        value
+      );
+    }}
+    className={`rounded-xl px-5 py-2 font-black ${
+      noCombinationSoundEnabled
+        ? "bg-green-600"
+        : "bg-red-600"
+    }`}
+  >
+    {noCombinationSoundEnabled
+      ? "ZAP"
+      : "VYP"}
+  </button>
+</div>
+      </div>
+
+      <button
+        onClick={() =>
+          setShowSettings(false)
+        }
+        className="mt-8 w-full rounded-2xl bg-yellow-500 px-5 py-4 font-black text-black"
+      >
+        Zavřít
+      </button>
+    </div>
+  </div>
+)}
+
       {/* WINNER MODAL */}
 {showFinishedGame && (
   <div
@@ -4843,82 +5249,104 @@ canSavePlayModeScore &&
             () => {}
           );
 
-          const randomAnimation =
-            Math.floor(
-              Math.random() * 5
-            );
+          const celebrationType =
+  Math.floor(
+    Math.random() * 3
+  );
 
-          switch (
-            randomAnimation
-          ) {
-            case 0:
-              confetti({
-                particleCount: 200,
-                spread: 120,
-                origin: {
-                  y: 0.6,
-                },
-              });
-              break;
+if (celebrationType === 0) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 333,
+            spread: 100,
+            startVelocity: 35,
+            origin: {
+              x: Math.random(),
+              y: 0.6,
+            },
+          });
+        },
+        i * 500
+      );
 
-            case 1:
-              confetti({
-                particleCount: 120,
-                angle: 60,
-                spread: 80,
-                origin: {
-                  x: 0,
-                  y: 0.7,
-                },
-              });
-              break;
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
+}
 
-            case 2:
-              confetti({
-                particleCount: 120,
-                angle: 120,
-                spread: 80,
-                origin: {
-                  x: 1,
-                  y: 0.7,
-                },
-              });
-              break;
+if (celebrationType === 1) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 333,
+            spread: 60,
+            startVelocity: 60,
+            origin: {
+              x: 0.5,
+              y: 0.6,
+            },
+          });
+        },
+        i * 500
+      );
 
-            case 3:
-              confetti({
-                particleCount: 100,
-                angle: 60,
-                spread: 70,
-                origin: {
-                  x: 0,
-                  y: 0.7,
-                },
-              });
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
+}
 
-              confetti({
-                particleCount: 100,
-                angle: 120,
-                spread: 70,
-                origin: {
-                  x: 1,
-                  y: 0.7,
-                },
-              });
-              break;
+if (celebrationType === 2) {
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          confetti({
+            particleCount: 333,
+            angle: 60,
+            spread: 55,
+            origin: {
+              x: 0,
+              y: 0.7,
+            },
+          });
 
-            case 4:
-              confetti({
-                particleCount: 300,
-                spread: 180,
-                startVelocity: 50,
-                origin: {
-                  x: 0.5,
-                  y: 0.5,
-                },
-              });
-              break;
-          }
+          confetti({
+            particleCount: 333,
+            angle: 120,
+            spread: 55,
+            origin: {
+              x: 1,
+              y: 0.7,
+            },
+          });
+        },
+        i * 500
+      );
+
+    celebrationTimeoutsRef.current.push(
+      timeoutId
+    );
+  }
+}
         }}
       >
         🏆
