@@ -1326,10 +1326,10 @@ useEffect(() => {
 ) {
     const audio =
       new Audio(
-  "/sounds/playmode/nocombination.mp3"
-);
+        `/sounds/playmode/nocombination.wav?t=${Date.now()}`
+      );
 
-    audio.volume = 0.8;
+    audio.volume = 0.1;
 
     audio.play().catch(
       () => {}
