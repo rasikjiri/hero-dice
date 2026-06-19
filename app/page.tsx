@@ -1,5 +1,30 @@
 "use client";
 
+/* =======================================================
+   Hero Dice — page.tsx
+   Organizational headers added (visual only - no logic changes)
+   Sections (for navigation):
+   01. IMPORTS
+   02. TYPES
+   03. CONSTANTS
+   04. GLOBAL STATE
+   05. PLAYER MANAGEMENT
+   06. GAME CONFIGURATION
+   07. DICE ENGINE
+   08. GAME ENGINE
+   09. PLAY MODE
+   10. AI PLAYER (reserved)
+   11. ONLINE
+   12. SAVE / LOAD
+   13. STATISTICS
+   14. AUDIO
+   15. ANIMATIONS
+   16. MODALS
+   17. UI HELPERS
+   18. JSX
+  ======================================================= */
+
+// 01. IMPORTS
 import {
   useEffect,
   useMemo,
@@ -18,6 +43,15 @@ import { gameCategories } from "./data/gameCategories";
 import { supabase } from "./lib/supabase";
 
 import { detectCombination } from "./lib/playMode";
+
+import {
+  createOnlineSession,
+  joinOnlineSession,
+  updateOnlineState,
+  subscribeToSession,
+  leaveOnlineSession,
+} from "./lib/onlineSession";
+
 import confetti from "canvas-confetti";
 
 import {
@@ -31,6 +65,7 @@ import {
   syncGamesFromSupabase,
 } from "./data/statistics";
 
+// 02. TYPES
 type ScoreMap = {
   [playerId: string]: {
     [categoryId: string]: number;
@@ -38,6 +73,7 @@ type ScoreMap = {
 };
 
 export default function Home() {
+  // 04. GLOBAL STATE
   const [screen, setScreen] = useState<
     "home" | "game"
   >("home");
@@ -117,19 +153,20 @@ const [gameId, setGameId] =
   const [showFinishedGame, setShowFinishedGame] =
     useState(false);
 
-const winSounds = [
-  "/sounds/win/wow1.mp3",
-  "/sounds/win/wow2.mp3",
-  "/sounds/win/wow3.mp3",
-];
+  // 14. AUDIO
+  const winSounds = [
+    "/sounds/win/wow1.mp3",
+    "/sounds/win/wow2.mp3",
+    "/sounds/win/wow3.mp3",
+  ];
 
-const celebrationAudioRef =
-  useRef<HTMLAudioElement | null>(
-    null
-  );
+  const celebrationAudioRef =
+    useRef<HTMLAudioElement | null>(
+      null
+    );
 
-const celebrationTimeoutsRef =
-  useRef<number[]>([]);
+  const celebrationTimeoutsRef =
+    useRef<number[]>([]);
 
 const [
   showSettings,
@@ -168,6 +205,28 @@ const [
 
   const [scores, setScores] =
     useState<ScoreMap>({});
+
+const [
+  isOnlineGame,
+  setIsOnlineGame,
+] = useState(false);
+
+const [
+  onlineSessionId,
+  setOnlineSessionId,
+] = useState<string | null>(
+  null
+);
+
+const [
+  onlineChannel,
+  setOnlineChannel,
+] = useState<any>(null);
+
+const [
+  joinSessionId,
+  setJoinSessionId,
+] = useState("");
 
   const [
   showRestoreGame,
@@ -308,6 +367,8 @@ const [
   setShowPlayModeSetup,
 ] = useState(false);
 
+  // 09. PLAY MODE
+
 const [
   showPlayModeHelp,
   setShowPlayModeHelp,
@@ -349,17 +410,6 @@ const [
   hasStartedPlayMode,
   setHasStartedPlayMode,
 ] = useState(false);
-
-const [
-  hasRolledDice,
-  setHasRolledDice,
-] = useState(false);
-
-const [
-  isRolling,
-  setIsRolling,
-] = useState(false);
-
 const [
   showPlayModeResult,
   setShowPlayModeResult,
@@ -377,17 +427,29 @@ const [
   [1, 1, 1, 1, 1, 1]
 );
 
-const diceImages: Record<
-  number,
-  string
-> = {
-  1: "/dice/1.png",
-  2: "/dice/2.png",
-  3: "/dice/3.png",
-  4: "/dice/4.png",
-  5: "/dice/5.png",
-  6: "/dice/6.png",
-};
+  // 07. DICE ENGINE
+  const diceImages: Record<
+    number,
+    string
+  > = {
+    1: "/dice/1.png",
+    2: "/dice/2.png",
+    3: "/dice/3.png",
+    4: "/dice/4.png",
+    5: "/dice/5.png",
+    6: "/dice/6.png",
+  };
+
+  // 09. PLAY MODE (state)
+  const [
+    hasRolledDice,
+    setHasRolledDice,
+  ] = useState(false);
+
+  const [
+    isRolling,
+    setIsRolling,
+  ] = useState(false);
 
 const [
   lockedDice,
@@ -519,6 +581,7 @@ const maxPlayers =
   selectablePlayers.length;
 
 useEffect(() => {
+  // 13. STATISTICS
   const loadStatistics =
     async () => {
       await syncGamesFromSupabase();
@@ -850,7 +913,8 @@ window.scrollTo({
     );
   };
 
-const toggleDiceLock = (
+      // 09. PLAY MODE
+      const toggleDiceLock = (
   index: number
 ) => {
   if (
@@ -1628,8 +1692,9 @@ setIsRolling(
     }, 133);
 };
 
-const saveFunGame =
-  async ({
+  // 12. SAVE / LOAD
+  const saveFunGame =
+    async ({
     winner,
     winnerScore,
     players,
@@ -2099,6 +2164,231 @@ const deletePlayerFromSupabase =
     }
   };
 
+  
+  // 11. ONLINE
+  const handleCreateOnlineSession =
+    async () => {
+    if (
+      selectedPlayers.length === 0
+    ) {
+      alert(
+        "Nejdříve vyber hráče."
+      );
+
+      return;
+    }
+
+    try {
+      const session =
+        await createOnlineSession(
+          selectedPlayers[0]
+        );
+
+      setOnlineSessionId(
+        session.id
+      );
+
+      setIsOnlineGame(true);
+
+      const channel =
+  subscribeToSession(
+    session.id,
+    (gameState) => {
+      applyOnlineGameState(
+        gameState
+      );
+    }
+  );
+
+      setOnlineChannel(
+  channel
+);
+
+await updateOnlineState(
+  session.id,
+  {
+    scores,
+
+    currentPlayPlayerIndex,
+
+    playModeDice,
+
+    lockedDice,
+
+    confirmedLockedDice,
+
+    remainingRolls,
+
+    bonusUsed,
+
+    selectedGeneralValue,
+
+    hasRolledDice,
+  }
+);
+
+await navigator.clipboard.writeText(
+  session.id
+);
+
+alert(
+  `Online hra vytvořena.\n\nKód místnosti:\n\n${session.id}`
+);
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        "Nepodařilo se vytvořit online hru."
+      );
+    }
+  };
+  
+  const applyOnlineGameState = (
+  gameState: any
+) => {
+  setScores(
+    gameState.scores ?? {}
+  );
+
+  setCurrentPlayPlayerIndex(
+    gameState.currentPlayPlayerIndex ?? 0
+  );
+
+  setPlayModeDice(
+    gameState.playModeDice ??
+      [1, 1, 1, 1, 1, 1]
+  );
+
+  setLockedDice(
+    gameState.lockedDice ??
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]
+  );
+
+  setConfirmedLockedDice(
+    gameState.confirmedLockedDice ??
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]
+  );
+
+  setRemainingRolls(
+    gameState.remainingRolls ?? 0
+  );
+
+  setBonusUsed(
+    gameState.bonusUsed ?? false
+  );
+
+  setSelectedGeneralValue(
+    gameState.selectedGeneralValue ??
+      null
+  );
+
+  setHasRolledDice(
+    gameState.hasRolledDice ??
+      false
+  );
+};
+
+  const syncCurrentGameState =
+  async () => {
+    if (
+      !isOnlineGame ||
+      !onlineSessionId
+    ) {
+      return;
+    }
+
+    try {
+      await updateOnlineState(
+        onlineSessionId,
+        {
+          scores,
+
+          currentPlayPlayerIndex,
+
+          playModeDice,
+
+          lockedDice,
+
+          confirmedLockedDice,
+
+          remainingRolls,
+
+          bonusUsed,
+
+          selectedGeneralValue,
+
+          hasRolledDice,
+        }
+      );
+    } catch (error) {
+      console.error(
+        "ONLINE SYNC ERROR:",
+        error
+      );
+    }
+  };
+  
+  
+  const handleJoinOnlineSession =
+  async () => {
+    if (!joinSessionId.trim()) {
+      alert("Zadej kód místnosti.");
+
+      return;
+    }
+
+    try {
+      const session =
+        await joinOnlineSession(
+          joinSessionId.trim()
+        );
+
+      setOnlineSessionId(
+        session.id
+      );
+
+      setIsOnlineGame(true);
+
+      const channel =
+  subscribeToSession(
+    session.id,
+    (gameState) => {
+      applyOnlineGameState(
+        gameState
+      );
+    }
+  );
+
+      setOnlineChannel(
+        channel
+      );
+
+      alert(
+        "Připojeno k online hře."
+      );
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        "Nepodařilo se připojit k online hře."
+      );
+    }
+  };
+  
   const startNewGame = (
   skipRestoreCheck = false
 ) => {
@@ -2275,7 +2565,30 @@ gameId,
   playModeBonusRolls,
 ]);
 
-  useEffect(() => {
+useEffect(() => {
+  if (
+    !isOnlineGame ||
+    !onlineSessionId
+  ) {
+    return;
+  }
+
+  syncCurrentGameState();
+}, [
+  scores,
+  currentPlayPlayerIndex,
+  playModeDice,
+  lockedDice,
+  confirmedLockedDice,
+  remainingRolls,
+  bonusUsed,
+  selectedGeneralValue,
+  hasRolledDice,
+  isOnlineGame,
+  onlineSessionId,
+]);  
+
+useEffect(() => {
       const finishGame = async () => {
 
     if (
@@ -2569,6 +2882,7 @@ if (celebrationType === 2) {
     gameFinished,
     selectedPlayers,
   ]);
+    // 18. JSX
     return (
   <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
     {!isUnlocked && (
@@ -2667,12 +2981,38 @@ if (celebrationType === 2) {
     </div>
 
           <div className="mt-8 md:mt-10">
-            <button
-              onClick={() => startNewGame()}
-              className="rounded-3xl bg-yellow-500 px-8 py-5 text-2xl font-black text-black transition hover:scale-[1.02] hover:bg-yellow-400 md:px-10 md:text-3xl"
-            >
-              ▶ Nová hra
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+  <button
+    onClick={() => startNewGame()}
+    className="rounded-3xl bg-yellow-500 px-8 py-5 text-2xl font-black text-black transition hover:scale-[1.02] hover:bg-yellow-400 md:px-10 md:text-3xl"
+  >
+    ▶ Nová hra
+  </button>
+
+  <button
+    onClick={handleCreateOnlineSession}
+    className="rounded-3xl bg-green-600 px-8 py-5 text-2xl font-black text-white transition hover:bg-green-500 md:px-10 md:text-3xl"
+  >
+    🌐 Vytvořit online
+  </button>
+
+  <input
+    type="text"
+    value={joinSessionId}
+    onChange={(e) =>
+      setJoinSessionId(e.target.value)
+    }
+    placeholder="Kód místnosti"
+    className="rounded-2xl border border-zinc-700 bg-zinc-900 px-5 py-4 text-white outline-none"
+  />
+
+  <button
+    onClick={handleJoinOnlineSession}
+    className="rounded-2xl bg-blue-600 px-6 py-4 font-bold text-white transition hover:bg-blue-500"
+  >
+    🔗 Připojit
+  </button>
+</div>
           </div>
 
           <div className="mt-10 md:mt-12">
