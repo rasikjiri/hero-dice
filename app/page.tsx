@@ -2166,6 +2166,11 @@ const deletePlayerFromSupabase =
 
   
   // 11. ONLINE
+  const enterOnlineGame = () => {
+    // Only switch view to game screen — do not modify game state
+    setGameStarted(true);
+    setScreen("game");
+  };
   const handleCreateOnlineSession =
     async () => {
     if (
@@ -2184,56 +2189,25 @@ const deletePlayerFromSupabase =
           selectedPlayers[0]
         );
 
-      setOnlineSessionId(
-        session.id
-      );
+      setOnlineSessionId(session.id);
 
       setIsOnlineGame(true);
 
-      const channel =
-  subscribeToSession(
-    session.id,
-    (gameState) => {
-      applyOnlineGameState(
-        gameState
+      // Enter the game view without altering game state
+      enterOnlineGame();
+
+      const channel = subscribeToSession(
+        session.id,
+        (gameState) => {
+          applyOnlineGameState(gameState);
+        }
       );
-    }
-  );
 
-      setOnlineChannel(
-  channel
-);
+      setOnlineChannel(channel);
 
-await updateOnlineState(
-  session.id,
-  {
-    scores,
+      await navigator.clipboard.writeText(session.id);
 
-    currentPlayPlayerIndex,
-
-    playModeDice,
-
-    lockedDice,
-
-    confirmedLockedDice,
-
-    remainingRolls,
-
-    bonusUsed,
-
-    selectedGeneralValue,
-
-    hasRolledDice,
-  }
-);
-
-await navigator.clipboard.writeText(
-  session.id
-);
-
-alert(
-  `Online hra vytvořena.\n\nKód místnosti:\n\n${session.id}`
-);
+      alert(`Online hra vytvořena.\n\nKód místnosti:\n\n${session.id}`);
     } catch (error) {
       console.error(error);
 
@@ -2357,29 +2331,23 @@ alert(
           joinSessionId.trim()
         );
 
-      setOnlineSessionId(
-        session.id
-      );
+      setOnlineSessionId(session.id);
 
       setIsOnlineGame(true);
 
-      const channel =
-  subscribeToSession(
-    session.id,
-    (gameState) => {
-      applyOnlineGameState(
-        gameState
-      );
-    }
-  );
+      // Enter the game view without altering game state
+      enterOnlineGame();
 
-      setOnlineChannel(
-        channel
+      const channel = subscribeToSession(
+        session.id,
+        (gameState) => {
+          applyOnlineGameState(gameState);
+        }
       );
 
-      alert(
-        "Připojeno k online hře."
-      );
+      setOnlineChannel(channel);
+
+      alert("Připojeno k online hře.");
     } catch (error) {
       console.error(error);
 
