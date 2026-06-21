@@ -256,3 +256,54 @@ Poznámky:
 - Online lobby now reflects the shared remote state after loading a saved online game.
 - Fixed host/client visibility after resuming saved online games.
 - Prevented readiness reset during online resume.
+
+---
+
+## v2.8 – Computer / AI Player
+
+### Added
+
+- Přidána možnost hrát offline PlayMode s Computer hráčem.
+- Computer hráči jsou definovaní v kódu jako pevný číselník tří hráčů.
+- Výsledky Computer hráčů jsou součástí Fun Games, Fun Statistics a Fun Leaderboards.
+
+### Changed
+
+- Hra s Computer hráčem se vždy ukládá jako Fun Game.
+- Ruční zápis do scoreboardu je při hře s Computer hráčem zamčený stejně jako v online režimu.
+
+### Notes
+
+- Computer AI zapisuje skóre pouze podle aktuálně zobrazených kostek.
+- Computer AI je zatím reaktivní, nikoliv strategická.
+
+---
+
+## Hero Dice v2.9
+
+### Added
+
+- Zobrazení typu hry (Online / Offline) ve Scoreboardu.
+- Zobrazení typu hry (Online / Offline) v horním panelu Play Mode.
+- Online Chat dostupný pouze během online hry.
+- Sbalitelný pravý chat panel.
+- Realtime komunikace mezi hráči.
+- Diagnostika Supabase chyb při komunikaci s chatem.
+
+### Changed
+
+- Upraven layout Play Mode pro desktop s integrovaným chat panelem.
+- Zachována kompatibilita mobilního zobrazení.
+
+### Database
+
+- Přidána tabulka game_messages.
+- Přidány RLS policies.
+- Přidány INSERT/SELECT oprávnění.
+- Přidána realtime publication.
+
+### Fixed
+
+- Opraveno odesílání zpráv do online chatu.
+- Opraveno načítání zpráv po vytvoření databázové tabulky.
+- Opraveno zarovnání chat panelu vůči Play Mode.

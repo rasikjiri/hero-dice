@@ -50,6 +50,10 @@ import {
   updateOnlineState,
   subscribeToSession,
   leaveOnlineSession,
+  fetchGameMessages,
+  sendGameMessage,
+  subscribeToGameMessages,
+  type GameMessage,
 } from "./lib/onlineSession";
 
 import confetti from "canvas-confetti";
@@ -245,6 +249,39 @@ const [
   localOnlinePlayerId,
   setLocalOnlinePlayerId,
 ] = useState<string | null>(null);
+
+const [
+  onlineChatMessages,
+  setOnlineChatMessages,
+] = useState<GameMessage[]>([]);
+
+const [
+  onlineChatInput,
+  setOnlineChatInput,
+] = useState("");
+
+const [
+  isOnlineChatCollapsed,
+  setIsOnlineChatCollapsed,
+] = useState(false);
+
+const [
+  isMobileChatOpen,
+  setIsMobileChatOpen,
+] = useState(false);
+
+const [
+  isOnlineChatLoading,
+  setIsOnlineChatLoading,
+] = useState(false);
+
+const [
+  onlineChatError,
+  setOnlineChatError,
+] = useState<string | null>(null);
+
+const onlineChatBottomRef =
+  useRef<HTMLDivElement | null>(null);
 
 const localRuntimeRevisionRef =
   useRef(0);
@@ -1351,6 +1388,16 @@ const isLeaguePlayMode =
   playModeBonusMode ===
     "general-only" &&
   playModeBonusRolls === 2;
+
+const gameTypeInfoText =
+  gameMode === "online"
+    ? "Online hra"
+    : "Offline hra";
+
+const gameTypeTagText =
+  gameMode === "online"
+    ? "ONLINE"
+    : "OFFLINE";
 
 const playModeCategoryMap: Record<
   string,
@@ -4382,6 +4429,156 @@ setGameId(
   const canControlOnlinePlayMode =
     !isOnlineGame || isCurrentPlayer;
 
+  const canShowOnlineChat =
+    isOnlineGame &&
+    Boolean(onlineSessionId);
+
+  const canSubmitOnlineChat =
+    canShowOnlineChat &&
+    Boolean(localOnlinePlayerId) &&
+    onlineChatInput.trim().length > 0;
+
+  const getSupabaseErrorMessage = (
+    error: unknown
+  ) => {
+    if (
+      typeof error === "object" &&
+      error !== null
+    ) {
+      const record = error as {
+        message?: unknown;
+        details?: unknown;
+        hint?: unknown;
+        code?: unknown;
+      };
+
+      const pieces = [
+        typeof record.code === "string"
+          ? `code=${record.code}`
+          : null,
+        typeof record.message ===
+        "string"
+          ? `message=${record.message}`
+          : null,
+        typeof record.details ===
+        "string"
+          ? `details=${record.details}`
+          : null,
+        typeof record.hint === "string"
+          ? `hint=${record.hint}`
+          : null,
+      ].filter(
+        (
+          value
+        ): value is string =>
+          value !== null
+      );
+
+      if (pieces.length > 0) {
+        return pieces.join(" | ");
+      }
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return "Neznámá chyba";
+  };
+
+  const sendOnlineChatMessageNow =
+    async () => {
+      if (
+        !canShowOnlineChat ||
+        !onlineSessionId ||
+        !localOnlinePlayerId
+      ) {
+        return;
+      }
+
+      const trimmedMessage =
+        onlineChatInput.trim();
+
+      if (!trimmedMessage) {
+        return;
+      }
+
+      try {
+        await sendGameMessage({
+          gameId: onlineSessionId,
+          playerId: localOnlinePlayerId,
+          playerName:
+            getPlayerDisplayName(
+              localOnlinePlayerId
+            ),
+          message: trimmedMessage,
+        });
+
+        setOnlineChatInput("");
+        setOnlineChatError(null);
+
+        try {
+          const refreshedMessages =
+            await fetchGameMessages(
+              onlineSessionId
+            );
+
+          setOnlineChatMessages(
+            refreshedMessages
+          );
+        } catch (refreshError) {
+          console.error(
+            "ONLINE CHAT REFRESH ERROR:",
+            getSupabaseErrorMessage(
+              refreshError
+            ),
+            refreshError
+          );
+        }
+      } catch (error) {
+        const detailedError =
+          getSupabaseErrorMessage(
+            error
+          );
+
+        console.error(
+          "ONLINE CHAT SEND ERROR:",
+          detailedError,
+          error
+        );
+
+        setOnlineChatError(
+          detailedError
+        );
+
+        alert(
+          "Nepodařilo se odeslat zprávu do chatu."
+        );
+      }
+    };
+
+  const formatChatMessageTime = (
+    rawValue: string
+  ) => {
+    const date = new Date(rawValue);
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+      return "--:--";
+    }
+
+    return date.toLocaleTimeString(
+      "cs-CZ",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+      }
+    );
+  };
+
 useEffect(() => {
   if (
     selectablePlayers.length ===
@@ -4425,6 +4622,124 @@ useEffect(() => {
     );
   }
 }, [isOnlineGame]);
+
+useEffect(() => {
+  if (
+    !canShowOnlineChat ||
+    !onlineSessionId
+  ) {
+    setOnlineChatMessages([]);
+    setOnlineChatInput("");
+    setIsOnlineChatCollapsed(false);
+    setIsMobileChatOpen(false);
+    setIsOnlineChatLoading(false);
+    setOnlineChatError(null);
+
+    return;
+  }
+
+  let isMounted = true;
+
+  const loadMessages = async () => {
+    setIsOnlineChatLoading(true);
+
+    try {
+      const data =
+        await fetchGameMessages(
+          onlineSessionId
+        );
+
+      if (isMounted) {
+        setOnlineChatMessages(data);
+        setOnlineChatError(null);
+      }
+    } catch (error) {
+      const detailedError =
+        getSupabaseErrorMessage(
+          error
+        );
+
+      console.error(
+        "ONLINE CHAT LOAD ERROR:",
+        detailedError,
+        error
+      );
+
+      if (isMounted) {
+        setOnlineChatError(
+          detailedError
+        );
+      }
+    } finally {
+      if (isMounted) {
+        setIsOnlineChatLoading(false);
+      }
+    }
+  };
+
+  loadMessages();
+
+  const channel =
+    subscribeToGameMessages(
+      onlineSessionId,
+      (incomingMessage) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setOnlineChatMessages((prev) => {
+          if (
+            prev.some(
+              (message) =>
+                message.id ===
+                incomingMessage.id
+            )
+          ) {
+            return prev;
+          }
+
+          return [
+            ...prev,
+            incomingMessage,
+          ].sort(
+            (left, right) =>
+              new Date(
+                left.created_at
+              ).getTime() -
+              new Date(
+                right.created_at
+              ).getTime()
+          );
+        });
+      }
+    );
+
+  return () => {
+    isMounted = false;
+    leaveOnlineSession(channel);
+  };
+}, [canShowOnlineChat, onlineSessionId]);
+
+useEffect(() => {
+  if (
+    !canShowOnlineChat ||
+    isOnlineChatCollapsed
+  ) {
+    return;
+  }
+
+  onlineChatBottomRef.current?.scrollIntoView(
+    {
+      behavior: "smooth",
+      block: "end",
+    }
+  );
+}, [
+  canShowOnlineChat,
+  isOnlineChatCollapsed,
+  isMobileChatOpen,
+  onlineChatMessages,
+]);
 
 useEffect(() => {
   const handleBeforeUnload = (
@@ -4818,6 +5133,119 @@ if (celebrationType === 2) {
     gameFinished,
     selectedPlayers,
   ]);
+
+const renderOnlineChatMessages = () => (
+  <>
+    {onlineChatError && (
+      <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-bold text-red-300">
+        Chat error: {onlineChatError}
+      </div>
+    )}
+
+    <div className="mt-4 flex-1 overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3">
+      {isOnlineChatLoading && (
+        <div className="pt-6 text-center text-sm font-bold text-zinc-500">
+          Načítám chat...
+        </div>
+      )}
+
+      {!isOnlineChatLoading &&
+        onlineChatMessages.length ===
+          0 && (
+          <div className="pt-6 text-center text-sm font-bold text-zinc-500">
+            Zatím bez zpráv
+          </div>
+        )}
+
+      {!isOnlineChatLoading &&
+        onlineChatMessages.length >
+          0 && (
+          <div className="space-y-3">
+            {onlineChatMessages.map(
+              (message) => {
+                const isOwnMessage =
+                  localOnlinePlayerId !==
+                    null &&
+                  message.player_id ===
+                    localOnlinePlayerId;
+
+                return (
+                  <div
+                    key={message.id}
+                    className={`rounded-2xl border p-3 ${
+                      isOwnMessage
+                        ? "border-blue-400/40 bg-blue-500/10"
+                        : "border-zinc-700 bg-zinc-900/80"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="truncate text-sm font-black text-yellow-300">
+                        {
+                          message.player_name
+                        }
+                      </div>
+
+                      <div className="text-xs font-bold text-zinc-500">
+                        {formatChatMessageTime(
+                          message.created_at
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm text-zinc-200">
+                      {message.message}
+                    </p>
+                  </div>
+                );
+              }
+            )}
+          </div>
+        )}
+
+      <div ref={onlineChatBottomRef} />
+    </div>
+
+    <div className="mt-4 flex gap-2">
+      <input
+        value={onlineChatInput}
+        onChange={(event) =>
+          setOnlineChatInput(
+            event.target.value
+          )
+        }
+        onKeyDown={(event) => {
+          if (
+            event.key === "Enter" &&
+            !event.shiftKey
+          ) {
+            event.preventDefault();
+            sendOnlineChatMessageNow();
+          }
+        }}
+        maxLength={500}
+        placeholder={
+          localOnlinePlayerId
+            ? "Napiš zprávu..."
+            : "Vyber hráče v lobby"
+        }
+        className="h-12 flex-1 rounded-2xl border border-zinc-700 bg-black/60 px-4 text-sm font-bold text-white outline-none transition focus:border-blue-400"
+      />
+
+      <button
+        onClick={sendOnlineChatMessageNow}
+        disabled={!canSubmitOnlineChat}
+        className={`h-12 rounded-2xl px-4 text-sm font-black transition ${
+          canSubmitOnlineChat
+            ? "bg-blue-600 text-white hover:bg-blue-500"
+            : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+        }`}
+      >
+        Odeslat
+      </button>
+    </div>
+  </>
+);
+
     // 18. JSX
     return (
   <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
@@ -5820,7 +6248,7 @@ if (celebrationType === 2) {
 :{" "}
 {isLeaguePlayMode
   ? "4 hody / Bez přepisu / Bonus: Generál +2 hody"
-  : `${playModeRolls} hodů / Přepis: ${
+      : `${playModeRolls} hodů / Přepis: ${
       playModeAllowRewrite
         ? "Ano"
         : "Ne"
@@ -5832,7 +6260,7 @@ if (celebrationType === 2) {
     } +${
       playModeBonusRolls -
       playModeRolls
-    } body`}
+        } body`} / {gameTypeInfoText}
   </div>
 )}
             </>
@@ -7219,9 +7647,14 @@ currentCombination && (
 
 {isPlayModeActive && (
   <div className="fixed inset-0 z-[150] overflow-y-auto bg-black/60 backdrop-blur-sm p-4 text-white">
-    <div className="mx-auto flex w-full max-w-2xl flex-col">
-      <div className="mb-4" />
-
+    <div
+      className={`mx-auto flex w-full flex-col ${
+        canShowOnlineChat
+          ? "max-w-6xl lg:flex-row lg:items-stretch lg:gap-5"
+          : "max-w-2xl"
+      }`}
+    >
+      <div className="w-full lg:flex-1">
       <div className="rounded-3xl border border-purple-500/20 bg-zinc-900 p-6 md:p-8">
   <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
     
@@ -7245,9 +7678,11 @@ currentCombination && (
             : "text-purple-400"
         }`}
       >
-        {isLeaguePlayMode
-          ? "LIGOVÁ HRA"
-          : "FUN HRA"}
+        {`${
+          isLeaguePlayMode
+            ? "LIGOVÁ HRA"
+            : "FUN HRA"
+        } · ${gameTypeTagText}`}
       </div>
     </div>
 
@@ -7522,7 +7957,98 @@ canSavePlayModeScore &&
           )}
         </div>
       </div>
+      </div>
+
+      {canShowOnlineChat && (
+        <div className="hidden lg:flex lg:self-stretch">
+          {isOnlineChatCollapsed ? (
+            <button
+              onClick={() =>
+                setIsOnlineChatCollapsed(
+                  false
+                )
+              }
+              className="h-full w-12 rounded-2xl border border-blue-500/30 bg-zinc-900 text-sm font-black uppercase tracking-[0.15em] text-blue-300 transition hover:bg-zinc-800"
+            >
+              Chat
+            </button>
+          ) : (
+            <div className="flex h-full w-[360px] flex-col rounded-3xl border border-blue-500/20 bg-zinc-900 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black uppercase tracking-[0.18em] text-blue-300">
+                    Chat
+                  </div>
+
+                  <div className="text-xs font-bold text-zinc-500">
+                    Online hra
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    setIsOnlineChatCollapsed(
+                      true
+                    )
+                  }
+                  className="rounded-xl border border-zinc-700 px-3 py-2 text-xs font-black text-zinc-200 transition hover:bg-zinc-800"
+                >
+                  Sbalit
+                </button>
+              </div>
+
+              {renderOnlineChatMessages()}
+            </div>
+          )}
+        </div>
+      )}
     </div>
+
+    {canShowOnlineChat && (
+      <>
+        <button
+          onClick={() =>
+            setIsMobileChatOpen(
+              true
+            )
+          }
+          className="fixed bottom-6 right-4 z-[180] rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black uppercase tracking-[0.15em] text-white shadow-xl transition hover:bg-blue-500 lg:hidden"
+        >
+          Chat
+        </button>
+
+        {isMobileChatOpen && (
+          <div className="fixed inset-0 z-[220] bg-black/80 p-4 lg:hidden">
+            <div className="mx-auto flex h-full max-h-[85vh] w-full max-w-md flex-col rounded-3xl border border-blue-500/20 bg-zinc-900 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black uppercase tracking-[0.18em] text-blue-300">
+                    Chat
+                  </div>
+
+                  <div className="text-xs font-bold text-zinc-500">
+                    Online hra
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    setIsMobileChatOpen(
+                      false
+                    )
+                  }
+                  className="rounded-xl border border-zinc-700 px-3 py-2 text-xs font-black text-zinc-200 transition hover:bg-zinc-800"
+                >
+                  Zavřít
+                </button>
+              </div>
+
+              {renderOnlineChatMessages()}
+            </div>
+          </div>
+        )}
+      </>
+    )}
 
     {showPlayModeResult &&
       currentCombination && (
