@@ -75,7 +75,7 @@ type ScoreMap = {
 export default function Home() {
   // 04. GLOBAL STATE
   const [screen, setScreen] = useState<
-    "home" | "game"
+    "home" | "game" | "online-lobby"
   >("home");
 
   const [mounted, setMounted] =
@@ -153,6 +153,7 @@ const [gameId, setGameId] =
   const [showFinishedGame, setShowFinishedGame] =
     useState(false);
 
+
   // 14. AUDIO
   const winSounds = [
     "/sounds/win/wow1.mp3",
@@ -218,6 +219,11 @@ const [
   null
 );
 
+const onlineSessionIdRef =
+  useRef<string | null>(null);
+
+const isOnlineGameRef = useRef(false);
+
 const [
   onlineChannel,
   setOnlineChannel,
@@ -227,6 +233,47 @@ const [
   joinSessionId,
   setJoinSessionId,
 ] = useState("");
+
+const [
+  playerReadiness,
+  setPlayerReadiness,
+] = useState<{
+  [playerId: string]: boolean;
+}>({});
+
+const [
+  localOnlinePlayerId,
+  setLocalOnlinePlayerId,
+] = useState<string | null>(null);
+
+const localRuntimeRevisionRef =
+  useRef(0);
+
+const bumpLocalRuntimeRevision =
+  () => {
+    localRuntimeRevisionRef.current += 1;
+
+    return localRuntimeRevisionRef.current;
+  };
+
+const localTurnVersionRef =
+  useRef(0);
+
+const hasAutoOpenedOnlinePlayModeRef =
+  useRef(false);
+
+const forceOnlineLobbyUntilHostStartRef =
+  useRef(false);
+
+const lastComputerAutoTurnRef =
+  useRef<string | null>(null);
+
+const bumpLocalTurnVersion =
+  () => {
+    localTurnVersionRef.current += 1;
+
+    return localTurnVersionRef.current;
+  };
 
   const [
   showRestoreGame,
@@ -252,6 +299,16 @@ const [
   showGameMenu,
   setShowGameMenu,
 ] = useState(false);
+
+useEffect(() => {
+  onlineSessionIdRef.current =
+    onlineSessionId;
+}, [onlineSessionId]);
+
+useEffect(() => {
+  isOnlineGameRef.current =
+    isOnlineGame;
+}, [isOnlineGame]);
 
 useEffect(() => {
   const handleClickOutside = () => {
@@ -344,6 +401,39 @@ const [
   setShowGameVersionModal,
 ] = useState(false);
 
+type SavedGameMetadata = {
+  gameMode: "offline" | "online";
+  onlineSessionId: string | null;
+  localOnlinePlayerId: string | null;
+};
+
+type SavedGamesMetadataColumnSupport = {
+  game_mode: boolean;
+  online_session_id: boolean;
+  local_online_player_id: boolean;
+  current_play_player_index: boolean;
+  play_mode_dice: boolean;
+  locked_dice: boolean;
+  confirmed_locked_dice: boolean;
+  remaining_rolls: boolean;
+  bonus_used: boolean;
+  selected_general_value: boolean;
+  has_rolled_dice: boolean;
+  has_started_play_mode: boolean;
+};
+
+const [
+  pendingSaveMetadata,
+  setPendingSaveMetadata,
+] = useState<SavedGameMetadata | null>(
+  null
+);
+
+const savedGamesMetadataColumnSupportRef =
+  useRef<SavedGamesMetadataColumnSupport | null>(
+    null
+  );
+
 const [
   showFinishGameConfirm,
   setShowFinishGameConfirm,
@@ -366,6 +456,20 @@ const [
   showPlayModeSetup,
   setShowPlayModeSetup,
 ] = useState(false);
+
+const [
+  selectedGameMode,
+  setSelectedGameMode,
+] = useState<"offline" | "online">(
+  "offline"
+);
+
+const [
+  gameMode,
+  setGameMode,
+] = useState<"offline" | "online">(
+  "offline"
+);
 
   // 09. PLAY MODE
 
@@ -410,6 +514,56 @@ const [
   hasStartedPlayMode,
   setHasStartedPlayMode,
 ] = useState(false);
+
+const screenSetter = setScreen;
+const gameStartedSetter = setGameStarted;
+const isPlayModeActiveSetter = setIsPlayModeActive;
+const hasStartedPlayModeSetter = setHasStartedPlayMode;
+
+const debugSetScreen = (
+  value: "home" | "game" | "online-lobby",
+  source = "unknown"
+) => {
+  console.log(
+    `[${source}] setScreen(${value})`,
+    new Date().toISOString()
+  );
+  screenSetter(value);
+};
+
+const debugSetGameStarted = (
+  value: boolean,
+  source = "unknown"
+) => {
+  console.log(
+    `[${source}] setGameStarted(${value})`,
+    new Date().toISOString()
+  );
+  gameStartedSetter(value);
+};
+
+const debugSetIsPlayModeActive = (
+  value: boolean,
+  source = "unknown"
+) => {
+  console.log(
+    `[${source}] setIsPlayModeActive(${value})`,
+    new Date().toISOString()
+  );
+  isPlayModeActiveSetter(value);
+};
+
+const debugSetHasStartedPlayMode = (
+  value: boolean,
+  source = "unknown"
+) => {
+  console.log(
+    `[${source}] setHasStartedPlayMode(${value})`,
+    new Date().toISOString()
+  );
+  hasStartedPlayModeSetter(value);
+};
+
 const [
   showPlayModeResult,
   setShowPlayModeResult,
@@ -561,8 +715,56 @@ type Player = {
   active: boolean;
 };
 
+// EDIT COMPUTER PLAYERS HERE
+const ComputerPlayerNames = [
+  "Computer Peppa",
+  "Computer Rocky",
+  "Computer Lucky",
+];
+
+const computerPlayers = ComputerPlayerNames.map(
+  (name, index) => ({
+    id: `computer_${index + 1}`,
+    name,
+  })
+);
+
+type PlayerSelectionType = "human" | "computer";
+
 const [playersState, setPlayersState] =
   useState<Player[]>([]);
+
+const [
+  selectedPlayerTypes,
+  setSelectedPlayerTypes,
+] = useState<PlayerSelectionType[]>([]);
+
+const isComputerPlayerId = (
+  playerId: string
+) =>
+  computerPlayers.some(
+    (computerPlayer) =>
+      computerPlayer.id === playerId
+  );
+
+const getPlayerDisplayName = (
+  playerId: string
+) => {
+  const humanPlayer = playersState.find(
+    (player) => player.id === playerId
+  );
+
+  if (humanPlayer) {
+    return humanPlayer.name;
+  }
+
+  return (
+    computerPlayers.find(
+      (computerPlayer) =>
+        computerPlayer.id === playerId
+    )?.name ?? playerId
+  );
+};
 
 const selectablePlayers =
   playersState
@@ -578,7 +780,39 @@ const selectablePlayers =
     );
 
 const maxPlayers =
-  selectablePlayers.length;
+  selectablePlayers.length +
+  computerPlayers.length;
+
+const hasComputerPlayer =
+  selectedPlayers.some((playerId) =>
+    isComputerPlayerId(playerId)
+  );
+
+const isValidSelectedPlayersForCount = (
+  players: string[],
+  count: number | ""
+) => {
+  if (
+    typeof count !== "number" ||
+    count <= 0
+  ) {
+    return false;
+  }
+
+  if (players.length !== count) {
+    return false;
+  }
+
+  if (
+    players.some(
+      (playerId) => playerId === ""
+    )
+  ) {
+    return false;
+  }
+
+  return new Set(players).size === players.length;
+};
 
 useEffect(() => {
   // 13. STATISTICS
@@ -724,21 +958,53 @@ useEffect(() => {
 }, []);
 
 const handlePlayerCountChange = (
-  count: number
+  count: number | ""
 ) => {
   setPlayerCount(count);
 
-  const autoSelected =
-    selectablePlayers
-      .slice(0, count)
-      .map(
-        (player) =>
-          player.id
-      );
-
-  setSelectedPlayers(
-    autoSelected
+  // Invalidate all previous selections whenever player count changes.
+  setSelectedPlayers([]);
+  setSelectedPlayerTypes(
+    typeof count === "number"
+      ? Array.from(
+          { length: count },
+          () => "human" as PlayerSelectionType
+        )
+      : []
   );
+};
+
+const handlePlayerTypeChange = (
+  index: number,
+  value: PlayerSelectionType
+) => {
+  if (
+    typeof playerCount !== "number" ||
+    playerCount <= 0
+  ) {
+    return;
+  }
+
+  const updatedTypes = Array.from(
+    { length: playerCount },
+    (_, playerIndex) =>
+      selectedPlayerTypes[
+        playerIndex
+      ] || "human"
+  );
+
+  updatedTypes[index] = value;
+
+  const updatedPlayers = Array.from(
+    { length: playerCount },
+    (_, playerIndex) =>
+      selectedPlayers[playerIndex] || ""
+  );
+
+  updatedPlayers[index] = "";
+
+  setSelectedPlayerTypes(updatedTypes);
+  setSelectedPlayers(updatedPlayers);
 };
 
   const handlePlayerChange = (
@@ -746,8 +1012,22 @@ const handlePlayerCountChange = (
     value: string
   ) => {
     if (
+      typeof playerCount !== "number" ||
+      playerCount <= 0
+    ) {
+      return;
+    }
+
+    if (
       value !== "" &&
-      selectedPlayers.includes(value)
+      selectedPlayers.some(
+        (
+          selectedPlayer,
+          selectedIndex
+        ) =>
+          selectedPlayer === value &&
+          selectedIndex !== index
+      )
     ) {
       alert(
         "Tento hráč už je vybraný."
@@ -756,7 +1036,13 @@ const handlePlayerCountChange = (
       return;
     }
 
-    const updated = [...selectedPlayers];
+    const updated = Array.from(
+      { length: playerCount },
+      (_, playerIndex) =>
+        selectedPlayers[
+          playerIndex
+        ] || ""
+    );
 
     updated[index] = value;
 
@@ -769,6 +1055,13 @@ const handlePlayerCountChange = (
     min: number,
     max: number
   ) => {
+    if (
+      isOnlineGame ||
+      hasComputerPlayer
+    ) {
+      return;
+    }
+
     if (gameFinished) return;
 
     const existingScore =
@@ -802,6 +1095,10 @@ const handlePlayerCountChange = (
   };
 
   const saveScore = () => {
+    if (isOnlineGame) {
+      return;
+    }
+
     if (!scoreModal) return;
 
     const parsed = Number(scoreInput);
@@ -918,6 +1215,13 @@ window.scrollTo({
   index: number
 ) => {
   if (
+    isOnlineGame &&
+    !isCurrentPlayer
+  ) {
+    return;
+  }
+
+  if (
   !hasRolledDice ||
   isRolling
 ) {
@@ -958,6 +1262,8 @@ window.scrollTo({
       );
     }
   }
+
+  bumpLocalRuntimeRevision();
 
   setLockedDice((prev) => {
     const updated = [...prev];
@@ -1039,6 +1345,7 @@ const canStartPlayMode =
   );
 
 const isLeaguePlayMode =
+  !hasComputerPlayer &&
   playModeRolls === 4 &&
   !playModeAllowRewrite &&
   playModeBonusMode ===
@@ -1422,6 +1729,13 @@ useEffect(() => {
 
         const savePlayModeScore =
   () => {
+    if (
+      isOnlineGame &&
+      !isCurrentPlayer
+    ) {
+      return false;
+    }
+
     if 
     (!currentCombination)
       
@@ -1471,6 +1785,14 @@ setSuppressNoCombinationSound(
   true
 );
 
+    const savedTurnVersion =
+      bumpLocalTurnVersion();
+
+    localTurnVersionRef.current =
+      savedTurnVersion;
+
+    bumpLocalRuntimeRevision();
+
     setScores((prev) => ({
       ...prev,
 
@@ -1485,7 +1807,14 @@ setSuppressNoCombinationSound(
     return true;
   };
 
-const endTurn = () => {
+const endTurn = async () => {
+  if (
+    isOnlineGame &&
+    !isCurrentPlayer
+  ) {
+    return;
+  }
+
   const nextPlayer =
     currentPlayPlayerIndex +
     1 >=
@@ -1494,36 +1823,103 @@ const endTurn = () => {
       : currentPlayPlayerIndex +
         1;
 
+  const nextPlayModeDice = [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+  ];
+
+  const nextLockedDice = [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ];
+
+  const nextConfirmedLockedDice = [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ];
+
+  const handoffTurnVersion =
+    bumpLocalTurnVersion();
+
+  const handoffRuntimeRevision =
+    bumpLocalRuntimeRevision();
+
+  if (
+    isOnlineGame &&
+    onlineSessionId &&
+    gameStarted &&
+    hasStartedPlayMode &&
+    screen === "game" &&
+    isCurrentPlayer
+  ) {
+    try {
+      await updateOnlineState(
+        onlineSessionId,
+        {
+          scores,
+          currentPlayPlayerIndex:
+            nextPlayer,
+          playModeDice:
+            nextPlayModeDice,
+          lockedDice:
+            nextLockedDice,
+          confirmedLockedDice:
+            nextConfirmedLockedDice,
+          remainingRolls:
+            playModeRolls,
+          bonusUsed: false,
+          selectedGeneralValue:
+            null,
+          hasRolledDice: false,
+          selectedPlayers,
+          playerCount,
+          playModeRolls,
+          playModeAllowRewrite,
+          playModeBonusMode,
+          playModeBonusRolls,
+          playerReadiness,
+          gameStarted,
+          hasStartedPlayMode,
+          turnVersion:
+            handoffTurnVersion,
+          updatedByPlayerId:
+            localOnlinePlayerId,
+          updatedAt: Date.now(),
+          runtimeRevision:
+            handoffRuntimeRevision,
+        }
+      );
+    } catch (error) {
+      console.error(
+        "END TURN SYNC ERROR:",
+        error
+      );
+    }
+  }
+
   setCurrentPlayPlayerIndex(
     nextPlayer
   );
 
-  setPlayModeDice([
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-  ]);
+  setPlayModeDice(nextPlayModeDice);
 
-  setLockedDice([
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ]);
+  setLockedDice(nextLockedDice);
 
-  setConfirmedLockedDice([
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ]);
+  setConfirmedLockedDice(
+    nextConfirmedLockedDice
+  );
 
   setRemainingRolls(
     playModeRolls
@@ -1537,11 +1933,130 @@ setSelectedGeneralValue(
   setBonusUsed(false);
 };
 
+useEffect(() => {
+  if (
+    isOnlineGame ||
+    !gameStarted ||
+    !hasStartedPlayMode ||
+    gameFinished ||
+    showPlayModeResult ||
+    selectedPlayers.length === 0
+  ) {
+    return;
+  }
+
+  const playerId =
+    selectedPlayers[
+      currentPlayPlayerIndex
+    ];
+
+  if (
+    !playerId ||
+    !isComputerPlayerId(playerId)
+  ) {
+    lastComputerAutoTurnRef.current =
+      null;
+
+    return;
+  }
+
+  const currentPlayerScores =
+    scores[playerId] || {};
+
+  const turnMarker = `${playerId}:${Object.keys(currentPlayerScores).length}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}`;
+
+  if (
+    lastComputerAutoTurnRef.current ===
+    turnMarker
+  ) {
+    return;
+  }
+
+  lastComputerAutoTurnRef.current =
+    turnMarker;
+
+  if (!currentCombination) {
+    setRemainingRolls(0);
+    setHasRolledDice(false);
+
+    return;
+  }
+
+  const categoryId =
+    playModeCategoryMap[
+      currentCombination.combination
+    ];
+
+  if (!categoryId) {
+    setRemainingRolls(0);
+    setHasRolledDice(false);
+
+    return;
+  }
+
+  const existingScore =
+    currentPlayerScores[categoryId];
+
+  if (
+    existingScore !== undefined &&
+    !playModeAllowRewrite
+  ) {
+    setRemainingRolls(0);
+    setHasRolledDice(false);
+
+    return;
+  }
+
+  if (
+    existingScore !== undefined &&
+    playModeAllowRewrite &&
+    existingScore >=
+      currentCombination.score
+  ) {
+    setRemainingRolls(0);
+    setHasRolledDice(false);
+
+    return;
+  }
+
+  setScores((prev) => ({
+    ...prev,
+    [playerId]: {
+      ...prev[playerId],
+      [categoryId]:
+        currentCombination.score,
+    },
+  }));
+
+  setShowPlayModeResult(true);
+}, [
+  isOnlineGame,
+  gameStarted,
+  hasStartedPlayMode,
+  gameFinished,
+  showPlayModeResult,
+  currentCombination,
+  selectedPlayers,
+  currentPlayPlayerIndex,
+  scores,
+  playModeAllowRewrite,
+  playModeCategoryMap,
+]);
+
 const activateBonus = () => {
+  if (
+    isOnlineGame &&
+    !isCurrentPlayer
+  ) {
+    return;
+  }
+
   if (bonusUsed) {
   if (
     bonusActivatedThisTurn
   ) {
+      bumpLocalRuntimeRevision();
+
       setRemainingRolls(
         (prev) =>
           prev - bonusDifference
@@ -1576,6 +2091,9 @@ if (
     return;
   }
 }
+
+  bumpLocalRuntimeRevision();
+
   setRemainingRolls(
     (prev) =>
       prev + bonusDifference
@@ -1589,6 +2107,13 @@ setBonusActivatedThisTurn(
 };
 
 const rollAllDice = () => {
+  if (
+    isOnlineGame &&
+    !isCurrentPlayer
+  ) {
+    return;
+  }
+
   if (
     remainingRolls <= 0 ||
     isRolling
@@ -1633,6 +2158,8 @@ const rollAllDice = () => {
         clearInterval(
           interval
         );
+
+        bumpLocalRuntimeRevision();
 
         const finalDice =
           playModeDice.map(
@@ -1764,20 +2291,321 @@ const checkExistingGameVersion =
     );
   };
 
+const resolveSavedGameMetadata =
+  (): SavedGameMetadata => {
+    const isOnlineSave =
+      gameMode === "online";
+
+    const knownOnlineSessionId =
+      onlineSessionId ??
+      onlineSessionIdRef.current;
+
+    return {
+      gameMode,
+      onlineSessionId:
+        isOnlineSave
+          ? knownOnlineSessionId ?? null
+          : null,
+      localOnlinePlayerId:
+        isOnlineSave
+          ? localOnlinePlayerId
+          : null,
+    };
+  };
+
+const isUuid = (
+  value: string
+) => {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+};
+
+const checkSavedGamesColumnExists =
+  async (column: string) => {
+    const { error } =
+      await supabase
+        .from("saved_games")
+        .select(column)
+        .limit(1);
+
+    if (!error) {
+      return true;
+    }
+
+    const message = `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
+
+    const missingColumnError =
+      message.includes("could not find") ||
+      message.includes("schema cache") ||
+      message.includes("column");
+
+    if (missingColumnError) {
+      return false;
+    }
+
+    // Prefer save reliability: if probing fails for another reason,
+    // treat metadata column as unsupported and continue with base payload.
+    return false;
+  };
+
+const getSavedGamesMetadataColumnSupport =
+  async (): Promise<SavedGamesMetadataColumnSupport> => {
+    if (
+      savedGamesMetadataColumnSupportRef.current
+    ) {
+      return savedGamesMetadataColumnSupportRef.current;
+    }
+
+    const [
+      hasGameMode,
+      hasOnlineSessionId,
+      hasLocalOnlinePlayerId,
+      hasCurrentPlayPlayerIndex,
+      hasPlayModeDice,
+      hasLockedDice,
+      hasConfirmedLockedDice,
+      hasRemainingRolls,
+      hasBonusUsed,
+      hasSelectedGeneralValue,
+      hasHasRolledDice,
+      hasHasStartedPlayMode,
+    ] = await Promise.all([
+      checkSavedGamesColumnExists("game_mode"),
+      checkSavedGamesColumnExists("online_session_id"),
+      checkSavedGamesColumnExists(
+        "local_online_player_id"
+      ),
+      checkSavedGamesColumnExists(
+        "current_play_player_index"
+      ),
+      checkSavedGamesColumnExists(
+        "play_mode_dice"
+      ),
+      checkSavedGamesColumnExists(
+        "locked_dice"
+      ),
+      checkSavedGamesColumnExists(
+        "confirmed_locked_dice"
+      ),
+      checkSavedGamesColumnExists(
+        "remaining_rolls"
+      ),
+      checkSavedGamesColumnExists(
+        "bonus_used"
+      ),
+      checkSavedGamesColumnExists(
+        "selected_general_value"
+      ),
+      checkSavedGamesColumnExists(
+        "has_rolled_dice"
+      ),
+      checkSavedGamesColumnExists(
+        "has_started_play_mode"
+      ),
+    ]);
+
+    const support = {
+      game_mode: hasGameMode,
+      online_session_id:
+        hasOnlineSessionId,
+      local_online_player_id:
+        hasLocalOnlinePlayerId,
+      current_play_player_index:
+        hasCurrentPlayPlayerIndex,
+      play_mode_dice:
+        hasPlayModeDice,
+      locked_dice:
+        hasLockedDice,
+      confirmed_locked_dice:
+        hasConfirmedLockedDice,
+      remaining_rolls:
+        hasRemainingRolls,
+      bonus_used:
+        hasBonusUsed,
+      selected_general_value:
+        hasSelectedGeneralValue,
+      has_rolled_dice:
+        hasHasRolledDice,
+      has_started_play_mode:
+        hasHasStartedPlayMode,
+    };
+
+    savedGamesMetadataColumnSupportRef.current =
+      support;
+
+    return support;
+  };
+
+const buildSavedGamesPayload =
+  async (
+    gameName: string,
+    resolvedSaveMetadata: SavedGameMetadata,
+    overrideGameId?: string
+  ) => {
+    if (
+      !isValidSelectedPlayersForCount(
+        selectedPlayers,
+        playerCount
+      )
+    ) {
+      throw new Error(
+        "INVALID_SELECTED_PLAYERS_STATE"
+      );
+    }
+
+    const columnSupport =
+      await getSavedGamesMetadataColumnSupport();
+
+    const payload: Record<string, any> = {
+      game_id:
+        overrideGameId ??
+        gameId,
+      name: gameName,
+      player_count: playerCount,
+      selected_players: selectedPlayers,
+      scores,
+      game_started: gameStarted,
+      game_finished: gameFinished,
+      is_play_mode_active:
+        isPlayModeActive,
+      play_mode_rolls: playModeRolls,
+      play_mode_allow_rewrite:
+        playModeAllowRewrite,
+      play_mode_bonus_mode:
+        playModeBonusMode,
+      play_mode_bonus_rolls:
+        playModeBonusRolls,
+    };
+
+    if (
+      columnSupport.current_play_player_index
+    ) {
+      payload.current_play_player_index =
+        currentPlayPlayerIndex;
+    }
+
+    if (columnSupport.play_mode_dice) {
+      payload.play_mode_dice =
+        playModeDice;
+    }
+
+    if (columnSupport.locked_dice) {
+      payload.locked_dice =
+        lockedDice;
+    }
+
+    if (
+      columnSupport.confirmed_locked_dice
+    ) {
+      payload.confirmed_locked_dice =
+        confirmedLockedDice;
+    }
+
+    if (columnSupport.remaining_rolls) {
+      payload.remaining_rolls =
+        remainingRolls;
+    }
+
+    if (columnSupport.bonus_used) {
+      payload.bonus_used = bonusUsed;
+    }
+
+    if (
+      columnSupport.selected_general_value
+    ) {
+      payload.selected_general_value =
+        selectedGeneralValue;
+    }
+
+    if (columnSupport.has_rolled_dice) {
+      payload.has_rolled_dice =
+        hasRolledDice;
+    }
+
+    if (
+      columnSupport.has_started_play_mode
+    ) {
+      payload.has_started_play_mode =
+        hasStartedPlayMode;
+    }
+
+    if (columnSupport.game_mode) {
+      payload.game_mode =
+        resolvedSaveMetadata.gameMode;
+    }
+
+    if (columnSupport.online_session_id) {
+      const rawSessionId =
+        resolvedSaveMetadata.onlineSessionId;
+
+      payload.online_session_id =
+        rawSessionId && isUuid(rawSessionId)
+          ? rawSessionId
+          : null;
+    }
+
+    if (
+      columnSupport.local_online_player_id
+    ) {
+      payload.local_online_player_id =
+        resolvedSaveMetadata.localOnlinePlayerId;
+    }
+
+    return {
+      payload,
+      columnSupport,
+    };
+  };
+
 const overwriteGameInSupabase =
-  async () => {
+  async (
+    saveMetadata?: SavedGameMetadata
+  ) => {
 
     try {
+      const resolvedSaveMetadata =
+        saveMetadata ??
+        resolveSavedGameMetadata();
+
       const gameName =
         selectedPlayers
           .map(
             (player) =>
-              playersState.find(
-                (p) =>
-                  p.id === player
-              )?.name || player
+              getPlayerDisplayName(
+                player
+              )
           )
           .join(" vs ");
+
+      const {
+        payload: savedGamePayload,
+        columnSupport,
+      } = await buildSavedGamesPayload(
+        gameName,
+        resolvedSaveMetadata
+      );
+
+      console.log(
+        "[saved_games][overwrite] pre-write",
+        {
+          isOnlineGame,
+          isOnlineGameRefCurrent:
+            isOnlineGameRef.current,
+          onlineSessionId,
+          onlineSessionIdRefCurrent:
+            onlineSessionIdRef.current,
+          hasOnlineChannel:
+            Boolean(onlineChannel),
+          resolvedGameMode:
+            resolvedSaveMetadata.gameMode,
+          resolvedOnlineSessionId:
+            resolvedSaveMetadata.onlineSessionId,
+          savedGamesColumnSupport:
+            columnSupport,
+          payload: savedGamePayload,
+        }
+      );
 
       const {
   data: insertedGame,
@@ -1785,40 +2613,7 @@ const overwriteGameInSupabase =
 } = await supabase
   .from("saved_games")
   .insert([
-    {
-      game_id: gameId,
-
-      name: gameName,
-
-      player_count:
-        playerCount,
-
-      selected_players:
-        selectedPlayers,
-
-      scores,
-
-      game_started:
-        gameStarted,
-
-      game_finished:
-        gameFinished,
-
-      is_play_mode_active:
-        hasStartedPlayMode,
-
-      play_mode_rolls:
-        playModeRolls,
-
-      play_mode_allow_rewrite:
-        playModeAllowRewrite,
-
-      play_mode_bonus_mode:
-        playModeBonusMode,
-
-      play_mode_bonus_rolls:
-        playModeBonusRolls,
-    },
+    savedGamePayload,
   ])
   .select()
   .single();
@@ -1880,6 +2675,8 @@ if (
         false
       );
 
+      setPendingSaveMetadata(null);
+
       setShowGameSavedModal(
         true
       );
@@ -1894,60 +2691,59 @@ if (
 
 const saveGameToSupabase =
   async (
-    overrideGameId?: string
+    overrideGameId?: string,
+    saveMetadata?: SavedGameMetadata
   ) => {
     try {
+      const resolvedSaveMetadata =
+        saveMetadata ??
+        resolveSavedGameMetadata();
+
       const gameName =
         selectedPlayers
           .map(
             (player) =>
-              playersState.find(
-  (p) =>
-    p.id === player
-)?.name || player
+              getPlayerDisplayName(
+                player
+              )
           )
           .join(" vs ");
+
+      const {
+        payload: savedGamePayload,
+        columnSupport,
+      } = await buildSavedGamesPayload(
+        gameName,
+        resolvedSaveMetadata,
+        overrideGameId
+      );
+
+      console.log(
+        "[saved_games][save] pre-write",
+        {
+          isOnlineGame,
+          isOnlineGameRefCurrent:
+            isOnlineGameRef.current,
+          onlineSessionId,
+          onlineSessionIdRefCurrent:
+            onlineSessionIdRef.current,
+          hasOnlineChannel:
+            Boolean(onlineChannel),
+          resolvedGameMode:
+            resolvedSaveMetadata.gameMode,
+          resolvedOnlineSessionId:
+            resolvedSaveMetadata.onlineSessionId,
+          savedGamesColumnSupport:
+            columnSupport,
+          payload: savedGamePayload,
+        }
+      );
 
       const { error } =
         await supabase
           .from("saved_games")
           .insert([
-  {
-    game_id:
-  overrideGameId ??
-  gameId,
-
-    name: gameName,
-
-              player_count:
-                playerCount,
-
-              selected_players:
-                selectedPlayers,
-
-              scores,
-
-              game_started:
-                gameStarted,
-
-              game_finished:
-  gameFinished,
-
-is_play_mode_active:
-  hasStartedPlayMode,
-
-play_mode_rolls:
-  playModeRolls,
-
-play_mode_allow_rewrite:
-  playModeAllowRewrite,
-
-play_mode_bonus_mode:
-  playModeBonusMode,
-
-play_mode_bonus_rolls:
-  playModeBonusRolls,
-            },
+            savedGamePayload,
           ]);
 
       if (error) {
@@ -1967,6 +2763,8 @@ play_mode_bonus_rolls:
   false
 );
 
+      setPendingSaveMetadata(null);
+
 setShowGameSavedModal(
   true
 );
@@ -1981,6 +2779,10 @@ setShowGameSavedModal(
 
 const loadSavedGames =
   async () => {
+    if (isOnlineGame) {
+      return;
+    }
+
     try {
       const { data, error } =
         await supabase
@@ -2164,37 +2966,101 @@ const deletePlayerFromSupabase =
     }
   };
 
+const buildLobbyReadinessMap = (
+  playerIds: string[],
+  readiness?: {
+    [playerId: string]: boolean;
+  } | null
+) => {
+  const next: {
+    [playerId: string]: boolean;
+  } = {};
+
+  playerIds.forEach((playerId) => {
+    next[playerId] = Boolean(
+      readiness?.[playerId]
+    );
+  });
+
+  return next;
+};
+
   
   // 11. ONLINE
-  const enterOnlineGame = () => {
-    // Only switch view to game screen — do not modify game state
-    setGameStarted(true);
-    setScreen("game");
-  };
   const handleCreateOnlineSession =
     async () => {
     if (
-      selectedPlayers.length === 0
+      !isValidSelectedPlayersForCount(
+        selectedPlayers,
+        playerCount
+      )
     ) {
       alert(
-        "Nejdříve vyber hráče."
+        "Vyber platný seznam hráčů před vytvořením online hry."
       );
 
       return;
     }
 
     try {
+      const sessionSelectedPlayers = [
+        ...selectedPlayers,
+      ];
+
+      const sessionPlayerCount =
+        playerCount;
+
+      localTurnVersionRef.current = 0;
+
+      setGameMode("online");
+      setSelectedGameMode("online");
+
+      const initialReadiness: {
+        [playerId: string]: boolean;
+      } = {};
+
+      sessionSelectedPlayers.forEach((playerId) => {
+        initialReadiness[playerId] = false;
+      });
+
+      const initialOnlineState = {
+        scores,
+        selectedPlayers:
+          sessionSelectedPlayers,
+        playerCount:
+          sessionPlayerCount,
+        playerReadiness: initialReadiness,
+        playModeRolls,
+        playModeAllowRewrite,
+        playModeBonusMode,
+        playModeBonusRolls,
+        currentPlayPlayerIndex,
+        playModeDice,
+        lockedDice,
+        confirmedLockedDice,
+        remainingRolls,
+        bonusUsed,
+        selectedGeneralValue,
+        hasRolledDice,
+        gameStarted,
+        isPlayModeActive,
+        hasStartedPlayMode,
+        resume_started_at: null,
+      };
+
       const session =
         await createOnlineSession(
-          selectedPlayers[0]
+          sessionSelectedPlayers[0] || "",
+          initialOnlineState
         );
 
       setOnlineSessionId(session.id);
 
       setIsOnlineGame(true);
+      setJoinSessionId("");
+      setLocalOnlinePlayerId(null);
 
-      // Enter the game view without altering game state
-      enterOnlineGame();
+      setPlayerReadiness(initialReadiness);
 
       const channel = subscribeToSession(
         session.id,
@@ -2205,9 +3071,18 @@ const deletePlayerFromSupabase =
 
       setOnlineChannel(channel);
 
+      // Ensure player list is loaded so lobby UI can render selection
+      if (playersState.length === 0) {
+        try {
+          await loadPlayersFromSupabase();
+        } catch (err) {
+          console.error("LOAD PLAYERS FOR LOBBY ERROR:", err);
+        }
+      }
+
       await navigator.clipboard.writeText(session.id);
 
-      alert(`Online hra vytvořena.\n\nKód místnosti:\n\n${session.id}`);
+      debugSetScreen("online-lobby");
     } catch (error) {
       console.error(error);
 
@@ -2220,6 +3095,93 @@ const deletePlayerFromSupabase =
   const applyOnlineGameState = (
   gameState: any
 ) => {
+  const remoteSelectedPlayers =
+    Array.isArray(
+      gameState.selectedPlayers
+    )
+      ? gameState.selectedPlayers.filter(
+          (playerId: unknown): playerId is string =>
+            typeof playerId === "string"
+        )
+      : [];
+
+  const remotePlayerCount =
+    typeof gameState.playerCount ===
+    "number"
+      ? gameState.playerCount
+      : "";
+
+  if (
+    !isValidSelectedPlayersForCount(
+      remoteSelectedPlayers,
+      remotePlayerCount
+    )
+  ) {
+    setSelectedPlayers([]);
+    setPlayerCount("");
+    setPlayerReadiness({});
+
+    return;
+  }
+
+  const incomingTurnVersion =
+    Number(gameState.turnVersion ?? 0);
+
+  const incomingUpdatedByPlayerId =
+    gameState.updatedByPlayerId ?? null;
+
+  const shouldIgnoreOwnEcho =
+    localOnlinePlayerId !== null &&
+    incomingUpdatedByPlayerId ===
+      localOnlinePlayerId &&
+    incomingTurnVersion <=
+      localTurnVersionRef.current;
+
+  const isStaleTurnVersion =
+    incomingTurnVersion <
+    localTurnVersionRef.current;
+
+  if (
+    shouldIgnoreOwnEcho ||
+    isStaleTurnVersion
+  ) {
+    return;
+  }
+
+  localTurnVersionRef.current =
+    Math.max(
+      localTurnVersionRef.current,
+      incomingTurnVersion
+    );
+
+  const incomingRuntimeRevision =
+    Number(
+      gameState.runtimeRevision ?? 0
+    );
+
+  const incomingTurnIndex =
+    gameState.currentPlayPlayerIndex ??
+    currentPlayPlayerIndex;
+
+  const isStaleForActiveTurn =
+    isOnlineGame &&
+    isCurrentPlayer &&
+    gameStarted &&
+    incomingTurnIndex ===
+      currentPlayPlayerIndex &&
+    incomingRuntimeRevision <
+      localRuntimeRevisionRef.current;
+
+  if (isStaleForActiveTurn) {
+    return;
+  }
+
+  localRuntimeRevisionRef.current =
+    Math.max(
+      localRuntimeRevisionRef.current,
+      incomingRuntimeRevision
+    );
+
   setScores(
     gameState.scores ?? {}
   );
@@ -2274,6 +3236,114 @@ const deletePlayerFromSupabase =
     gameState.hasRolledDice ??
       false
   );
+
+  const nextSelectedPlayers =
+    remoteSelectedPlayers;
+
+  setSelectedPlayers(
+    nextSelectedPlayers
+  );
+
+  setPlayerCount(
+    remotePlayerCount
+  );
+
+  const nextLobbyReadiness =
+    buildLobbyReadinessMap(
+      nextSelectedPlayers,
+      gameState.playerReadiness ?? null
+    );
+
+  setPlayerReadiness(
+    nextLobbyReadiness
+  );
+
+  setPlayModeRolls(
+    gameState.playModeRolls ??
+      playModeRolls
+  );
+
+  setPlayModeAllowRewrite(
+    gameState.playModeAllowRewrite ??
+      playModeAllowRewrite
+  );
+
+  setPlayModeBonusMode(
+    gameState.playModeBonusMode ??
+      playModeBonusMode
+  );
+
+  setPlayModeBonusRolls(
+    gameState.playModeBonusRolls ??
+      playModeBonusRolls
+  );
+
+  debugSetGameStarted(
+    gameState.gameStarted ??
+      gameStarted
+  );
+
+  const hasResumeSnapshotState =
+    Boolean(
+      gameState.gameStarted &&
+      gameState.hasStartedPlayMode
+    );
+
+  const hasResumeStartSignal =
+    Boolean(
+      gameState.resume_started_at
+    );
+
+  const shouldHoldInLobby =
+    forceOnlineLobbyUntilHostStartRef.current &&
+    hasResumeSnapshotState &&
+    !hasResumeStartSignal;
+
+  if (hasResumeStartSignal) {
+    forceOnlineLobbyUntilHostStartRef.current =
+      false;
+  }
+
+  const shouldAutoOpenPlayMode =
+    Boolean(
+      gameState.gameStarted &&
+      gameState.hasStartedPlayMode &&
+      !hasStartedPlayMode
+    );
+
+  const shouldOpenFromResumeSignal =
+    Boolean(
+      hasResumeStartSignal &&
+      gameState.gameStarted &&
+      gameState.hasStartedPlayMode
+    );
+
+  debugSetHasStartedPlayMode(
+    gameState.hasStartedPlayMode ??
+      hasStartedPlayMode
+  );
+
+  if (
+    (shouldAutoOpenPlayMode ||
+      shouldOpenFromResumeSignal) &&
+    !shouldHoldInLobby
+  ) {
+    if (!hasAutoOpenedOnlinePlayModeRef.current) {
+      hasAutoOpenedOnlinePlayModeRef.current = true;
+      debugSetIsPlayModeActive(true);
+    }
+  }
+
+  if (shouldHoldInLobby) {
+    debugSetIsPlayModeActive(false);
+    debugSetScreen("online-lobby");
+
+    return;
+  }
+
+  if (gameState.gameStarted) {
+    debugSetScreen("game");
+  }
 };
 
   const syncCurrentGameState =
@@ -2306,6 +3376,35 @@ const deletePlayerFromSupabase =
           selectedGeneralValue,
 
           hasRolledDice,
+
+          selectedPlayers,
+
+          playerCount,
+
+          playModeRolls,
+
+          playModeAllowRewrite,
+
+          playModeBonusMode,
+
+          playModeBonusRolls,
+
+          playerReadiness,
+
+          gameStarted,
+
+          hasStartedPlayMode,
+
+          turnVersion:
+            localTurnVersionRef.current,
+
+          updatedByPlayerId:
+            localOnlinePlayerId,
+
+          updatedAt: Date.now(),
+
+          runtimeRevision:
+            localRuntimeRevisionRef.current,
         }
       );
     } catch (error) {
@@ -2313,6 +3412,107 @@ const deletePlayerFromSupabase =
         "ONLINE SYNC ERROR:",
         error
       );
+    }
+  };
+
+  const claimOnlinePlayer = async (
+    playerId: string
+  ) => {
+    if (
+      isOnlineGame &&
+      onlineSessionId
+    ) {
+      try {
+        const session =
+          await joinOnlineSession(
+            onlineSessionId
+          );
+
+        const currentState =
+          session.game_state ?? {};
+
+        const remoteSelectedPlayers =
+          Array.isArray(
+            currentState.selectedPlayers
+          )
+            ? currentState.selectedPlayers.filter(
+                (candidate: unknown): candidate is string =>
+                  typeof candidate === "string"
+              )
+            : [];
+
+        const remotePlayerCount =
+          typeof currentState.playerCount ===
+          "number"
+            ? currentState.playerCount
+            : "";
+
+        if (
+          !isValidSelectedPlayersForCount(
+            remoteSelectedPlayers,
+            remotePlayerCount
+          )
+        ) {
+          setSelectedPlayers([]);
+          setPlayerCount("");
+          setPlayerReadiness({});
+
+          alert(
+            "Online session neobsahuje platný výběr hráčů."
+          );
+
+          return;
+        }
+
+        const nextReadiness =
+          buildLobbyReadinessMap(
+            remoteSelectedPlayers,
+            currentState.playerReadiness
+          );
+
+        if (
+          localOnlinePlayerId &&
+          localOnlinePlayerId !== playerId &&
+          localOnlinePlayerId in
+            nextReadiness
+        ) {
+          nextReadiness[localOnlinePlayerId] = false;
+        }
+
+        if (!(playerId in nextReadiness)) {
+          nextReadiness[playerId] = false;
+        }
+
+        nextReadiness[playerId] = true;
+
+        setLocalOnlinePlayerId(playerId);
+        setPlayerReadiness(nextReadiness);
+
+        const claimTurnVersion =
+          Math.max(
+            Number(
+              currentState.turnVersion ??
+                0
+            ),
+            localTurnVersionRef.current
+          ) + 1;
+
+        await updateOnlineState(
+          onlineSessionId,
+          {
+            ...currentState,
+            playerReadiness: nextReadiness,
+            updatedByPlayerId: playerId,
+            updatedAt: Date.now(),
+            turnVersion: claimTurnVersion,
+          }
+        );
+      } catch (error) {
+        console.error(
+          "CLAIM PLAYER SYNC ERROR:",
+          error
+        );
+      }
     }
   };
   
@@ -2326,17 +3526,78 @@ const deletePlayerFromSupabase =
     }
 
     try {
+      localTurnVersionRef.current = 0;
+      hasAutoOpenedOnlinePlayModeRef.current = false;
+
       const session =
         await joinOnlineSession(
           joinSessionId.trim()
         );
 
+      const sessionSelectedPlayers: string[] =
+        Array.isArray(
+          session.game_state?.selectedPlayers
+        )
+          ? session.game_state.selectedPlayers.filter(
+              (candidate: unknown): candidate is string =>
+                typeof candidate === "string"
+            )
+          : [];
+
+      const sessionPlayerCount =
+        typeof session.game_state?.playerCount ===
+        "number"
+          ? session.game_state.playerCount
+          : "";
+
+      if (
+        !isValidSelectedPlayersForCount(
+          sessionSelectedPlayers,
+          sessionPlayerCount
+        )
+      ) {
+        setSelectedPlayers([]);
+        setPlayerCount("");
+        setPlayerReadiness({});
+
+        alert(
+          "Online session neobsahuje platný výběr hráčů."
+        );
+
+        return;
+      }
+
+      setGameMode("online");
+      setSelectedGameMode("online");
+
+      const isResumeLobbyJoin =
+        Boolean(
+          session.game_state?.gameStarted &&
+          session.game_state?.hasStartedPlayMode
+        );
+
+      forceOnlineLobbyUntilHostStartRef.current =
+        isResumeLobbyJoin;
+
       setOnlineSessionId(session.id);
 
       setIsOnlineGame(true);
+      setLocalOnlinePlayerId(null);
 
-      // Enter the game view without altering game state
-      enterOnlineGame();
+      setPlayerCount(sessionPlayerCount);
+
+      setSelectedPlayers(
+        sessionSelectedPlayers
+      );
+
+      const nextReadiness =
+        buildLobbyReadinessMap(
+          sessionSelectedPlayers,
+          session.game_state
+            ?.playerReadiness
+        );
+
+      setPlayerReadiness(nextReadiness);
 
       const channel = subscribeToSession(
         session.id,
@@ -2347,7 +3608,28 @@ const deletePlayerFromSupabase =
 
       setOnlineChannel(channel);
 
-      alert("Připojeno k online hře.");
+      // Ensure player list is loaded so lobby UI can render selection
+      if (playersState.length === 0) {
+        try {
+          await loadPlayersFromSupabase();
+        } catch (err) {
+          console.error("LOAD PLAYERS FOR LOBBY ERROR:", err);
+        }
+      }
+
+      if (
+        isResumeLobbyJoin ||
+        !session.game_state ||
+        !session.game_state.gameStarted
+      ) {
+        debugSetScreen("online-lobby");
+      }
+
+      if (session.game_state) {
+        applyOnlineGameState(
+          session.game_state
+        );
+      }
     } catch (error) {
       console.error(error);
 
@@ -2356,19 +3638,642 @@ const deletePlayerFromSupabase =
       );
     }
   };
+
+  const handleStartOnlineGame =
+  async () => {
+    if (
+      !isOnlineGame ||
+      !onlineSessionId ||
+      !canStartOnlineGame
+    ) {
+      return;
+    }
+
+    if (
+      !isValidSelectedPlayersForCount(
+        selectedPlayers,
+        playerCount
+      )
+    ) {
+      alert(
+        "Vyber platný seznam hráčů před spuštěním online hry."
+      );
+
+      return;
+    }
+
+    let nextRuntimeRevision =
+      localRuntimeRevisionRef.current + 1;
+    let nextTurnVersion =
+      localTurnVersionRef.current + 1;
+    let startSelectedPlayers = [
+      ...selectedPlayers,
+    ];
+    let startPlayerCount = playerCount;
+
+    try {
+      const latestSession =
+        await joinOnlineSession(
+          onlineSessionId
+        );
+
+      const remoteSelectedPlayers =
+        Array.isArray(
+          latestSession.game_state
+            ?.selectedPlayers
+        )
+          ? latestSession.game_state.selectedPlayers.filter(
+              (candidate: unknown): candidate is string =>
+                typeof candidate === "string"
+            )
+          : [];
+
+      const remotePlayerCount =
+        typeof latestSession.game_state
+          ?.playerCount === "number"
+          ? latestSession.game_state
+              .playerCount
+          : "";
+
+      if (
+        !isValidSelectedPlayersForCount(
+          remoteSelectedPlayers,
+          remotePlayerCount
+        )
+      ) {
+        setSelectedPlayers([]);
+        setPlayerCount("");
+        setPlayerReadiness({});
+
+        alert(
+          "Online session neobsahuje platný výběr hráčů."
+        );
+
+        return;
+      }
+
+      startSelectedPlayers =
+        remoteSelectedPlayers;
+      startPlayerCount =
+        remotePlayerCount;
+
+      setSelectedPlayers(
+        remoteSelectedPlayers
+      );
+      setPlayerCount(
+        remotePlayerCount
+      );
+
+      const remoteRuntimeRevision =
+        Number(
+          latestSession.game_state
+            ?.runtimeRevision ?? 0
+        );
+
+      const remoteTurnVersion =
+        Number(
+          latestSession.game_state
+            ?.turnVersion ?? 0
+        );
+
+      nextRuntimeRevision =
+        Math.max(
+          localRuntimeRevisionRef.current,
+          remoteRuntimeRevision
+        ) + 1;
+
+      nextTurnVersion =
+        Math.max(
+          localTurnVersionRef.current,
+          remoteTurnVersion
+        ) + 1;
+    } catch (error) {
+      console.error(
+        "ONLINE START PREP ERROR:",
+        error
+      );
+    }
+
+    localRuntimeRevisionRef.current =
+      nextRuntimeRevision;
+    localTurnVersionRef.current =
+      nextTurnVersion;
+
+    hasAutoOpenedOnlinePlayModeRef.current = true;
+
+    if (isOnlineResumeLobbyMode) {
+      const resumeGameState = {
+        scores,
+        selectedPlayers:
+          startSelectedPlayers,
+        playerCount:
+          startPlayerCount,
+        playModeRolls,
+        playModeAllowRewrite,
+        playModeBonusMode,
+        playModeBonusRolls,
+        playerReadiness,
+        currentPlayPlayerIndex,
+        playModeDice,
+        lockedDice,
+        confirmedLockedDice,
+        remainingRolls,
+        bonusUsed,
+        selectedGeneralValue,
+        hasRolledDice,
+        gameStarted: true,
+        isPlayModeActive: true,
+        hasStartedPlayMode: true,
+        turnVersion:
+          nextTurnVersion,
+        updatedByPlayerId:
+          localOnlinePlayerId,
+        updatedAt: Date.now(),
+        runtimeRevision:
+          nextRuntimeRevision,
+        resume_started_at: Date.now(),
+      };
+
+      debugSetIsPlayModeActive(true);
+      debugSetHasStartedPlayMode(true);
+
+      try {
+        await updateOnlineState(
+          onlineSessionId,
+          resumeGameState
+        );
+
+        debugSetScreen("game");
+      } catch (error) {
+        console.error(
+          "RESUME ONLINE GAME ERROR:",
+          error
+        );
+
+        alert(
+          "Nepodařilo se pokračovat v online hře."
+        );
+      }
+
+      return;
+    }
+
+    const initialGameState = {
+      scores,
+      selectedPlayers:
+        startSelectedPlayers,
+      playerCount:
+        startPlayerCount,
+      playModeRolls,
+      playModeAllowRewrite,
+      playModeBonusMode,
+      playModeBonusRolls,
+      playerReadiness,
+      currentPlayPlayerIndex: 0,
+      playModeDice: [1, 1, 1, 1, 1, 1],
+      lockedDice: [false, false, false, false, false, false],
+      confirmedLockedDice: [false, false, false, false, false, false],
+      remainingRolls: playModeRolls,
+      bonusUsed: false,
+      selectedGeneralValue: null,
+      hasRolledDice: false,
+      gameStarted: true,
+      isPlayModeActive: true,
+      hasStartedPlayMode: true,
+      turnVersion:
+        nextTurnVersion,
+      updatedByPlayerId:
+        localOnlinePlayerId,
+      updatedAt: Date.now(),
+      runtimeRevision:
+        nextRuntimeRevision,
+      resume_started_at: Date.now(),
+    };
+
+    setShowPlayModeSetup(false);
+    setCurrentPlayPlayerIndex(0);
+    setPlayModeDice([1, 1, 1, 1, 1, 1]);
+    setLockedDice([false, false, false, false, false, false]);
+    setConfirmedLockedDice([false, false, false, false, false, false]);
+    setRemainingRolls(playModeRolls);
+    setBonusUsed(false);
+    setSelectedGeneralValue(null);
+    setHasRolledDice(false);
+    debugSetGameStarted(true);
+    debugSetIsPlayModeActive(true);
+    debugSetHasStartedPlayMode(true);
+
+    try {
+      await updateOnlineState(
+        onlineSessionId,
+        initialGameState
+      );
+
+      debugSetScreen("game");
+    } catch (error) {
+      console.error("START ONLINE GAME ERROR:", error);
+
+      alert(
+        "Nepodařilo se spustit online hru."
+      );
+    }
+  };
+
+  const leaveCurrentOnlineGame = () => {
+    if (onlineChannel) {
+      leaveOnlineSession(onlineChannel);
+      setOnlineChannel(null);
+    }
+
+    setOnlineSessionId(null);
+    setIsOnlineGame(false);
+    setGameMode("offline");
+    setSelectedGameMode("offline");
+    setLocalOnlinePlayerId(null);
+    setJoinSessionId("");
+    setPlayerReadiness({});
+
+    debugSetScreen("home");
+  };
+
+  const buildSavedGamePayload = (
+    savedGame?: {
+      gameId?: string;
+      playerCount?: number | "";
+      selectedPlayers?: string[];
+      scores?: ScoreMap;
+      gameStarted?: boolean;
+      gameFinished?: boolean;
+      isPlayModeActive?: boolean;
+      hasStartedPlayMode?: boolean;
+      playModeRolls?: number;
+      playModeAllowRewrite?: boolean;
+      playModeBonusMode?: "general-only" | "all";
+      playModeBonusRolls?: number;
+      currentPlayPlayerIndex?: number;
+      playModeDice?: number[];
+      lockedDice?: boolean[];
+      confirmedLockedDice?: boolean[];
+      remainingRolls?: number;
+      bonusUsed?: boolean;
+      selectedGeneralValue?: number | null;
+      hasRolledDice?: boolean;
+      gameMode?: "offline" | "online";
+      onlineSessionId?: string | null;
+      localOnlinePlayerId?: string | null;
+    }
+  ) => ({
+    gameId: savedGame?.gameId ?? gameId,
+    playerCount: savedGame?.playerCount ?? playerCount,
+    selectedPlayers:
+      savedGame?.selectedPlayers ?? selectedPlayers,
+    scores: savedGame?.scores ?? scores,
+    gameStarted: savedGame?.gameStarted ?? gameStarted,
+    gameFinished:
+      savedGame?.gameFinished ?? gameFinished,
+    isPlayModeActive:
+      savedGame?.isPlayModeActive ??
+      isPlayModeActive,
+    hasStartedPlayMode:
+      savedGame?.hasStartedPlayMode ??
+      hasStartedPlayMode,
+    playModeRolls:
+      savedGame?.playModeRolls ?? playModeRolls,
+    playModeAllowRewrite:
+      savedGame?.playModeAllowRewrite ??
+      playModeAllowRewrite,
+    playModeBonusMode:
+      savedGame?.playModeBonusMode ??
+      playModeBonusMode,
+    playModeBonusRolls:
+      savedGame?.playModeBonusRolls ??
+      playModeBonusRolls,
+    currentPlayPlayerIndex:
+      savedGame?.currentPlayPlayerIndex ??
+      currentPlayPlayerIndex,
+    playModeDice:
+      savedGame?.playModeDice ?? playModeDice,
+    lockedDice:
+      savedGame?.lockedDice ?? lockedDice,
+    confirmedLockedDice:
+      savedGame?.confirmedLockedDice ??
+      confirmedLockedDice,
+    remainingRolls:
+      savedGame?.remainingRolls ??
+      remainingRolls,
+    bonusUsed:
+      savedGame?.bonusUsed ?? bonusUsed,
+    selectedGeneralValue:
+      savedGame?.selectedGeneralValue ??
+      selectedGeneralValue,
+    hasRolledDice:
+      savedGame?.hasRolledDice ??
+      hasRolledDice,
+    gameMode:
+      savedGame?.gameMode ??
+      gameMode,
+    onlineSessionId:
+      savedGame?.onlineSessionId ??
+      (gameMode === "online"
+        ? onlineSessionId
+        : null),
+    localOnlinePlayerId:
+      savedGame?.localOnlinePlayerId ??
+      (gameMode === "online"
+        ? localOnlinePlayerId
+        : null),
+  });
+
+  const openSavedGame = async (
+    savedGame: ReturnType<
+      typeof buildSavedGamePayload
+    >
+  ) => {
+    const savedGameMode =
+      savedGame.gameMode ?? "offline";
+    const isOnlineSavedGame =
+      savedGameMode === "online";
+
+    setGameMode(savedGameMode);
+    setSelectedGameMode(savedGameMode);
+
+    setGameId(savedGame.gameId ?? "");
+    setPlayerCount(savedGame.playerCount);
+    setSelectedPlayers(savedGame.selectedPlayers);
+    setScores(savedGame.scores);
+    debugSetGameStarted(savedGame.gameStarted);
+    setGameFinished(savedGame.gameFinished);
+    debugSetIsPlayModeActive(
+      isOnlineSavedGame
+        ? false
+        : savedGame.isPlayModeActive ?? false
+    );
+    debugSetHasStartedPlayMode(
+      savedGame.hasStartedPlayMode ?? false
+    );
+    setShowPlayModeResult(false);
+    setPlayModeRolls(savedGame.playModeRolls ?? 4);
+    setPlayModeAllowRewrite(
+      savedGame.playModeAllowRewrite ?? false
+    );
+    setPlayModeBonusMode(
+      savedGame.playModeBonusMode ??
+        "general-only"
+    );
+    setPlayModeBonusRolls(
+      savedGame.playModeBonusRolls ?? 2
+    );
+
+    const offlineDefaultDice = [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+    ];
+
+    const offlineDefaultLocks = [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ];
+
+    if (isOnlineSavedGame) {
+      setCurrentPlayPlayerIndex(0);
+      setPlayModeDice(offlineDefaultDice);
+      setLockedDice(offlineDefaultLocks);
+      setConfirmedLockedDice(
+        offlineDefaultLocks
+      );
+      setRemainingRolls(
+        savedGame.playModeRolls ?? 4
+      );
+      setBonusUsed(false);
+      setSelectedGeneralValue(null);
+      setHasRolledDice(false);
+    } else {
+      setCurrentPlayPlayerIndex(
+        savedGame.currentPlayPlayerIndex ?? 0
+      );
+      setPlayModeDice(
+        savedGame.playModeDice ??
+          offlineDefaultDice
+      );
+      setLockedDice(
+        savedGame.lockedDice ??
+          offlineDefaultLocks
+      );
+      setConfirmedLockedDice(
+        savedGame.confirmedLockedDice ??
+          offlineDefaultLocks
+      );
+      setRemainingRolls(
+        savedGame.remainingRolls ??
+          (savedGame.playModeRolls ?? 4)
+      );
+      setBonusUsed(
+        savedGame.bonusUsed ?? false
+      );
+      setSelectedGeneralValue(
+        savedGame.selectedGeneralValue ??
+          null
+      );
+      setHasRolledDice(
+        savedGame.hasRolledDice ?? false
+      );
+    }
+
+    if (onlineChannel) {
+      leaveOnlineSession(onlineChannel);
+    }
+
+    setOnlineChannel(null);
+    setJoinSessionId("");
+
+    if (isOnlineSavedGame) {
+      const resumeSessionId =
+        savedGame.onlineSessionId ?? null;
+
+      if (!resumeSessionId) {
+        alert(
+          "Uložená online hra neobsahuje platné session ID."
+        );
+
+        setOnlineSessionId(null);
+        setLocalOnlinePlayerId(null);
+        setPlayerReadiness({});
+        setIsOnlineGame(false);
+        setGameMode("offline");
+        setSelectedGameMode("offline");
+        debugSetScreen("home");
+
+        return;
+      }
+
+      try {
+        localTurnVersionRef.current = 0;
+        hasAutoOpenedOnlinePlayModeRef.current = false;
+
+        const session =
+          await joinOnlineSession(
+            resumeSessionId
+          );
+
+        const sessionSelectedPlayers: string[] =
+          Array.isArray(
+            session.game_state?.selectedPlayers
+          )
+            ? session.game_state.selectedPlayers.filter(
+                (candidate: unknown): candidate is string =>
+                  typeof candidate === "string"
+              )
+            : [];
+
+        const sessionPlayerCount =
+          typeof session.game_state?.playerCount ===
+          "number"
+            ? session.game_state.playerCount
+            : "";
+
+        if (
+          !isValidSelectedPlayersForCount(
+            sessionSelectedPlayers,
+            sessionPlayerCount
+          )
+        ) {
+          setSelectedPlayers([]);
+          setPlayerCount("");
+          setOnlineSessionId(null);
+          setLocalOnlinePlayerId(null);
+          setPlayerReadiness({});
+          setIsOnlineGame(false);
+          setGameMode("offline");
+          setSelectedGameMode("offline");
+
+          alert(
+            "Online session neobsahuje platný výběr hráčů."
+          );
+
+          debugSetScreen("home");
+
+          return;
+        }
+
+        const isResumeLobbyJoin =
+          Boolean(
+            session.game_state?.gameStarted &&
+            session.game_state?.hasStartedPlayMode
+          );
+
+        forceOnlineLobbyUntilHostStartRef.current =
+          isResumeLobbyJoin;
+
+        setOnlineSessionId(session.id);
+        setIsOnlineGame(true);
+        setLocalOnlinePlayerId(
+          savedGame.localOnlinePlayerId ??
+            null
+        );
+
+        setPlayerCount(
+          sessionPlayerCount
+        );
+
+        setSelectedPlayers(
+          sessionSelectedPlayers
+        );
+
+        const nextReadiness =
+          buildLobbyReadinessMap(
+            sessionSelectedPlayers,
+            session.game_state
+              ?.playerReadiness
+          );
+
+        setPlayerReadiness(
+          nextReadiness
+        );
+
+        const channel = subscribeToSession(
+          session.id,
+          (gameState) => {
+            applyOnlineGameState(gameState);
+          }
+        );
+
+        setOnlineChannel(channel);
+
+        if (playersState.length === 0) {
+          try {
+            await loadPlayersFromSupabase();
+          } catch (err) {
+            console.error(
+              "LOAD PLAYERS FOR RESUME LOBBY ERROR:",
+              err
+            );
+          }
+        }
+
+        if (
+          isResumeLobbyJoin ||
+          !session.game_state ||
+          !session.game_state.gameStarted
+        ) {
+          debugSetScreen("online-lobby");
+        }
+
+        if (session.game_state) {
+          applyOnlineGameState(
+            session.game_state
+          );
+        }
+      } catch (error) {
+        console.error(
+          "OPEN SAVED ONLINE RESUME ERROR:",
+          error
+        );
+
+        alert(
+          "Nepodařilo se obnovit online session."
+        );
+
+        setOnlineSessionId(null);
+        setLocalOnlinePlayerId(null);
+        setPlayerReadiness({});
+        setIsOnlineGame(false);
+        setGameMode("offline");
+        setSelectedGameMode("offline");
+        debugSetScreen("home");
+      }
+
+      return;
+    }
+
+    setOnlineSessionId(null);
+    setLocalOnlinePlayerId(
+      savedGame.localOnlinePlayerId ?? null
+    );
+    setPlayerReadiness({});
+    setIsOnlineGame(false);
+    debugSetScreen("game");
+  };
   
   const startNewGame = (
   skipRestoreCheck = false
 ) => {
-setHasStartedPlayMode(
+debugSetHasStartedPlayMode(
   false
 );
 
-setIsPlayModeActive(
+debugSetIsPlayModeActive(
   false
 );
 
-  if (!skipRestoreCheck) {
+  if (!isOnlineGame && !skipRestoreCheck) {
     const savedGame =
       localStorage.getItem(
         "heroDiceCurrentGame"
@@ -2383,22 +4288,30 @@ setIsPlayModeActive(
           setShowHomeRestoreModal(
             true
           );
-
           return;
         }
       } catch {}
     }
   }
 
-  localStorage.removeItem(
-    "heroDiceCurrentGame"
-  );
+  if (!isOnlineGame) {
+    localStorage.removeItem(
+      "heroDiceCurrentGame"
+    );
+  }
 
   setPlayerCount("");
 
   setSelectedPlayers([]);
 
-  setGameStarted(false);
+  setSelectedPlayerTypes([]);
+
+  setLocalOnlinePlayerId(null);
+
+  setGameMode("offline");
+  setSelectedGameMode("offline");
+
+  debugSetGameStarted(false);
 
   setGameFinished(false);
 
@@ -2414,16 +4327,60 @@ setGameId(
   crypto.randomUUID()
 );
 
-  setScreen("game");
+  debugSetScreen("game");
 };
 
   const canStartGame =
-    playerCount !== "" &&
-    selectedPlayers.length ===
-      playerCount &&
-    selectedPlayers.every(
-      (player) => player !== ""
+    isValidSelectedPlayersForCount(
+      selectedPlayers,
+      playerCount
     );
+
+  const lobbyReadiness = useMemo(
+    () =>
+      buildLobbyReadinessMap(
+        selectedPlayers,
+        playerReadiness
+      ),
+    [selectedPlayers, playerReadiness]
+  );
+
+  const allPlayersReady =
+    selectedPlayers.length > 0 &&
+    selectedPlayers.every(
+      (playerId) =>
+        lobbyReadiness[playerId] === true
+    );
+
+  const canStartOnlineGame =
+    isValidSelectedPlayersForCount(
+      selectedPlayers,
+      playerCount
+    ) &&
+    selectedPlayers.every(
+      (playerId) =>
+        playerReadiness[playerId] === true
+    );
+
+  const isOnlineResumeLobbyMode =
+    isOnlineGame &&
+    gameStarted &&
+    hasStartedPlayMode;
+
+  const isOnlineHost =
+    joinSessionId === "";
+
+  const activePlayerId =
+    selectedPlayers[currentPlayPlayerIndex] ??
+    null;
+
+  const isCurrentPlayer =
+    !isOnlineGame ||
+    (localOnlinePlayerId !== null &&
+      localOnlinePlayerId === activePlayerId);
+
+  const canControlOnlinePlayMode =
+    !isOnlineGame || isCurrentPlayer;
 
 useEffect(() => {
   if (
@@ -2434,10 +4391,7 @@ useEffect(() => {
   ) {
     setPlayerCount(2);
 
-    setSelectedPlayers([
-      selectablePlayers[0].id,
-      selectablePlayers[1].id,
-    ]);
+    setSelectedPlayers([]);
   }
 }, [
   selectablePlayers.length,
@@ -2446,6 +4400,11 @@ useEffect(() => {
 ]);
     
 useEffect(() => {
+  if (isOnlineGame) {
+    setShowRestoreGame(false);
+    return;
+  }
+
   const savedGame =
     localStorage.getItem(
       "heroDiceCurrentGame"
@@ -2465,7 +4424,7 @@ useEffect(() => {
       "heroDiceCurrentGame"
     );
   }
-}, []);
+}, [isOnlineGame]);
 
 useEffect(() => {
   const handleBeforeUnload = (
@@ -2495,31 +4454,28 @@ useEffect(() => {
 }, [gameStarted, gameFinished]);
 
 useEffect(() => {
+  if (isOnlineGame) {
+    return;
+  }
+
   if (
     gameStarted &&
     !gameFinished
   ) {
+    const savedGamePayload =
+      buildSavedGamePayload({
+        gameMode: "offline",
+        onlineSessionId: null,
+        localOnlinePlayerId: null,
+      });
+
     localStorage.setItem(
   "heroDiceCurrentGame",
-  JSON.stringify({
-    gameId,
-    playerCount,
-    selectedPlayers,
-    scores,
-    gameStarted,
-    gameFinished,
-
-    isPlayModeActive,
-hasStartedPlayMode,
-
-playModeRolls,
-playModeAllowRewrite,
-playModeBonusMode,
-playModeBonusRolls,
-  })
+  JSON.stringify(savedGamePayload)
 );
   }
 }, [
+  isOnlineGame,
   playerCount,
   selectedPlayers,
   scores,
@@ -2536,7 +4492,12 @@ gameId,
 useEffect(() => {
   if (
     !isOnlineGame ||
-    !onlineSessionId
+    !onlineSessionId ||
+    !gameStarted ||
+    !hasStartedPlayMode ||
+    isRolling ||
+    screen !== "game" ||
+    !isCurrentPlayer
   ) {
     return;
   }
@@ -2552,8 +4513,17 @@ useEffect(() => {
   bonusUsed,
   selectedGeneralValue,
   hasRolledDice,
+  playModeRolls,
+  playModeAllowRewrite,
+  playModeBonusMode,
+  playModeBonusRolls,
+  isRolling,
   isOnlineGame,
   onlineSessionId,
+  gameStarted,
+  hasStartedPlayMode,
+  isCurrentPlayer,
+  screen,
 ]);  
 
 useEffect(() => {
@@ -2623,11 +4593,9 @@ const gameResults =
         playerId,
 
         playerName:
-          playersState.find(
-            (p) =>
-              p.id === playerId
-          )?.name ||
-          playerId,
+          getPlayerDisplayName(
+            playerId
+          ),
 
         total,
 
@@ -2637,9 +4605,9 @@ const gameResults =
   );
 
 const winnerName =
-  playersState.find(
-    (p) => p.id === bestPlayer
-  )?.name || "";
+  getPlayerDisplayName(
+    bestPlayer
+  );
 
 setWinner(winnerName);
 
@@ -2695,7 +4663,7 @@ if (isLeaguePlayMode) {
 
 setGameFinished(true);
 
-setIsPlayModeActive(
+debugSetIsPlayModeActive(
   false
 );
 
@@ -2923,7 +4891,7 @@ if (celebrationType === 2) {
       <div className="flex flex-wrap gap-3">
   <button
     onClick={loadSavedGames}
-    className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500 md:text-xl"
+    className="rounded-2xl bg-gradient-to-r from-violet-600 to-green-500 px-6 py-3 text-lg font-bold text-white transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
   >
     Načíst hru
   </button>
@@ -2932,7 +4900,7 @@ if (celebrationType === 2) {
     onClick={() =>
       setShowAdmin(true)
     }
-    className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600 md:text-xl"
+    className="rounded-2xl bg-gradient-to-r from-zinc-900 to-red-600 px-6 py-3 text-lg font-bold  transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
   >
     Admin
   </button>
@@ -2941,7 +4909,7 @@ if (celebrationType === 2) {
     onClick={() =>
       setShowStatistics(true)
     }
-    className="rounded-2xl bg-yellow-500 px-6 py-3 text-lg font-bold transition hover:bg-yellow-400 md:text-xl"
+    className="rounded-2xl bg-gradient-to-r from-zinc-900 via-yellow-500 to-yellow-300 px-6 py-3 text-lg font-bold text-white transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
   >
     Statistiky
   </button>
@@ -2955,13 +4923,6 @@ if (celebrationType === 2) {
     className="rounded-3xl bg-yellow-500 px-8 py-5 text-2xl font-black text-black transition hover:scale-[1.02] hover:bg-yellow-400 md:px-10 md:text-3xl"
   >
     ▶ Nová hra
-  </button>
-
-  <button
-    onClick={handleCreateOnlineSession}
-    className="rounded-3xl bg-green-600 px-8 py-5 text-2xl font-black text-white transition hover:bg-green-500 md:px-10 md:text-3xl"
-  >
-    🌐 Vytvořit online
   </button>
 
   <input
@@ -2978,7 +4939,7 @@ if (celebrationType === 2) {
     onClick={handleJoinOnlineSession}
     className="rounded-2xl bg-blue-600 px-6 py-4 font-bold text-white transition hover:bg-blue-500"
   >
-    🔗 Připojit
+    🔗 Připojit se
   </button>
 </div>
           </div>
@@ -3100,6 +5061,204 @@ if (celebrationType === 2) {
           </div>
         </div>
       )}
+      {/* ONLINE LOBBY */}
+      {screen === "online-lobby" && (
+        <div className="mx-auto flex w-full max-w-6xl flex-col">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
+            <h1 className="text-5xl font-black tracking-[0.14em] text-green-400">
+              ONLINE LOBBY
+            </h1>
+
+            <button
+              onClick={() => {
+                leaveCurrentOnlineGame();
+              }}
+              className="rounded-2xl bg-red-700 px-6 py-3 text-lg font-bold transition hover:bg-red-600"
+            >
+              Zpět domů
+            </button>
+          </div>
+
+          <div className="mx-auto mb-12 w-full max-w-3xl rounded-3xl bg-zinc-900/40 p-8 backdrop-blur-sm text-center">
+            {onlineSessionId === null ? (
+              <div className="text-lg font-bold text-zinc-400 mb-4">
+                Připojování...
+              </div>
+            ) : (
+              <>
+                <div className={`text-sm font-bold uppercase tracking-[0.2em] mb-2 ${
+                  isOnlineHost
+                    ? "text-green-400"
+                    : "text-blue-400"
+                }`}>
+                  {isOnlineHost
+                    ? "Host Mode"
+                    : "Client Mode"}
+                </div>
+
+                <div className="text-2xl font-black text-white mb-6">
+                  {isOnlineHost
+                    ? "Místnost vytvořena"
+                    : "Připojeno do místnosti"}
+                </div>
+
+                <div className="rounded-2xl border border-green-500/30 bg-black/40 p-6 mb-8">
+                  <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-400 mb-3">
+                    Kód místnosti
+                  </div>
+
+                  <div className="text-4xl font-black text-green-400 tracking-[0.14em] font-mono">
+                    {onlineSessionId}
+                  </div>
+
+                  {isOnlineHost && (
+                    <div className="mt-4 text-xs text-zinc-500">
+                      (zkopírován do schránky)
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-lg font-bold text-zinc-400 mb-8">
+                  ⏳ Lobby čeká na identifikaci a připravenost všech hráčů.
+                </div>
+
+                <div className="mx-auto mb-10 max-w-4xl rounded-3xl bg-zinc-950/60 p-8 text-left">
+                  <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="text-sm font-bold uppercase tracking-[0.2em] text-yellow-400">
+                        Online lobby
+                      </div>
+
+                      <h2 className="mt-2 text-3xl font-black text-white tracking-[0.14em]">
+                        Seznam hráčů a připravenost
+                      </h2>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+                    <div className="rounded-2xl border border-zinc-800 bg-black/40 p-6">
+                      <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-400">
+                        Hráči v místnosti
+                      </div>
+
+                      <div className="mt-5 space-y-3">
+                        {selectedPlayers.map((playerId, index) => {
+                          const player = playersState.find(
+                            (entry) => entry.id === playerId
+                          );
+                          const ready = Boolean(
+                            lobbyReadiness[playerId]
+                          );
+                          const isLocalPlayer =
+                            localOnlinePlayerId === playerId;
+
+                          return (
+                            <div
+                              key={playerId || index}
+                              className="flex flex-col gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-4 md:flex-row md:items-center md:justify-between"
+                            >
+                              <div>
+                                <div className="text-sm font-bold text-white">
+                                  {player?.name ?? `Hráč ${index + 1}`}
+                                </div>
+                                <div className="text-xs text-zinc-500">
+                                  {playerId}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col gap-3 md:items-end">
+                                <div
+                                  className={`rounded-full px-3 py-1 text-center text-sm font-bold ${
+                                    ready
+                                      ? "bg-green-500 text-black"
+                                      : "bg-zinc-800 text-zinc-400"
+                                  }`}
+                                >
+                                  {ready ? "Připraven" : "Čeká"}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    claimOnlinePlayer(playerId)
+                                  }
+                                  disabled={
+                                    isLocalPlayer && ready
+                                  }
+                                  className={`rounded-2xl px-4 py-3 text-sm font-black transition ${
+                                    isLocalPlayer
+                                      ? "cursor-default bg-green-600 text-white"
+                                      : "bg-blue-600 text-white hover:bg-blue-500"
+                                  }`}
+                                >
+                                  {isLocalPlayer
+                                    ? "Připraven"
+                                    : "Jsem tento hráč"}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-800 bg-black/40 p-6">
+                      <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-400">
+                        Stav lobby
+                      </div>
+
+                      <div className="mt-4 text-2xl font-black text-white">
+                        {allPlayersReady
+                          ? "Všichni hráči jsou připraveni"
+                          : "Čeká se na připravenost hráčů"}
+                      </div>
+
+                      <div className="mt-4 text-sm text-zinc-400">
+                        Každé zařízení si zvolí svého hráče. Host může hru spustit až ve chvíli, kdy jsou všichni připraveni.
+                      </div>
+
+                      {localOnlinePlayerId && (
+                        <div className="mt-4 rounded-2xl border border-green-500/20 bg-zinc-950/70 px-4 py-3 text-sm font-bold text-green-400">
+                          Toto zařízení ovládá hráče: {getPlayerDisplayName(localOnlinePlayerId)}
+                        </div>
+                      )}
+
+                      {isOnlineHost ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleStartOnlineGame}
+                            disabled={!canStartOnlineGame}
+                            className={`mt-8 w-full rounded-2xl px-6 py-4 text-xl font-black text-black transition ${
+                              canStartOnlineGame
+                                ? "bg-yellow-500 hover:bg-yellow-400"
+                                : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                            }`}
+                          >
+                            {isOnlineResumeLobbyMode
+                              ? "▶ Pokračovat v online hře"
+                              : "▶ Zahájit online hru"}
+                          </button>
+
+                          {!allPlayersReady && (
+                            <div className="mt-3 text-sm text-zinc-500">
+                              Host může spustit hru pouze, když jsou všichni připraveni.
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="mt-8 rounded-2xl bg-zinc-900 px-4 py-4 text-sm font-bold text-zinc-400">
+                          Po výběru svého hráče zůstává klient v lobby a čeká na spuštění hry hostem.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {/* GAME */}
       {screen === "game" && (
         <div className="mx-auto flex w-full max-w-6xl flex-col">
@@ -3128,11 +5287,11 @@ if (celebrationType === 2) {
     if (
       hasStartedPlayMode
     ) {
-      setIsPlayModeActive(
+      debugSetIsPlayModeActive(
         true
       );
 
-      setHasStartedPlayMode(
+      debugSetHasStartedPlayMode(
         true
       );
 
@@ -3250,14 +5409,14 @@ if (celebrationType === 2) {
     onClick={() =>
       setShowStatistics(true)
     }
-    className="rounded-2xl bg-yellow-500 px-6 py-3 text-lg font-bold transition hover:bg-yellow-400"
+    className="rounded-2xl bg-gradient-to-r from-zinc-900 via-yellow-500 to-yellow-300 px-6 py-3 text-lg font-bold text-white transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
   >
     Statistiky
   </button>
 
   <button
     onClick={loadSavedGames}
-    className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500"
+    className="rounded-2xl bg-gradient-to-r from-violet-600 to-green-400 px-6 py-3 text-lg font-bold text-white transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
   >
     Načíst hru
   </button>
@@ -3266,16 +5425,16 @@ if (celebrationType === 2) {
     onClick={() =>
       setShowAdmin(true)
     }
-    className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:bg-zinc-600"
+    className="rounded-2xl bg-gradient-to-r from-zinc-900 to-red-600 px-6 py-3 text-lg font-bold transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
   >
     Admin
   </button>
 
   <button
     onClick={() =>
-      setScreen("home")
+      debugSetScreen("home")
     }
-    className="rounded-2xl bg-red-700 px-6 py-3 text-lg font-bold transition hover:bg-red-600"
+    className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
   >
     Domů
   </button>
@@ -3320,9 +5479,11 @@ if (celebrationType === 2) {
                     value={playerCount}
                     onChange={(e) =>
                       handlePlayerCountChange(
-                        Number(
-                          e.target.value
-                        )
+                        e.target.value === ""
+                          ? ""
+                          : Number(
+                              e.target.value
+                            )
                       )
                     }
                     className="min-w-[220px] rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-lg font-bold text-white outline-none transition focus:border-yellow-400"
@@ -3367,6 +5528,29 @@ if (celebrationType === 2) {
 
                       <select
                         value={
+                          selectedPlayerTypes[
+                            index
+                          ] || "human"
+                        }
+                        onChange={(e) =>
+                          handlePlayerTypeChange(
+                            index,
+                            e.target
+                              .value as PlayerSelectionType
+                          )
+                        }
+                        className="mb-3 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-base font-bold text-white outline-none transition focus:border-yellow-400"
+                      >
+                        <option value="human">
+                          Human
+                        </option>
+                        <option value="computer">
+                          Computer
+                        </option>
+                      </select>
+
+                      <select
+                        value={
                           selectedPlayers[
                             index
                           ] || ""
@@ -3380,25 +5564,55 @@ if (celebrationType === 2) {
                         className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-4 text-lg font-bold text-white outline-none transition focus:border-yellow-400"
                       >
                         <option value="">
-                          Vyber hráče
+                          {(
+                            selectedPlayerTypes[
+                              index
+                            ] || "human"
+                          ) === "computer"
+                            ? "Vyber Computer hráče"
+                            : "Vyber hráče"}
                         </option>
 
-                        {selectablePlayers.map(
-                        (player) => (
-                            <option
-                              key={
-                                player.id
-                              }
-                              value={
-                                player.id
-                              }
-                            >
-                              {
-                                player.name
-                              }
-                            </option>
-                          )
-                        )}
+                        {(selectedPlayerTypes[
+                          index
+                        ] || "human") ===
+                        "computer"
+                          ? computerPlayers.map(
+                              (
+                                computerPlayer
+                              ) => (
+                                <option
+                                  key={
+                                    computerPlayer.id
+                                  }
+                                  value={
+                                    computerPlayer.id
+                                  }
+                                >
+                                  {
+                                    computerPlayer.name
+                                  }
+                                </option>
+                              )
+                            )
+                          : selectablePlayers.map(
+                              (
+                                player
+                              ) => (
+                                <option
+                                  key={
+                                    player.id
+                                  }
+                                  value={
+                                    player.id
+                                  }
+                                >
+                                  {
+                                    player.name
+                                  }
+                                </option>
+                              )
+                            )}
                       </select>
                     </div>
                   ))}
@@ -3406,24 +5620,28 @@ if (celebrationType === 2) {
               )}
 
               <div className="flex justify-end">
-  <button
-  onClick={() => {
-    setGameStarted(
-      true
-    );
+              <button
+              onClick={() => {
+                if (!canStartGame) {
+                  alert(
+                    "Vyber platný seznam hráčů."
+                  );
 
-    setShowPlayModeSetup(
-      true
-    );
-  }}
+                  return;
+                }
+
+                // Do not start the game yet; open Play Mode setup first.
+                debugSetGameStarted(false, 'GameSetup');
+                setShowPlayModeSetup(true);
+              }}
   disabled={!canStartGame}
   className={`rounded-2xl px-8 py-4 text-xl font-black transition ${
     canStartGame
-      ? "bg-yellow-500 text-black hover:scale-[1.02] hover:bg-yellow-400"
-      : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+      ? "border border-white/70 bg-gradient-to-r from-violet-600 to-green-500 text-zinc-100 hover:scale-[1.02] hover:brightness-110"
+: "cursor-not-allowed border border-zinc-600 bg-zinc-700 text-zinc-400"
   }`}
 >
-  ▶ Začít hru
+  ▶ Nastavit hru
 </button>
 </div>
             </div>
@@ -3455,12 +5673,9 @@ if (celebrationType === 2) {
   key={index}
   className="border border-white p-3 text-center text-xl font-bold"
 >
-                          {
-  playersState.find(
-    (player) =>
-      player.id === playerId
-  )?.name
-}
+                          {getPlayerDisplayName(
+                            playerId
+                          )}
                         </th>
                       )
                     )}
@@ -3703,7 +5918,7 @@ if (celebrationType === 2) {
 )}
 
 {/* HOME RESTORE MODAL */}
-{showHomeRestoreModal && (
+{!isOnlineGame && showHomeRestoreModal && (
   <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
     <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
       <h2 className="mb-5 text-3xl font-black text-yellow-400">
@@ -3741,61 +5956,7 @@ if (celebrationType === 2) {
             const parsed =
               JSON.parse(savedGame);
 
-setGameId(
-  parsed.gameId ?? ""
-);
-
-            setPlayerCount(
-              parsed.playerCount
-            );
-
-            setSelectedPlayers(
-              parsed.selectedPlayers
-            );
-
-            setScores(
-              parsed.scores
-            );
-
-            setGameStarted(
-              parsed.gameStarted
-            );
-
-            setGameFinished(
-              parsed.gameFinished
-            );
-            
-            
-setIsPlayModeActive(
-  parsed.isPlayModeActive ??
-    false
-);
-
-setHasStartedPlayMode(
-  parsed.hasStartedPlayMode ??
-    false
-);
-
-setPlayModeRolls(
-  parsed.playModeRolls ?? 4
-);
-
-setPlayModeAllowRewrite(
-  parsed.playModeAllowRewrite ??
-    false
-);
-
-setPlayModeBonusMode(
-  parsed.playModeBonusMode ??
-    "general-only"
-);
-
-setPlayModeBonusRolls(
-  parsed.playModeBonusRolls ??
-    2
-);
-
-            setScreen("game");
+            openSavedGame(parsed);
 
             setShowHomeRestoreModal(
               false
@@ -3811,7 +5972,7 @@ setPlayModeBonusRolls(
 )}
 
 {/* LOAD GAMES MODAL */}
-{showLoadGames && (
+{!isOnlineGame && showLoadGames && (
   <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/90 p-4">
     <div className="w-full max-w-2xl rounded-3xl bg-zinc-900 p-8 text-white shadow-2xl">
       <div className="mb-6 flex items-center justify-between">
@@ -3855,107 +6016,148 @@ setPlayModeBonusRolls(
                     "cs-CZ"
                   )}
                 </div>
+
+                <div className="mt-3 flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.16em]">
+                  <span
+                    className={`rounded-full px-3 py-1 ${
+                      (game.game_mode ?? "offline") ===
+                      "online"
+                        ? "bg-green-600/20 text-green-400"
+                        : "bg-blue-600/20 text-blue-400"
+                    }`}
+                  >
+                    {(game.game_mode ?? "offline") ===
+                    "online"
+                      ? "Online hra"
+                      : "Offline hra"}
+                  </span>
+
+                  <span className="rounded-full bg-purple-600/20 px-3 py-1 text-purple-300">
+                    {game.play_mode_rolls === 4 &&
+                    !game.play_mode_allow_rewrite &&
+                    game.play_mode_bonus_mode ===
+                      "general-only" &&
+                    game.play_mode_bonus_rolls === 2
+                      ? "Ligová hra"
+                      : "Fun hra"}
+                  </span>
+                </div>
+
+                <div className="mt-2 text-xs text-zinc-500">
+                  {`${game.play_mode_rolls ?? 4} hodů / Přepis: ${
+                    game.play_mode_allow_rewrite
+                      ? "Ano"
+                      : "Ne"
+                  } / Bonus: ${
+                    game.play_mode_bonus_mode ===
+                    "all"
+                      ? "Všechny kombinace"
+                      : "Generál"
+                  } +${
+                    Math.max(
+                      (game.play_mode_bonus_rolls ?? 2) -
+                        (game.play_mode_rolls ?? 4),
+                      0
+                    )
+                  }`}
+                </div>
+
+                {(game.game_mode ?? "offline") ===
+                  "online" &&
+                  game.online_session_id && (
+                  <div className="mt-2 text-xs font-bold text-green-400">
+                    Session: {game.online_session_id}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3">
   <button
     onClick={() => {
-      
-      setGameId(
-  game.game_id ?? ""
-);
-      
-      setPlayerCount(
-        game.player_count
-      );
+      if (isOnlineGame) {
+        return;
+      }
 
-      setSelectedPlayers(
-        game.selected_players
-      );
-
-      setScores(
-        game.scores
-      );
-
-      setGameStarted(
-        game.game_started
-      );
-
-      setGameFinished(
-        game.game_finished
-      );
-setIsPlayModeActive(
-  game.is_play_mode_active ??
-    false
-);
-
-setHasStartedPlayMode(
-  game.is_play_mode_active ??
-    false
-);
-
-setPlayModeRolls(
-  game.play_mode_rolls ?? 4
-);
-
-setPlayModeAllowRewrite(
-  game.play_mode_allow_rewrite ??
-    false
-);
-
-setPlayModeBonusMode(
-  game.play_mode_bonus_mode ??
-    "general-only"
-);
-
-setPlayModeBonusRolls(
-  game.play_mode_bonus_rolls ??
-    2
-);
+      const savedGamePayload =
+        buildSavedGamePayload({
+          gameId: game.game_id ?? "",
+          playerCount: game.player_count,
+          selectedPlayers:
+            game.selected_players ?? [],
+          scores: game.scores ?? {},
+          gameStarted: game.game_started,
+          gameFinished: game.game_finished,
+          isPlayModeActive:
+            game.is_play_mode_active ?? false,
+          hasStartedPlayMode:
+            game.has_started_play_mode ??
+            game.is_play_mode_active ??
+            false,
+          playModeRolls:
+            game.play_mode_rolls ?? 4,
+          playModeAllowRewrite:
+            game.play_mode_allow_rewrite ?? false,
+          playModeBonusMode:
+            game.play_mode_bonus_mode ??
+            "general-only",
+          playModeBonusRolls:
+            game.play_mode_bonus_rolls ?? 2,
+          currentPlayPlayerIndex:
+            game.current_play_player_index ?? 0,
+          playModeDice:
+            game.play_mode_dice ?? [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+            ],
+          lockedDice:
+            game.locked_dice ?? [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+            ],
+          confirmedLockedDice:
+            game.confirmed_locked_dice ?? [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+            ],
+          remainingRolls:
+            game.remaining_rolls ??
+            (game.play_mode_rolls ?? 4),
+          bonusUsed:
+            game.bonus_used ?? false,
+          selectedGeneralValue:
+            game.selected_general_value ?? null,
+          hasRolledDice:
+            game.has_rolled_dice ?? false,
+          gameMode:
+            game.game_mode ?? "offline",
+          onlineSessionId:
+            game.online_session_id ?? null,
+          localOnlinePlayerId:
+            game.local_online_player_id ?? null,
+        });
 
       localStorage.setItem(
   "heroDiceCurrentGame",
-  JSON.stringify({
-    
-    gameId:
-  game.game_id,
-    
-    playerCount:
-      game.player_count,
-
-    selectedPlayers:
-      game.selected_players,
-
-    scores: game.scores,
-
-    gameStarted:
-      game.game_started,
-
-    gameFinished:
-      game.game_finished,
-
-    isPlayModeActive:
-      game.is_play_mode_active,
-
-    playModeRolls:
-      game.play_mode_rolls,
-
-    playModeAllowRewrite:
-      game.play_mode_allow_rewrite,
-
-    playModeBonusMode:
-      game.play_mode_bonus_mode,
-
-    playModeBonusRolls:
-      game.play_mode_bonus_rolls,
-  })
+  JSON.stringify(savedGamePayload)
 );
 
       setShowLoadGames(
   false
 );
 
-setScreen("game");
+      openSavedGame(savedGamePayload);
     }}
     className="rounded-xl bg-yellow-500 px-5 py-3 font-black text-black transition hover:bg-yellow-400"
   >
@@ -3982,7 +6184,7 @@ setScreen("game");
 )}
 
 {/* RESTORE GAME MODAL */}
-{showRestoreGame && (
+{!isOnlineGame && showRestoreGame && (
   <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
     <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
       <h2 className="mb-5 text-3xl font-black text-yellow-400">
@@ -4022,61 +6224,7 @@ setScreen("game");
             const parsed =
               JSON.parse(savedGame);
 
-              setGameId(
-  parsed.gameId ?? ""
-);
-
-
-            setPlayerCount(
-              parsed.playerCount
-            );
-
-            setSelectedPlayers(
-              parsed.selectedPlayers
-            );
-
-            setScores(
-              parsed.scores
-            );
-
-            setGameStarted(
-              parsed.gameStarted
-            );
-
-            setGameFinished(
-              parsed.gameFinished
-            );
-
-setIsPlayModeActive(
-  parsed.isPlayModeActive ??
-    false
-);
-
-setHasStartedPlayMode(
-  parsed.hasStartedPlayMode ??
-    false
-);
-
-setPlayModeRolls(
-  parsed.playModeRolls ?? 4
-);
-
-setPlayModeAllowRewrite(
-  parsed.playModeAllowRewrite ??
-    false
-);
-
-setPlayModeBonusMode(
-  parsed.playModeBonusMode ??
-    "general-only"
-);
-
-setPlayModeBonusRolls(
-  parsed.playModeBonusRolls ??
-    2
-);
-
-            setScreen("game");
+            openSavedGame(parsed);
 
             setShowRestoreGame(
               false
@@ -4110,6 +6258,10 @@ setPlayModeBonusRolls(
         <div className="flex flex-col gap-4">
           <button
             onClick={async () => {
+              if (hasComputerPlayer) {
+                return;
+              }
+
               await saveFinishedGame({
                 date:
                   new Date().toISOString(),
@@ -4137,7 +6289,7 @@ setPendingFinishedGame(
 
 setGameFinished(true);
 
-setIsPlayModeActive(
+debugSetIsPlayModeActive(
   false
 );
 
@@ -4277,9 +6429,16 @@ if (celebrationType === 2) {
 
              
             }}
-            className="rounded-2xl bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:bg-green-500"
+            disabled={hasComputerPlayer}
+            className={`rounded-2xl px-5 py-4 text-lg font-black text-white transition ${
+              hasComputerPlayer
+                ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                : "bg-green-600 hover:bg-green-500"
+            }`}
           >
-            🟢 Ligová hra
+            {hasComputerPlayer
+              ? "Ligová hra není dostupná s Computer hráčem"
+              : "🟢 Ligová hra"}
           </button>
 
           <button
@@ -4310,7 +6469,7 @@ setPendingFinishedGame(
 
 setGameFinished(true);
 
-setIsPlayModeActive(
+debugSetIsPlayModeActive(
   false
 );
 
@@ -4499,9 +6658,15 @@ if (celebrationType === 2) {
       <div className="flex flex-wrap justify-center gap-4">
         <button
           onClick={() =>
-            setShowGameVersionModal(
-              false
-            )
+            {
+              setShowGameVersionModal(
+                false
+              );
+
+              setPendingSaveMetadata(
+                null
+              );
+            }
           }
           className="rounded-xl bg-zinc-700 px-6 py-4 font-bold text-white transition hover:bg-zinc-600"
         >
@@ -4510,7 +6675,9 @@ if (celebrationType === 2) {
 
         <button
           onClick={async () => {
-  await overwriteGameInSupabase();
+  await overwriteGameInSupabase(
+    pendingSaveMetadata ?? undefined
+  );
 }}
           className="rounded-xl bg-green-600 px-6 py-4 font-black text-white transition hover:bg-green-500"
         >
@@ -4566,7 +6733,7 @@ if (celebrationType === 2) {
       false
     );
 
-    setGameStarted(
+    debugSetGameStarted(
       false
     );
   }}
@@ -4754,6 +6921,52 @@ if (celebrationType === 2) {
   </div>
 </div>
 
+{!hasStartedPlayMode && (
+  <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+    <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+      Režim hry
+    </div>
+
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <button
+        onClick={() =>
+          setSelectedGameMode(
+            "offline"
+          )
+        }
+        className={`rounded-2xl px-5 py-4 font-black transition ${
+          selectedGameMode ===
+          "offline"
+            ? "bg-yellow-500 text-black"
+            : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+        }`}
+      >
+        ▶ Offline hra
+      </button>
+
+      <button
+        onClick={() =>
+          setSelectedGameMode(
+            "online"
+          )
+        }
+        disabled={hasComputerPlayer}
+        className={`rounded-2xl px-5 py-4 font-black transition ${
+          hasComputerPlayer
+            ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
+            :
+          selectedGameMode ===
+          "online"
+            ? "bg-green-600 text-white"
+            : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+        }`}
+      >
+        🌐 Online hra
+      </button>
+    </div>
+  </div>
+)}
+
       <div className="mt-8 flex flex-wrap justify-between gap-4">
         
 
@@ -4764,7 +6977,7 @@ if (celebrationType === 2) {
       false
     );
 
-    setGameStarted(
+    debugSetGameStarted(
       false
     );
   }}
@@ -4773,64 +6986,137 @@ if (celebrationType === 2) {
   Zrušit
 </button>
 
-          <button
-  onClick={() => {
-  setCurrentPlayPlayerIndex(
-    0
-  );
+            <button
+          onClick={async () => {
+    // If the game is already started, behave as before (enter Play Mode).
+    if (gameStarted && hasStartedPlayMode) {
+      setCurrentPlayPlayerIndex(0);
 
-  setPlayModeDice([
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-  ]);
+      setPlayModeDice([1, 1, 1, 1, 1, 1]);
 
-  setLockedDice([
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ]);
+      setLockedDice([false, false, false, false, false, false]);
 
-setConfirmedLockedDice([
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-]);
+      setConfirmedLockedDice([
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]);
 
-  setRemainingRolls(
-    playModeRolls
-  );
-  setHasRolledDice(false);
-  setBonusUsed(false);
-  setShowPlayModeSetup(
-    false
-  );
+      setRemainingRolls(playModeRolls);
+      setHasRolledDice(false);
+      setBonusUsed(false);
+      setShowPlayModeSetup(false);
 
-  setIsPlayModeActive(
-    true
-  );
-  setHasStartedPlayMode(
-  true
-);
+      debugSetIsPlayModeActive(true);
+      debugSetHasStartedPlayMode(true);
+
+      return;
+    }
+
+    if (!canStartGame) {
+      alert(
+        "Vyber platný seznam hráčů."
+      );
+
+      return;
+    }
+
+    if (hasComputerPlayer) {
+      setSelectedGameMode("offline");
+      setGameMode("offline");
+    }
+
+    if (
+      selectedGameMode === "online" &&
+      !hasComputerPlayer
+    ) {
+      setShowPlayModeSetup(false);
+      setGameMode("online");
+
+      try {
+        await handleCreateOnlineSession();
+      } catch (err) {
+        console.error(
+          "PLAY MODE SETUP -> create online session error:",
+          err
+        );
+      }
+
+      return;
+    }
+
+    setShowPlayModeSetup(false);
+    setGameMode("offline");
+
+    debugSetGameStarted(
+      true,
+      "PlayModeSetup"
+    );
+
+    setCurrentPlayPlayerIndex(0);
+
+    setPlayModeDice([1, 1, 1, 1, 1, 1]);
+
+    setLockedDice([
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
+
+    setConfirmedLockedDice([
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
+
+    setRemainingRolls(playModeRolls);
+    setHasRolledDice(false);
+    setBonusUsed(false);
+
+    debugSetIsPlayModeActive(
+      true,
+      "PlayModeSetup"
+    );
+    debugSetHasStartedPlayMode(
+      true,
+      "PlayModeSetup"
+    );
+
+    debugSetScreen(
+      "game",
+      "PlayModeSetup"
+    );
 }}
   className={`rounded-2xl px-8 py-4 font-black text-white transition ${
-    isLeaguePlayMode
+    hasComputerPlayer
+      ? "bg-purple-600 hover:bg-purple-500"
+      : selectedGameMode === "online"
+      ? "bg-green-600 hover:bg-green-500"
+      : isLeaguePlayMode
       ? "bg-green-600 hover:bg-green-500"
       : "bg-purple-600 hover:bg-purple-500"
   }`}
 >
-  {isLeaguePlayMode
-    ? "▶ Spustit ligovou hru"
-    : "▶ Začít Fun hru"}
+  {hasComputerPlayer
+    ? "▶ Spustit fun offline hru"
+    : screen === "online-lobby"
+    ? "Hotovo"
+    : selectedGameMode === "online"
+    ? isLeaguePlayMode
+      ? "🌐 Spustit ligovou online hru"
+      : "🌐 Spustit fun online hru"
+    : isLeaguePlayMode
+    ? "▶ Spustit ligovou offline hru"
+    : "▶ Spustit fun offline hru"}
 </button>
         </div>
       </div>
@@ -4868,12 +7154,31 @@ currentCombination && (
         }
       </div>
 
-      <div className="mt-2 text-2xl font-black text-white">
-        Score:
-        {" "}
-        {
-          currentCombination.score
-        }
+      <div
+        className={`mt-2 text-2xl font-black ${(() => {
+          const categoryId =
+            playModeCategoryMap[
+              currentCombination
+                .combination
+            ];
+
+          const category =
+            gameCategories.find(
+              (c) =>
+                c.id ===
+                categoryId
+            );
+
+          return (
+            category &&
+            currentCombination.score ===
+              category.max
+              ? "text-red-500"
+              : "text-white"
+          );
+        })()}`}
+      >
+        Skóre: {currentCombination.score}
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-4">
@@ -4885,10 +7190,11 @@ currentCombination && (
 
   endTurn();
 
-  setIsPlayModeActive(
+  debugSetIsPlayModeActive(
     false
   );
 }}
+    disabled={!canControlOnlinePlayMode}
     className="rounded-2xl bg-green-700 px-4 py-5 text-lg font-black text-white transition hover:bg-green-600"
   >
     Scoreboard
@@ -4925,15 +7231,11 @@ currentCombination && (
       </div>
 
       <div className="text-3xl font-black text-yellow-400 md:text-4xl">
-        {
-          playersState.find(
-            (player) =>
-              player.id ===
-              selectedPlayers[
-                currentPlayPlayerIndex
-              ]
-          )?.name
-        }
+        {getPlayerDisplayName(
+          selectedPlayers[
+            currentPlayPlayerIndex
+          ] ?? ""
+        )}
       </div>
 
       <div
@@ -5026,7 +7328,7 @@ return (
 
   <button
     onClick={() =>
-      setIsPlayModeActive(
+      debugSetIsPlayModeActive(
         false
       )
     }
@@ -5049,6 +7351,7 @@ return (
             index
           )
         }
+        disabled={!canControlOnlinePlayMode}
         className={`flex h-20 w-20 items-center justify-center rounded-xl border-0 transition ${
   lockedDice[
     index
@@ -5077,7 +7380,8 @@ return (
   }
   disabled={
   generalBonusBlocked ||
-  !canUseGeneralBonus
+          !canUseGeneralBonus ||
+          !canControlOnlinePlayMode
 }
             className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
   bonusUsed ||
@@ -5119,6 +7423,7 @@ return (
   !currentCombination ||
   !hasRolledDice ||
   !canSavePlayModeScore ||
+  !canControlOnlinePlayMode ||
   (
     bonusUsed &&
     playModeBonusMode ===
@@ -5177,7 +7482,8 @@ canSavePlayModeScore &&
 {remainingRolls <= 0 && (
   <button
     onClick={endTurn}
-    className="h-24 rounded-2xl bg-yellow-500 px-8 text-2xl font-black text-black transition hover:bg-yellow-400 md:col-span-2"
+    disabled={!canControlOnlinePlayMode}
+    className="h-24 rounded-2xl bg-yellow-500 px-8 text-2xl font-black text-black transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:col-span-2"
   >
     ▶ Hází další hráč
   </button>
@@ -5189,7 +7495,8 @@ canSavePlayModeScore &&
             }
             disabled={
               remainingRolls <=
-              0
+              0 ||
+              !canControlOnlinePlayMode
             }
             className={`h-24 rounded-2xl px-8 text-2xl font-black text-white transition md:col-span-2 ${
               remainingRolls <=
@@ -5234,25 +7541,38 @@ canSavePlayModeScore &&
             <div className="mt-3 text-xl font-bold text-zinc-300">
               Hráč:
               {" "}
-              {
-                playersState.find(
-                  (
-                    player
-                  ) =>
-                    player.id ===
-                    selectedPlayers[
-                      currentPlayPlayerIndex
-                    ]
-                )?.name
-              }
+              {getPlayerDisplayName(
+                selectedPlayers[
+                  currentPlayPlayerIndex
+                ] ?? ""
+              )}
             </div>
 
-            <div className="mt-2 text-2xl font-black text-white">
-              Score:
-              {" "}
-              {
-                currentCombination.score
-              }
+            <div
+              className={`mt-2 text-2xl font-black ${(() => {
+                const categoryId =
+                  playModeCategoryMap[
+                    currentCombination
+                      .combination
+                  ];
+
+                const category =
+                  gameCategories.find(
+                    (c) =>
+                      c.id ===
+                      categoryId
+                  );
+
+                return (
+                  category &&
+                  currentCombination.score ===
+                    category.max
+                    ? "text-red-500"
+                    : "text-white"
+                );
+              })()}`}
+            >
+              Skóre: {currentCombination.score}
             </div>
 
             <div className="mt-8 grid grid-cols-2 gap-4">
@@ -5264,7 +7584,7 @@ canSavePlayModeScore &&
 
   endTurn();
 
-  setIsPlayModeActive(
+  debugSetIsPlayModeActive(
     false
   );
 }}
@@ -5281,6 +7601,7 @@ canSavePlayModeScore &&
 
       endTurn();
     }}
+    disabled={!canControlOnlinePlayMode}
     className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
   >
     ▶ Další hráč
@@ -5322,13 +7643,9 @@ canSavePlayModeScore &&
               </div>
 
               <div className="text-2xl font-bold text-blue-300">
-                {
-                  playersState.find(
-                    (player) =>
-                      player.id ===
-                      scoreModal.playerId
-                  )?.name
-                }
+                {getPlayerDisplayName(
+                  scoreModal.playerId
+                )}
               </div>
             </div>
 
@@ -5773,7 +8090,7 @@ if (celebrationType === 2) {
               false
             );
 
-            setScreen("home");
+            debugSetScreen("home");
           }}
           className="rounded-lg bg-zinc-700 px-5 py-3 font-bold text-white transition hover:bg-zinc-600"
         >
@@ -5827,7 +8144,11 @@ if (celebrationType === 2) {
       false
     );
 
-    setScreen("home");
+    if (isOnlineGame) {
+      leaveCurrentOnlineGame();
+    } else {
+      debugSetScreen("home");
+    }
   }}
   className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
 >
@@ -5864,8 +8185,15 @@ if (celebrationType === 2) {
 
         <button
           onClick={async () => {
+  const saveMetadata =
+    resolveSavedGameMetadata();
+
   const exists =
     await checkExistingGameVersion();
+
+  setPendingSaveMetadata(
+    saveMetadata
+  );
 
   setShowSaveGameConfirm(
     false
@@ -5879,7 +8207,10 @@ if (celebrationType === 2) {
     return;
   }
 
-  await saveGameToSupabase();
+  await saveGameToSupabase(
+    undefined,
+    saveMetadata
+  );
 }}
           className="rounded-lg bg-green-600 px-5 py-3 font-bold text-white transition hover:bg-green-500"
         >
