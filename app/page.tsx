@@ -156,6 +156,19 @@ export default function Home() {
 const [gameId, setGameId] =
   useState<string>("");
 
+const resolveGameId = (
+  candidate?: string | null
+) => {
+  if (
+    typeof candidate === "string" &&
+    candidate.trim().length > 0
+  ) {
+    return candidate;
+  }
+
+  return crypto.randomUUID();
+};
+
   const [showFinishedGame, setShowFinishedGame] =
     useState(false);
 
@@ -176,6 +189,34 @@ const [gameId, setGameId] =
 
   const celebrationTimeoutsRef =
     useRef<number[]>([]);
+
+  const cleanupCelebrationAudio = () => {
+    const audio =
+      celebrationAudioRef.current;
+
+    if (!audio) {
+      return;
+    }
+
+    audio.pause();
+    audio.currentTime = 0;
+    celebrationAudioRef.current =
+      null;
+  };
+
+  const clearCelebrationTimeouts = () => {
+    celebrationTimeoutsRef.current.forEach(
+      clearTimeout
+    );
+
+    celebrationTimeoutsRef.current = [];
+  };
+
+  const closeCelebrationOverlay = () => {
+    cleanupCelebrationAudio();
+    clearCelebrationTimeouts();
+    setShowFinishedGame(false);
+  };
 
 const [
   showSettings,
@@ -466,6 +507,13 @@ useEffect(() => {
   return () => {
     document.removeEventListener('click', preloadAudio);
     document.removeEventListener('touchstart', preloadAudio);
+  };
+}, []);
+
+useEffect(() => {
+  return () => {
+    cleanupCelebrationAudio();
+    clearCelebrationTimeouts();
   };
 }, []);
 
@@ -2350,17 +2398,22 @@ setIsRolling(
     players: string[];
     scores: any;
   }): Promise<boolean> => {
-    if (gameId) {
-      const { data: existing } =
-        await supabase
-          .from("fun_games")
-          .select("id")
-          .eq("game_id", gameId)
-          .limit(1);
+    const resolvedGameId =
+      resolveGameId(gameId);
 
-      if (existing && existing.length > 0) {
-        return false;
-      }
+    if (resolvedGameId !== gameId) {
+      setGameId(resolvedGameId);
+    }
+
+    const { data: existing } =
+      await supabase
+        .from("fun_games")
+        .select("id")
+        .eq("game_id", resolvedGameId)
+        .limit(1);
+
+    if (existing && existing.length > 0) {
+      return false;
     }
 
     const { error } =
@@ -2392,7 +2445,7 @@ setIsRolling(
             bonus_rolls:
               playModeBonusRolls,
 
-            game_id: gameId ?? null,
+            game_id: resolvedGameId,
           },
         ]);
 
@@ -4159,11 +4212,24 @@ const buildLobbyReadinessMap = (
       savedGame.gameMode ?? "offline";
     const isOnlineSavedGame =
       savedGameMode === "online";
+    const resolvedGameId =
+      resolveGameId(savedGame.gameId);
 
     setGameMode(savedGameMode);
     setSelectedGameMode(savedGameMode);
 
-    setGameId(savedGame.gameId ?? "");
+    setGameId(resolvedGameId);
+
+    if (savedGame.gameId !== resolvedGameId) {
+      localStorage.setItem(
+        "heroDiceCurrentGame",
+        JSON.stringify({
+          ...savedGame,
+          gameId: resolvedGameId,
+        })
+      );
+    }
+
     setPlayerCount(savedGame.playerCount);
     setSelectedPlayers(savedGame.selectedPlayers);
     setScores(savedGame.scores);
@@ -5136,11 +5202,7 @@ if (
       )
     ];
 
-  if (
-    celebrationAudioRef.current
-  ) {
-    celebrationAudioRef.current.pause();
-  }
+  cleanupCelebrationAudio();
 
   const audio =
     new Audio(
@@ -6649,7 +6711,10 @@ const renderOnlineChatMessages = () => (
 
       const savedGamePayload =
         buildSavedGamePayload({
-          gameId: game.game_id ?? "",
+          gameId:
+            resolveGameId(
+              game.game_id
+            ),
           playerCount: game.player_count,
           selectedPlayers:
             game.selected_players ?? [],
@@ -6900,6 +6965,8 @@ if (
       )
     ];
 
+  cleanupCelebrationAudio();
+
   const audio =
     new Audio(
       randomSound
@@ -7096,6 +7163,8 @@ if (
         winSounds.length
       )
     ];
+
+  cleanupCelebrationAudio();
 
   const audio =
     new Audio(
@@ -8610,17 +8679,7 @@ canSavePlayModeScore &&
 {showFinishedGame && (
   <div
     className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
-    onClick={() => {
-      celebrationAudioRef.current?.pause();
-
-      celebrationTimeoutsRef.current.forEach(
-        clearTimeout
-      );
-
-      celebrationTimeoutsRef.current = [];
-
-      setShowFinishedGame(false);
-    }}
+    onClick={closeCelebrationOverlay}
   >
     <div className="max-w-xl rounded-2xl bg-black p-10 text-center text-white">
       <h2
@@ -8644,6 +8703,8 @@ canSavePlayModeScore &&
               .ended;
 
           if (!isPlaying) {
+            cleanupCelebrationAudio();
+
             const audio =
               new Audio(
                 randomSound
@@ -8785,10 +8846,8 @@ if (celebrationType === 2) {
 
       <div className="flex flex-wrap justify-center gap-4">
         <button
-          onClick={() =>
-            setShowFinishedGame(
-              false
-            )
+          onClick={
+            closeCelebrationOverlay
           }
           className="rounded-lg bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-500"
         >
@@ -8807,9 +8866,10 @@ if (celebrationType === 2) {
         </button>
 
         <button
-          onClick={() =>
-            startNewGame()
-          }
+          onClick={() => {
+            closeCelebrationOverlay();
+            startNewGame();
+          }}
           className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
         >
           Nová hra
@@ -8817,9 +8877,7 @@ if (celebrationType === 2) {
 
         <button
           onClick={() => {
-            setShowFinishedGame(
-              false
-            );
+            closeCelebrationOverlay();
 
             debugSetScreen("home");
           }}

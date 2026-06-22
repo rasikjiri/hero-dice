@@ -41,27 +41,37 @@ export const saveFinishedGame =
   async (
     game: FinishedGame
   ): Promise<boolean> => {
+    const resolvedGameId =
+      typeof game.gameId ===
+        "string" &&
+      game.gameId.trim().length > 0
+        ? game.gameId
+        : crypto.randomUUID();
+
+    const normalizedGame: FinishedGame = {
+      ...game,
+      gameId: resolvedGameId,
+    };
+
     const games =
       getFinishedGames();
 
-    games.push(game);
+    games.push(normalizedGame);
 
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify(games)
     );
 
-    if (game.gameId) {
-      const { data: existing } =
-        await supabase
-          .from("games")
-          .select("id")
-          .eq("game_id", game.gameId)
-          .limit(1);
+    const { data: existing } =
+      await supabase
+        .from("games")
+        .select("id")
+        .eq("game_id", resolvedGameId)
+        .limit(1);
 
-      if (existing && existing.length > 0) {
-        return false;
-      }
+    if (existing && existing.length > 0) {
+      return false;
     }
 
     const { error } =
@@ -74,7 +84,7 @@ export const saveFinishedGame =
               game.winnerScore,
             players: game.players,
             scores: game.scores,
-            game_id: game.gameId ?? null,
+            game_id: resolvedGameId,
           },
         ]);
 
