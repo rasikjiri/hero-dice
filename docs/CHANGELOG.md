@@ -408,3 +408,24 @@ Poznámky:
 - SQL migrace je připravena v souboru `supabase/migrations/20260622_add_game_id_to_stats.sql` a musí být ručně spuštěna v Supabase SQL editoru.
 - Po spuštění migrace budou nové hry automaticky zaznamenávat `game_id` bez dopadu na staré záznamy.
 - Duplikát-check funguje na úrovni databázového dotazu (supabase `.select().eq()`), nikoliv aplikační logiky.
+
+---
+
+## v3.0.7 – Oprava návaznosti AI tahu v Play Mode
+
+### Fixed
+
+- Opraveno chování tahu počítače v Play Mode.
+- Počítač nyní automaticky zahájí hod.
+- Pokud hod neobsahuje skórovací kombinaci, počítač pokračuje dalšími hody.
+- AI pokračuje do vyčerpání dostupných hodů nebo do nalezení validní kombinace.
+- Při nalezení validní kombinace se skóre zapíše přes existující auto-score logiku.
+- Tah počítače již nezůstává zaseknutý po prvním hodu.
+- Hra pokračuje dál podle stávajících pravidel bez nutnosti ručního výběru kostek.
+
+### Notes
+
+- Oprava nezavádí výběr kostek počítačem.
+- Oprava nezavádí novou AI strategii ani obtížnosti.
+- Bonus logika AI nebyla měněna.
+- Scoring pravidla, UI a databáze nebyly touto opravou měněny.

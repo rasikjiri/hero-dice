@@ -350,6 +350,9 @@ const forceOnlineLobbyUntilHostStartRef =
 const lastComputerAutoTurnRef =
   useRef<string | null>(null);
 
+const lastComputerAutoRollRef =
+  useRef<string | null>(null);
+
 const bumpLocalTurnVersion =
   () => {
     localTurnVersionRef.current += 1;
@@ -939,6 +942,15 @@ const hasComputerPlayer =
   selectedPlayers.some((playerId) =>
     isComputerPlayerId(playerId)
   );
+
+useEffect(() => {
+  if (hasComputerPlayer && showPlayModeSetup) {
+    setPlayModeRolls(6);
+    setPlayModeBonusRolls(0);
+    setPlayModeBonusMode("general-only");
+    setSelectedGameMode("offline");
+  }
+}, [hasComputerPlayer, showPlayModeSetup]);
 
 const isValidSelectedPlayersForCount = (
   players: string[],
@@ -2138,11 +2150,10 @@ useEffect(() => {
     return;
   }
 
-  lastComputerAutoTurnRef.current =
-    turnMarker;
-
   if (!currentCombination) {
-    setRemainingRolls(0);
+    if (!isComputerPlayerId(playerId)) {
+      setRemainingRolls(0);
+    }
     setHasRolledDice(false);
 
     return;
@@ -2154,7 +2165,9 @@ useEffect(() => {
     ];
 
   if (!categoryId) {
-    setRemainingRolls(0);
+    if (!isComputerPlayerId(playerId)) {
+      setRemainingRolls(0);
+    }
     setHasRolledDice(false);
 
     return;
@@ -2167,7 +2180,9 @@ useEffect(() => {
     existingScore !== undefined &&
     !playModeAllowRewrite
   ) {
-    setRemainingRolls(0);
+    if (!isComputerPlayerId(playerId)) {
+      setRemainingRolls(0);
+    }
     setHasRolledDice(false);
 
     return;
@@ -2179,11 +2194,16 @@ useEffect(() => {
     existingScore >=
       currentCombination.score
   ) {
-    setRemainingRolls(0);
+    if (!isComputerPlayerId(playerId)) {
+      setRemainingRolls(0);
+    }
     setHasRolledDice(false);
 
     return;
   }
+
+  lastComputerAutoTurnRef.current =
+    turnMarker;
 
   setScores((prev) => ({
     ...prev,
@@ -2210,6 +2230,10 @@ useEffect(() => {
 ]);
 
 const activateBonus = () => {
+  if (hasComputerPlayer) {
+    return;
+  }
+
   if (
     isOnlineGame &&
     !isCurrentPlayer
@@ -2384,6 +2408,104 @@ setIsRolling(
       }
     }, 133);
 };
+
+useEffect(() => {
+  if (
+    isOnlineGame ||
+    !gameStarted ||
+    !hasStartedPlayMode ||
+    gameFinished ||
+    showPlayModeResult ||
+    remainingRolls <= 0 ||
+    isRolling ||
+    selectedPlayers.length === 0
+  ) {
+    return;
+  }
+
+  const playerId =
+    selectedPlayers[
+      currentPlayPlayerIndex
+    ];
+
+  if (
+    !playerId ||
+    !isComputerPlayerId(playerId)
+  ) {
+    lastComputerAutoRollRef.current =
+      null;
+
+    return;
+  }
+
+  const currentPlayerScores =
+    scores[playerId] || {};
+
+  const categoryId =
+    currentCombination
+      ? playModeCategoryMap[
+          currentCombination.combination
+        ]
+      : null;
+
+  const existingScore =
+    categoryId
+      ? currentPlayerScores[categoryId]
+      : undefined;
+
+  const hasWritableCombination =
+    !!currentCombination &&
+    !!categoryId &&
+    (existingScore === undefined ||
+      (playModeAllowRewrite &&
+        currentCombination.score >
+          existingScore));
+
+  if (hasWritableCombination) {
+    return;
+  }
+
+  if (hasRolledDice) {
+    lastComputerAutoRollRef.current =
+      null;
+
+    return;
+  }
+
+  const rollMarker = `${playerId}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}`;
+
+  if (
+    lastComputerAutoRollRef.current ===
+    rollMarker
+  ) {
+    return;
+  }
+
+  lastComputerAutoRollRef.current =
+    rollMarker;
+
+  const timer = setTimeout(() => {
+    rollAllDice();
+  }, 500);
+
+  return () => clearTimeout(timer);
+}, [
+  isOnlineGame,
+  gameStarted,
+  hasStartedPlayMode,
+  gameFinished,
+  showPlayModeResult,
+  hasRolledDice,
+  isRolling,
+  currentCombination,
+  playModeCategoryMap,
+  playModeAllowRewrite,
+  currentPlayPlayerIndex,
+  selectedPlayers,
+  scores,
+  rollAllDice,
+  remainingRolls,
+]);
 
   // 12. SAVE / LOAD
   const saveFunGame =
@@ -7456,7 +7578,7 @@ if (celebrationType === 2) {
                 setPlayModeRolls(
                   (prev) =>
                     Math.min(
-                      7,
+                      hasComputerPlayer ? 12 : 7,
                       prev + 1
                     )
                 )
@@ -7506,96 +7628,100 @@ if (celebrationType === 2) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
-          <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
-            Bonus
-          </div>
+        {!hasComputerPlayer && (
+          <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+            <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+              Bonus
+            </div>
 
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() =>
-                setPlayModeBonusMode(
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() =>
+                  setPlayModeBonusMode(
+                    "general-only"
+                  )
+                }
+                className={`rounded-2xl px-5 py-4 text-left font-black transition ${
+                  playModeBonusMode ===
                   "general-only"
-                )
-              }
-              className={`rounded-2xl px-5 py-4 text-left font-black transition ${
-                playModeBonusMode ===
-                "general-only"
-                  ? "bg-green-600 text-white"
-                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-              }`}
-            >
-              Pouze generál
-            </button>
+                    ? "bg-green-600 text-white"
+                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                }`}
+              >
+                Pouze generál
+              </button>
 
-            <button
-              onClick={() =>
-                setPlayModeBonusMode(
+              <button
+                onClick={() =>
+                  setPlayModeBonusMode(
+                    "all"
+                  )
+                }
+                className={`rounded-2xl px-5 py-4 text-left font-black transition ${
+                  playModeBonusMode ===
                   "all"
-                )
-              }
-              className={`rounded-2xl px-5 py-4 text-left font-black transition ${
-                playModeBonusMode ===
-                "all"
-                  ? "bg-yellow-500 text-black"
-                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-              }`}
-            >
-              Všechny kombinace
-            </button>
+                    ? "bg-yellow-500 text-black"
+                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                }`}
+              >
+                Všechny kombinace
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-<div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
-  <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
-    Bonus hody
+{!hasComputerPlayer && (
+  <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+    <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+      Bonus hody
+    </div>
+
+    <div className="flex items-center justify-center gap-6">
+      <button
+        onClick={() =>
+          setPlayModeBonusRolls(
+            (prev) =>
+              Math.max(
+                1,
+                prev - 1
+              )
+          )
+        }
+        className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
+      >
+        −
+      </button>
+
+      <div
+    className={`min-w-[100px] text-center text-5xl font-black ${
+      playModeBonusRolls === 2
+        ? "text-green-400"
+        : "text-yellow-400"
+    }`}
+  >
+    {playModeBonusRolls}
   </div>
 
-  <div className="flex items-center justify-center gap-6">
-    <button
-      onClick={() =>
-        setPlayModeBonusRolls(
-          (prev) =>
-            Math.max(
-              1,
-              prev - 1
-            )
-        )
-      }
-      className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
-    >
-      −
-    </button>
-
-    <div
-  className={`min-w-[100px] text-center text-5xl font-black ${
-    playModeBonusRolls === 2
-      ? "text-green-400"
-      : "text-yellow-400"
-  }`}
->
-  {playModeBonusRolls}
-</div>
-
-    <button
-      onClick={() =>
-        setPlayModeBonusRolls(
-          (prev) =>
-            Math.min(
-              7,
-              prev + 1
-            )
-        )
-      }
-      className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
-    >
-      +
-    </button>
+      <button
+        onClick={() =>
+          setPlayModeBonusRolls(
+            (prev) =>
+              Math.min(
+                7,
+                prev + 1
+              )
+          )
+        }
+        className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
+      >
+        +
+      </button>
+    </div>
   </div>
-</div>
+)}
 
-{!hasStartedPlayMode && (
+{!hasStartedPlayMode && !hasComputerPlayer && (
   <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
     <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
       Režim hry
@@ -8060,11 +8186,13 @@ return (
     activateBonus
   }
   disabled={
+  hasComputerPlayer ||
   generalBonusBlocked ||
           !canUseGeneralBonus ||
           !canControlOnlinePlayMode
 }
             className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
+  hasComputerPlayer ||
   bonusUsed ||
   generalBonusBlocked ||
   !canUseGeneralBonus
@@ -8075,7 +8203,9 @@ return (
       : "bg-yellow-500 text-black hover:bg-yellow-400"
 }`}
           >
-            {playModeBonusMode ===
+            {hasComputerPlayer
+              ? "Bonus"
+              : playModeBonusMode ===
             "general-only"
               ? `Bonus generál +${bonusDifference}`
 : `Bonus +${bonusDifference}`}
