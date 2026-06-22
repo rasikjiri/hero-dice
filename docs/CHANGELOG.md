@@ -307,3 +307,49 @@ Poznámky:
 - Opraveno odesílání zpráv do online chatu.
 - Opraveno načítání zpráv po vytvoření databázové tabulky.
 - Opraveno zarovnání chat panelu vůči Play Mode.
+
+---
+
+## v3.0.2 – UI sjednocení a finální doladění
+
+### Changed
+
+- Sjednocen vizuální styl hlavních navigačních tlačítek MENU napříč aplikací.
+- Upraven vzhled tlačítka MENU na Home page, Nastavení hry a Scoreboardu.
+- Vylepšen hover efekt hlavních navigačních tlačítek.
+- Upraven vzhled tlačítka Nastavit hru při zachování původního gradientu.
+- Sjednocen vzhled tlačítka Play Mode se stylem hlavních akčních tlačítek.
+
+### Improved
+
+- Sjednocen vzhled dialogových oken.
+- Upraveno rozmístění prvků v modalech.
+- Zarovnán zavírací křížek v dialogu Ukončit hru.
+- Zachovány významové barvy akčních tlačítek.
+
+---
+
+## v3.0.3 – Oprava zobrazení typu uložené hry
+
+### Fixed
+
+- Opraveno určování typu hry v dialogu Načíst hru.
+- Offline hra proti počítači je nově správně označena jako Fun hra.
+- Sjednoceno mapování štítků typu hry s Play Mode a Scoreboardem.
+- Opravena barevnost štítků Fun hra a Ligová hra.
+
+---
+
+## v3.0.4 – Korekce UI po uživatelském testování
+
+### Changed
+
+- Odstraněn žlutý rámeček hlavního bloku Nastavení nová hra.
+- Vrácen původní vzhled hlavního konfiguračního panelu.
+
+### Refined
+
+- Odstraněna plasticita malých akčních tlačítek v administraci hráčů.
+- Odstraněna plasticita malých akčních tlačítek v dialogu Načíst hru.
+- Odstraněny šedé rámečky z malých potvrzovacích tlačítek.
+- Zachovány hover animace a významové barvy tlačítek.

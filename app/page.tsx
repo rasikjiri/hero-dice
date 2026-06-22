@@ -429,6 +429,44 @@ useEffect(() => {
   }
 }, []);
 
+// Preload audio files after first user interaction
+useEffect(() => {
+  const preloadAudio = () => {
+    // Preload no-combination sound
+    const noCombAudio = new Audio('/sounds/playmode/nocombination.wav');
+    noCombAudio.preload = 'auto';
+
+    // Preload max-score fanfare
+    const fanfareAudio = new Audio('/sounds/win/fanfare.mp3');
+    fanfareAudio.preload = 'auto';
+
+    // Preload win sounds
+    const winSoundUrls = [
+      '/sounds/win/wow.mp3',
+      '/sounds/win/wow_1.mp3',
+      '/sounds/win/wow_2.mp3',
+    ];
+
+    winSoundUrls.forEach((url) => {
+      const audio = new Audio(url);
+      audio.preload = 'auto';
+    });
+
+    // Remove listener after preload
+    document.removeEventListener('click', preloadAudio);
+    document.removeEventListener('touchstart', preloadAudio);
+  };
+
+  // Listen for first user interaction
+  document.addEventListener('click', preloadAudio, { once: true });
+  document.addEventListener('touchstart', preloadAudio, { once: true });
+
+  return () => {
+    document.removeEventListener('click', preloadAudio);
+    document.removeEventListener('touchstart', preloadAudio);
+  };
+}, []);
+
 const saveSettings = (
   celebration: boolean,
   maxScore: boolean,
@@ -1244,7 +1282,7 @@ if (
 ) {
   const audio =
     new Audio(
-      `/sounds/win/fanfare.mp3?t=${Date.now()}`
+      `/sounds/win/fanfare.mp3`
     );
 
   audio.volume = 0.9;
@@ -1729,7 +1767,7 @@ useEffect(() => {
   ) {
     const audio =
       new Audio(
-        `/sounds/win/fanfare.mp3?t=${Date.now()}`
+        `/sounds/win/fanfare.mp3`
       );
 
     audio.volume = 0.9;
@@ -1770,7 +1808,7 @@ useEffect(() => {
 ) {
     const audio =
       new Audio(
-        `/sounds/playmode/nocombination.wav?t=${Date.now()}`
+        `/sounds/playmode/nocombination.wav`
       );
 
     audio.volume = 0.1;
@@ -1799,6 +1837,7 @@ useEffect(() => {
   hasUsefulFutureMove,
   noCombinationSoundPlayed,
   noCombinationSoundEnabled,
+  suppressNoCombinationSound,
 ]);
 
         const savePlayModeScore =
@@ -1882,6 +1921,9 @@ setSuppressNoCombinationSound(
   };
 
 const endTurn = async () => {
+  // Reset sound flag for new player
+  setNoCombinationSoundPlayed(false);
+
   if (
     isOnlineGame &&
     !isCurrentPlayer
@@ -5419,7 +5461,7 @@ const renderOnlineChatMessages = () => (
             <div className="flex flex-wrap items-center gap-3">
   <button
     onClick={() => startNewGame()}
-    className="rounded-3xl bg-yellow-500 px-8 py-5 text-2xl font-black text-black transition hover:scale-[1.02] hover:bg-yellow-400 md:px-10 md:text-3xl"
+    className="rounded-3xl border border-zinc-600 bg-yellow-500 px-8 py-5 text-2xl font-black text-black transition hover:scale-[1.02] hover:brightness-110 md:px-10 md:text-3xl"
   >
     ▶ Nová hra
   </button>
@@ -5791,9 +5833,9 @@ const renderOnlineChatMessages = () => (
     );
   }}
   disabled={!canStartPlayMode}
-  className={`rounded-2xl px-6 py-3 text-lg font-black transition ${
+  className={`rounded-2xl border border-zinc-600 px-6 py-3 text-lg font-black transition ${
     canStartPlayMode
-      ? "bg-purple-600 hover:bg-purple-500"
+      ? "bg-purple-600 hover:scale-[1.02] hover:brightness-110"
       : "cursor-not-allowed bg-zinc-700 text-zinc-400"
   }`}
 >
@@ -5843,7 +5885,6 @@ const renderOnlineChatMessages = () => (
         },
         {
           label: "Ukončit hru",
-          tone: "danger",
           onClick: () => {
             setShowLeaveConfirm(
               true
@@ -6091,7 +6132,7 @@ const renderOnlineChatMessages = () => (
   disabled={!canStartGame}
   className={`rounded-2xl px-8 py-4 text-xl font-black transition ${
     canStartGame
-      ? "border border-white/70 bg-gradient-to-r from-violet-600 to-green-500 text-zinc-100 hover:scale-[1.02] hover:brightness-110"
+      ? "border border-zinc-600 bg-gradient-to-r from-violet-600 to-green-500 text-zinc-100 hover:scale-[1.02] hover:brightness-110 hover:text-white"
 : "cursor-not-allowed border border-zinc-600 bg-zinc-700 text-zinc-400"
   }`}
 >
@@ -6392,7 +6433,7 @@ const renderOnlineChatMessages = () => (
 
             startNewGame(true);
           }}
-          className="flex-1 rounded-2xl bg-yellow-500 px-5 py-4 text-lg font-bold text-white transition hover:bg-yellow-400"
+          className="flex-1 rounded-2xl border border-zinc-600 bg-yellow-500 px-5 py-4 text-lg font-bold text-black transition hover:scale-[1.02] hover:brightness-110"
         >
           Nová hra
         </button>
@@ -6416,7 +6457,7 @@ const renderOnlineChatMessages = () => (
               false
             );
           }}
-          className="flex-1 rounded-2xl bg-green-600 px-5 py-4 text-lg font-black text-black transition hover:bg-green-500"
+          className="flex-1 rounded-2xl border border-zinc-600 bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Skóre board
         </button>
@@ -6428,7 +6469,7 @@ const renderOnlineChatMessages = () => (
 {/* LOAD GAMES MODAL */}
 {!isOnlineGame && showLoadGames && (
   <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-2xl rounded-3xl bg-zinc-900 p-8 text-white shadow-2xl">
+    <div className="w-full max-w-2xl rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-white">
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-3xl font-black text-yellow-400">
           Načíst hru
@@ -6440,7 +6481,7 @@ const renderOnlineChatMessages = () => (
               false
             )
           }
-          className="rounded-xl bg-zinc-700 px-4 py-2 font-bold transition hover:bg-zinc-600"
+          className="rounded-xl border border-zinc-600 bg-zinc-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Zavřít
         </button>
@@ -6486,12 +6527,50 @@ const renderOnlineChatMessages = () => (
                       : "Offline hra"}
                   </span>
 
-                  <span className="rounded-full bg-purple-600/20 px-3 py-1 text-purple-300">
-                    {game.play_mode_rolls === 4 &&
-                    !game.play_mode_allow_rewrite &&
-                    game.play_mode_bonus_mode ===
-                      "general-only" &&
-                    game.play_mode_bonus_rolls === 2
+                  <span
+                    className={`rounded-full px-3 py-1 ${
+                      Array.isArray(
+                        game.selected_players
+                      ) &&
+                      game.selected_players.some(
+                        (playerId: unknown) =>
+                          typeof playerId ===
+                            "string" &&
+                          isComputerPlayerId(
+                            playerId
+                          )
+                      )
+                        ? "bg-purple-600/20 text-purple-300"
+                        : game.play_mode_rolls ===
+                            4 &&
+                          !game.play_mode_allow_rewrite &&
+                          game.play_mode_bonus_mode ===
+                            "general-only" &&
+                          game.play_mode_bonus_rolls ===
+                            2
+                        ? "bg-green-600/20 text-green-400"
+                        : "bg-purple-600/20 text-purple-300"
+                    }`}
+                  >
+                    {Array.isArray(
+                      game.selected_players
+                    ) &&
+                    game.selected_players.some(
+                      (playerId: unknown) =>
+                        typeof playerId ===
+                          "string" &&
+                        isComputerPlayerId(
+                          playerId
+                        )
+                    )
+                      ? "Fun hra"
+                      : game.play_mode_rolls ===
+                          4 &&
+                        !game.play_mode_allow_rewrite &&
+                        game.play_mode_bonus_mode ===
+                          "general-only" &&
+                        game.play_mode_bonus_rolls ===
+                          2
                       ? "Ligová hra"
                       : "Fun hra"}
                   </span>
@@ -6613,7 +6692,7 @@ const renderOnlineChatMessages = () => (
 
       openSavedGame(savedGamePayload);
     }}
-    className="rounded-xl bg-yellow-500 px-5 py-3 font-black text-black transition hover:bg-yellow-400"
+    className="rounded-xl bg-yellow-500 px-5 py-3 font-black text-black transition hover:scale-[1.02] hover:brightness-110"
   >
     Načíst
   </button>
@@ -6624,7 +6703,7 @@ const renderOnlineChatMessages = () => (
       game.id
     )
   }
-  className="rounded-xl bg-red-600 px-5 py-3 font-black text-white transition hover:bg-red-500"
+  className="rounded-xl bg-red-600 px-5 py-3 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
 >
   Smazat
 </button>
@@ -6660,7 +6739,7 @@ const renderOnlineChatMessages = () => (
               false
             );
           }}
-          className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
+          className="flex-1 rounded-2xl border border-zinc-600 bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Zahodit
         </button>
@@ -6684,7 +6763,7 @@ const renderOnlineChatMessages = () => (
               false
             );
           }}
-          className="flex-1 rounded-2xl bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:bg-yellow-400"
+          className="flex-1 rounded-2xl border border-zinc-600 bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:scale-[1.02] hover:brightness-110"
         >
           Obnovit
         </button>
@@ -6768,7 +6847,7 @@ if (
 
   const audio =
     new Audio(
-      `${randomSound}?t=${Date.now()}`
+      randomSound
     );
 
   audio.volume = 0.8;
@@ -6948,7 +7027,7 @@ if (
 
   const audio =
     new Audio(
-      `${randomSound}?t=${Date.now()}`
+      randomSound
     );
 
   audio.volume = 0.8;
@@ -7089,7 +7168,7 @@ if (celebrationType === 2) {
     false
   )
 }
-        className="w-full rounded-2xl bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:bg-green-500"
+        className="w-full rounded-2xl border border-zinc-600 bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:scale-[1.02] hover:brightness-110"
       >
         OK
       </button>
@@ -7100,7 +7179,7 @@ if (celebrationType === 2) {
 {/* GAME VERSION MODAL */}
 {showGameVersionModal && (
   <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[520px] rounded-3xl bg-zinc-900 p-8 text-center text-white">
+    <div className="w-full max-w-[520px] rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-center text-white">
       <h2 className="mb-5 text-3xl font-black text-yellow-400">
         Hra již existuje
       </h2>
@@ -7122,7 +7201,7 @@ if (celebrationType === 2) {
               );
             }
           }
-          className="rounded-xl bg-zinc-700 px-6 py-4 font-bold text-white transition hover:bg-zinc-600"
+          className="rounded-xl border border-zinc-600 bg-zinc-700 px-6 py-4 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Zrušit
         </button>
@@ -7133,7 +7212,7 @@ if (celebrationType === 2) {
     pendingSaveMetadata ?? undefined
   );
 }}
-          className="rounded-xl bg-green-600 px-6 py-4 font-black text-white transition hover:bg-green-500"
+          className="rounded-xl border border-zinc-600 bg-green-600 px-6 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Přepsat
         </button>
@@ -8301,7 +8380,7 @@ canSavePlayModeScore &&
             false
           )
         }
-        className="w-full rounded-2xl bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:bg-green-500"
+        className="w-full rounded-2xl border border-zinc-600 bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:scale-[1.02] hover:brightness-110"
       >
         OK
       </button>
@@ -8656,17 +8735,17 @@ if (celebrationType === 2) {
       {/* LEAVE CONFIRM */}
       {showLeaveConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="relative w-full max-w-[420px] rounded-2xl bg-black p-8 text-center text-white">
+          <div className="relative w-full max-w-[420px] rounded-2xl border border-zinc-700 bg-zinc-950 p-8 text-center text-white">
             <button
               onClick={() =>
                 setShowLeaveConfirm(
                   false
                 )
               }
-              className="absolute right-4 top-4 rounded-lg border border-zinc-700 px-3 py-1 text-sm font-black text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+              className="absolute right-5 top-5 rounded-lg border border-zinc-700 px-3 py-1 text-sm font-black text-zinc-400 transition hover:border-zinc-500 hover:text-white"
               aria-label="Zavřít modal"
             >
-              X
+              ✕
             </button>
 
             <h2 className="mb-6 text-3xl font-black">
@@ -8686,7 +8765,7 @@ if (celebrationType === 2) {
 
       await runSaveCurrentGameFlow();
     }}
-    className="rounded-lg bg-green-600 px-5 py-3 font-bold text-white transition hover:bg-green-500"
+    className="rounded-xl border border-zinc-600 bg-green-600 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
   >
     Uložit hru
   </button>
@@ -8699,7 +8778,7 @@ if (celebrationType === 2) {
 
       startNewGame();
     }}
-    className="rounded-lg bg-yellow-500 px-5 py-3 font-bold text-black transition hover:bg-yellow-400"
+    className="rounded-xl border border-zinc-600 bg-yellow-500 px-5 py-3 font-bold text-black transition hover:scale-[1.02] hover:brightness-110"
   >
     Nová hra
   </button>
@@ -8716,7 +8795,7 @@ if (celebrationType === 2) {
       debugSetScreen("home");
     }
   }}
-  className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
+  className="rounded-xl border border-zinc-600 bg-red-600 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
 >
   Domů
 </button>
@@ -8798,7 +8877,7 @@ if (celebrationType === 2) {
 {/* SAVE GAME CONFIRM */}
 {showSaveGameConfirm && (
   <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[420px] rounded-2xl bg-black p-8 text-center text-white">
+    <div className="w-full max-w-[420px] rounded-2xl border border-zinc-700 bg-zinc-950 p-8 text-center text-white">
       <h2 className="mb-21 text-3xl font-black">
         Uložit rozehranou hru?
       </h2>
@@ -8814,7 +8893,7 @@ if (celebrationType === 2) {
               false
             )
           }
-          className="rounded-lg bg-zinc-600 px-5 py-3 font-bold text-white transition hover:bg-zinc-500"
+          className="rounded-xl border border-zinc-600 bg-zinc-700 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Zrušit
         </button>
@@ -8827,7 +8906,7 @@ if (celebrationType === 2) {
 
   await runSaveCurrentGameFlow();
 }}
-          className="rounded-lg bg-green-600 px-5 py-3 font-bold text-white transition hover:bg-green-500"
+          className="rounded-xl border border-zinc-600 bg-green-600 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Uložit
         </button>
@@ -8855,7 +8934,7 @@ if (celebrationType === 2) {
               null
             )
           }
-          className="rounded-xl bg-zinc-700 px-8 py-4 font-black text-white transition hover:bg-zinc-600"
+          className="rounded-xl border border-zinc-600 bg-zinc-700 px-8 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Nechat
         </button>
@@ -8890,7 +8969,7 @@ const { error } =
               null
             );
           }}
-          className="rounded-xl bg-red-600 px-8 py-4 font-black text-white transition hover:bg-red-500"
+          className="rounded-xl border border-zinc-600 bg-red-600 px-8 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Smazat
         </button>
@@ -8903,7 +8982,7 @@ const { error } =
 {/* ADMIN */}
 {showAdmin && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-3xl rounded-3xl bg-zinc-900 p-8 text-white shadow-2xl">
+    <div className="w-full max-w-3xl rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-white shadow-2xl">
       <div className="mb-8 flex items-center justify-between">
         <h2 className="text-4xl font-black text-yellow-400">
           Administrace hráčů
@@ -8913,7 +8992,7 @@ const { error } =
           onClick={() =>
             setShowAdmin(false)
           }
-          className="rounded-xl bg-zinc-700 px-4 py-2 font-bold transition hover:bg-zinc-600"
+          className="rounded-xl border border-zinc-600 bg-zinc-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Zavřít
         </button>
@@ -8962,7 +9041,7 @@ const { error } =
         }
       );
     }}
-    className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white transition hover:bg-blue-500"
+    className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
   >
     Uložit
   </button>
@@ -8973,7 +9052,7 @@ const { error } =
         player.id
       )
     }
-    className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white transition hover:bg-red-600"
+    className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
   >
     Smazat
   </button>
@@ -9010,10 +9089,10 @@ const { error } =
         )
       );
     }}
-    className={`rounded-xl px-4 py-2 font-bold transition ${
+    className={`rounded-xl px-4 py-2 font-bold transition hover:scale-[1.02] hover:brightness-110 ${
       player.active
-        ? "bg-green-600 hover:bg-green-500"
-        : "bg-red-600 hover:bg-red-500"
+        ? "bg-green-600"
+        : "bg-red-600"
     }`}
   >
     {player.active
@@ -9056,7 +9135,7 @@ const { error } =
 
             <button
               onClick={handleAddPlayer}
-              className="rounded-xl bg-green-600 px-5 py-3 font-black text-white transition hover:bg-green-500"
+              className="rounded-xl bg-green-600 px-5 py-3 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
             >
               Přidat hráče
             </button>
@@ -9096,7 +9175,7 @@ const { error } =
               null
             )
           }
-          className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 font-bold transition hover:bg-zinc-600"
+          className="flex-1 rounded-2xl border border-zinc-600 bg-zinc-700 px-5 py-4 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Nechat
         </button>
@@ -9111,7 +9190,7 @@ const { error } =
               null
             );
           }}
-          className="flex-1 rounded-2xl bg-red-600 px-5 py-4 font-black text-white transition hover:bg-red-500"
+          className="flex-1 rounded-2xl border border-zinc-600 bg-red-600 px-5 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
         >
           Smazat
         </button>

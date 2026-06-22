@@ -94,14 +94,14 @@ const playersWithGames =
     <button
   onClick={onOpenFunGames}
   
-      className="rounded-xl bg-purple-600 px-5 py-3 font-bold hover:bg-purple-500"
+      className="rounded-xl border border-zinc-600 bg-purple-600 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
     >
       Fun hry
     </button>
 
     <button
       onClick={onClose}
-      className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-500"
+      className="rounded-xl border border-zinc-600 bg-red-600 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
     >
       Zavřít
     </button>
