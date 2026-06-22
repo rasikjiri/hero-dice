@@ -159,6 +159,8 @@ const [gameId, setGameId] =
   const [showFinishedGame, setShowFinishedGame] =
     useState(false);
 
+  const [showDuplicateGameMessage, setShowDuplicateGameMessage] =
+    useState(false);
 
   // 14. AUDIO
   const winSounds = [
@@ -2347,7 +2349,20 @@ setIsRolling(
     winnerScore: number;
     players: string[];
     scores: any;
-  }) => {
+  }): Promise<boolean> => {
+    if (gameId) {
+      const { data: existing } =
+        await supabase
+          .from("fun_games")
+          .select("id")
+          .eq("game_id", gameId)
+          .limit(1);
+
+      if (existing && existing.length > 0) {
+        return false;
+      }
+    }
+
     const { error } =
       await supabase
         .from("fun_games")
@@ -2376,6 +2391,8 @@ setIsRolling(
 
             bonus_rolls:
               playModeBonusRolls,
+
+            game_id: gameId ?? null,
           },
         ]);
 
@@ -2384,7 +2401,10 @@ setIsRolling(
         "Fun game save error:",
         error
       );
+      return false;
     }
+
+    return true;
   };
 
 const checkExistingGameVersion =
@@ -5043,36 +5063,52 @@ if (!hasStartedPlayMode) {
 }
 
 if (isLeaguePlayMode) {
-  await saveFinishedGame({
-    date:
-      new Date().toISOString(),
+  const saveSuccess =
+    await saveFinishedGame({
+      date:
+        new Date().toISOString(),
 
-    winner:
-      bestPlayer,
+      winner:
+        bestPlayer,
 
-    winnerScore:
-      bestScore,
+      winnerScore:
+        bestScore,
 
-    players:
-      selectedPlayers,
+      players:
+        selectedPlayers,
 
-    scores:
-      gameResults,
-  });
+      scores:
+        gameResults,
+
+      gameId,
+    });
+
+  if (!saveSuccess) {
+    setShowDuplicateGameMessage(
+      true
+    );
+  }
 } else {
-  await saveFunGame({
-    winner:
-      bestPlayer,
+  const saveSuccess =
+    await saveFunGame({
+      winner:
+        bestPlayer,
 
-    winnerScore:
-      bestScore,
+      winnerScore:
+        bestScore,
 
-    players:
-      selectedPlayers,
+      players:
+        selectedPlayers,
 
-    scores:
-      gameResults,
-  });
+      scores:
+        gameResults,
+    });
+
+  if (!saveSuccess) {
+    setShowDuplicateGameMessage(
+      true
+    );
+  }
 }
 
 setGameFinished(true);
@@ -6795,22 +6831,41 @@ const renderOnlineChatMessages = () => (
                 return;
               }
 
-              await saveFinishedGame({
-                date:
-                  new Date().toISOString(),
+              const saveSuccess =
+                await saveFinishedGame({
+                  date:
+                    new Date().toISOString(),
 
-                winner:
-                  pendingFinishedGame.winner,
+                  winner:
+                    pendingFinishedGame.winner,
 
-                winnerScore:
-                  pendingFinishedGame.winnerScore,
+                  winnerScore:
+                    pendingFinishedGame.winnerScore,
 
-                players:
-                  pendingFinishedGame.players,
+                  players:
+                    pendingFinishedGame.players,
 
-                scores:
-                  pendingFinishedGame.scores,
-              });
+                  scores:
+                    pendingFinishedGame.scores,
+
+                  gameId,
+                });
+
+              if (!saveSuccess) {
+                setShowFinishGameConfirm(
+                  false
+                );
+
+                setPendingFinishedGame(
+                  null
+                );
+
+                setShowDuplicateGameMessage(
+                  true
+                );
+
+                return;
+              }
 
               setShowFinishGameConfirm(
   false
@@ -6976,19 +7031,36 @@ if (celebrationType === 2) {
 
           <button
             onClick={async () => {
-              await saveFunGame({
-                winner:
-                  pendingFinishedGame.winner,
+              const saveSuccess =
+                await saveFunGame({
+                  winner:
+                    pendingFinishedGame.winner,
 
-                winnerScore:
-                  pendingFinishedGame.winnerScore,
+                  winnerScore:
+                    pendingFinishedGame.winnerScore,
 
-                players:
-                  pendingFinishedGame.players,
+                  players:
+                    pendingFinishedGame.players,
 
-                scores:
-                  pendingFinishedGame.scores,
-              });
+                  scores:
+                    pendingFinishedGame.scores,
+                });
+
+              if (!saveSuccess) {
+                setShowFinishGameConfirm(
+                  false
+                );
+
+                setPendingFinishedGame(
+                  null
+                );
+
+                setShowDuplicateGameMessage(
+                  true
+                );
+
+                return;
+              }
 
               setShowFinishGameConfirm(
   false
@@ -8381,6 +8453,34 @@ canSavePlayModeScore &&
           )
         }
         className="w-full rounded-2xl border border-zinc-600 bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+      >
+        OK
+      </button>
+    </div>
+  </div>
+)}
+
+{/* DUPLICATE GAME MESSAGE */}
+{showDuplicateGameMessage && (
+  <div className="fixed inset-0 z-[170] flex items-center justify-center bg-black/90 p-4">
+    <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+      <h2 className="mb-5 text-3xl font-black text-yellow-400">
+        Hra již zapsána
+      </h2>
+
+      <p className="mb-8 text-lg text-zinc-300">
+        Tato hra již byla dříve do statistik zapsána.
+        <br />
+        Výsledek nebyl uložen znovu.
+      </p>
+
+      <button
+        onClick={() =>
+          setShowDuplicateGameMessage(
+            false
+          )
+        }
+        className="w-full rounded-2xl border border-zinc-600 bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:scale-[1.02] hover:brightness-110"
       >
         OK
       </button>

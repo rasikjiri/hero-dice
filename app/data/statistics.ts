@@ -17,6 +17,8 @@ export type FinishedGame = {
   total: number;
   perfectCategories: number;
 }[];
+
+  gameId?: string;
 };
 
 const STORAGE_KEY = "hero-dice-games";
@@ -38,7 +40,7 @@ export const resetStatistics =
 export const saveFinishedGame =
   async (
     game: FinishedGame
-  ) => {
+  ): Promise<boolean> => {
     const games =
       getFinishedGames();
 
@@ -49,17 +51,42 @@ export const saveFinishedGame =
       JSON.stringify(games)
     );
 
-    await supabase
-      .from("games")
-      .insert([
-        {
-          winner: game.winner,
-          winner_score:
-            game.winnerScore,
-          players: game.players,
-          scores: game.scores,
-        },
-      ]);
+    if (game.gameId) {
+      const { data: existing } =
+        await supabase
+          .from("games")
+          .select("id")
+          .eq("game_id", game.gameId)
+          .limit(1);
+
+      if (existing && existing.length > 0) {
+        return false;
+      }
+    }
+
+    const { error } =
+      await supabase
+        .from("games")
+        .insert([
+          {
+            winner: game.winner,
+            winner_score:
+              game.winnerScore,
+            players: game.players,
+            scores: game.scores,
+            game_id: game.gameId ?? null,
+          },
+        ]);
+
+    if (error) {
+      console.error(
+        "Games table insert error:",
+        error
+      );
+      return false;
+    }
+
+    return true;
   };
 
 export const getFinishedGames =
