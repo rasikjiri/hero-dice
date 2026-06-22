@@ -353,3 +353,58 @@ Poznámky:
 - Odstraněna plasticita malých akčních tlačítek v dialogu Načíst hru.
 - Odstraněny šedé rámečky z malých potvrzovacích tlačítek.
 - Zachovány hover animace a významové barvy tlačítek.
+
+---
+
+## v3.0.5 – Stabilizace zvukového systému
+
+### Fixed
+
+- Opraveno falešné přehrávání zvuku **No Combination** po zápisu skóre a při změně herního stavu.
+- Upravena logika přehrávání zvuků tak, aby se nespouštěly opakovaně při přepočtu stavu.
+
+### Improved
+
+- Optimalizováno načítání zvuků pro mobilní zařízení.
+- Odstraněn zbytečný cache-busting u audio souborů.
+- Přidán preload nejčastěji používaných zvuků po první uživatelské interakci.
+- Snížena latence přehrávání zvukových efektů na mobilních zařízeních.
+
+---
+
+## v3.0.6 – Ochrana proti duplicitnímu zápisu dokončených her
+
+### Added
+
+- Přidán identifikátor `game_id` do ukládání dokončených her.
+- Připravena SQL migrace pro rozšíření tabulek `games` a `fun_games` (soubor: `supabase/migrations/20260622_add_game_id_to_stats.sql`).
+- Nový UI modal pro informování uživatele o pokusu opětovného zápisu duplikátu.
+- Nový state `showDuplicateGameMessage` pro správu zobrazování hlášky.
+
+### Fixed
+
+- Přidána kontrola duplicit před zápisem dokončené hry do statistik.
+- Zabráněno opakovanému zápisu stejné uložené hry do tabulek `games` a `fun_games`.
+- Zachována správnost statistik i při opětovném načtení již dříve uložené hry.
+- Funkce `saveFinishedGame()` nyní vrací boolean pro indikaci úspěchu/duplikátu.
+- Funkce `saveFunGame()` nyní vrací boolean pro indikaci úspěchu/duplikátu.
+- Typ `FinishedGame` rozšířen o volitelné pole `gameId?: string`.
+
+### Improved
+
+- Uživatel je při pokusu o opětovný zápis stejné hry informován hláškou: _"Tato hra již byla dříve do statistik zapsána. Výsledek nebyl uložen znovu."_
+- Celebration (confetti, zvuk) se spouští pouze při úspěšném zápisu, nikoliv při duplikátu.
+- Zachováno standardní dokončení hry bez vzniku duplicitních statistických záznamů.
+- Backward compatibility: staré záznamy bez `game_id` zůstávají funkční a viditelné.
+
+### Changed
+
+- Upravena logika obou tlačítek v modálu **Blížíte se ke konci hry** (Ligová hra / Fun hra) pro kontrolu duplikátů.
+- Auto-save flow při `endTurn` nyní kontroluje success status z obou funkcí.
+- Celebration timeout logika zachovává funkčnost pouze pro úspěšné zápisy.
+
+### Notes
+
+- SQL migrace je připravena v souboru `supabase/migrations/20260622_add_game_id_to_stats.sql` a musí být ručně spuštěna v Supabase SQL editoru.
+- Po spuštění migrace budou nové hry automaticky zaznamenávat `game_id` bez dopadu na staré záznamy.
+- Duplikát-check funguje na úrovni databázového dotazu (supabase `.select().eq()`), nikoliv aplikační logiky.
