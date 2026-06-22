@@ -2,7 +2,7 @@ PLAYMODE
   
 **Projekt:** Hero Dice  
   
-**Verze projektu:** 2.6  
+**Verze projektu:** 3.1  
   
 **Typ dokumentu:** Herní systém – Play Mode  
   
@@ -62,31 +62,51 @@ Po potvrzení konfigurace je vytvořena nová hra.
   
 # Typy her  
   
-Hero Dice rozlišuje dva herní režimy.  
-  
-## Ligová hra  
-  
-Ligová hra používá oficiální konfiguraci.  
-  
-Výsledky jsou ukládány do tabulky **games**.  
-  
-Používají se pro:  
-  
-- statistiky,  
-- historii,  
-- leaderboard.  
-  
----  
-  
-## Fun hra  
-  
-Každá konfigurace odlišná od ligových pravidel je považována za Fun hru.  
-  
-Výsledky jsou ukládány výhradně do tabulky **fun_games**.  
-  
-Fun hry nikdy neovlivňují ligové statistiky.  
-  
----  
+Hero Dice rozlišuje tři herní režimy.
+
+## Ligová hra
+
+Ligová hra používá oficiální konfiguraci.
+
+Výsledky jsou ukládány do tabulky **games**.
+
+Používají se pro:
+
+- statistiky,
+- historii,
+- leaderboard.
+
+---
+
+## Fun hra
+
+Každá konfigurace odlišná od ligových pravidel je považována za Fun hru.
+
+Výsledky jsou ukládány výhradně do tabulky **fun_games**.
+
+Fun hry nikdy neovlivňují ligové statistiky.
+
+---
+
+## Hra s počítačem
+
+Je-li mezi vybranými hráči alespoň jeden počítač, hra se automaticky stává hrou s počítačem.
+
+Charakteristika hry s počítačem:
+
+- režim je vždy **offline**,
+- bonusová mechanika je **vypnutá**,
+- Play Mode nastavení je **zjednodušeno** pouze na relevantní volby,
+- AI hráč používá **reálné hody kostkami**,
+- výsledky jsou ukládány jako **Fun hra**.
+
+AI hráč v současné verzi:
+
+- nevybírá kostky,
+- nepoužívá bonus,
+- nepoužívá pokročilou strategii.
+
+Funkci AI lze v budoucích verzích rozšiřovat bez ovlivnění klasických her.
   
 # Průběh tahu  
   
@@ -190,12 +210,10 @@ Play Mode podporuje bonusový systém.
   
 Aktivace bonusu závisí na konfiguraci hry.  
   
-Bonus může přidat další hody.  
-  
-Logika bonusu respektuje:  
-  
-- ligová pravidla,  
-- Fun pravidla,  
+**Poznámka:** V hře s počítačem je bonus systém vypnutý. Tlačítko Bonus je deaktivováno a nedostupné pro všechny hráče, včetně lidských.
+
+Bez počítače:
+
 - přepisování skóre.  
   
 ---  

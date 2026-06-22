@@ -2,7 +2,7 @@ KNOWN_RULES
   
 **Projekt:** Hero Dice  
   
-**Verze projektu:** 2.6  
+**Verze projektu:** 3.1  
   
 **Typ dokumentu:** Závazná pravidla vývoje  
   
