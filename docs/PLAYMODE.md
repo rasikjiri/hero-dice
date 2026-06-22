@@ -56,19 +56,16 @@ Před spuštěním hry se nastavuje:
 - typ bonusu,  
 - počet bonusových hodů.  
   
-Po potvrzení konfigurace je vytvořena nová hra.  
-  
----  
-  
-# Typy her  
-  
-Hero Dice rozlišuje tři herní režimy.
+Pokud je vybrán **počítačový hráč**, nastavení se automaticky zjednodušuje:
 
-## Ligová hra
+- režim hry se nastaví na **offline**,
+- bonusy jsou **skryté**,
+- bonusové hody jsou **skryté**,
+- zobrazeny zůstávají: počet hodů (max 12) a přepisování skóre,
+- defaultní hodnoty: 6 hodů, bonusové hody = 0.
 
-Ligová hra používá oficiální konfiguraci.
+U her bez počítače zůstává nastavení nezměněno.
 
-Výsledky jsou ukládány do tabulky **games**.
 
 Používají se pro:
 
@@ -85,6 +82,28 @@ Každá konfigurace odlišná od ligových pravidel je považována za Fun hru.
 Výsledky jsou ukládány výhradně do tabulky **fun_games**.
 
 Fun hry nikdy neovlivňují ligové statistiky.
+
+---
+
+## Hra s počítačem
+
+Je-li mezi vybranými hráči alespoň jeden počítač, hra se automaticky stává hrou s počítačem.
+
+Charakteristika hry s počítačem:
+
+- režim je vždy **offline**,
+- bonusová mechanika je **vypnutá**,
+- Play Mode nastavení je **zjednodušeno** pouze na relevantní volby,
+- AI hráč používá **reálné hody kostkami**,
+- výsledky jsou ukládány jako **Fun hra**.
+
+AI hráč v současné verzi:
+
+- nevybírá kostky,
+- nepoužívá bonus,
+- nepoužívá pokročilou strategii.
+
+Funkci AI lze v budoucích verzích rozšiřovat bez ovlivnění klasických her.
 
 ---
 
@@ -214,16 +233,12 @@ Aktivace bonusu závisí na konfiguraci hry.
 
 Bez počítače:
 
-- přepisování skóre.  
-  
----  
-  
-# Bonus Generál  
-  
-Bonus Generál představuje speciální bonusový režim.  
-  
-Jeho chování závisí na typu hry.  
-  
+Bonus může přidat další hody.
+
+Logika bonusu respektuje:
+
+- ligová pravidla,
+- Fun pravidla,
 ## Ligová hra  
   
 Po zapsání maximálního Generála již bonus není dostupný.  
