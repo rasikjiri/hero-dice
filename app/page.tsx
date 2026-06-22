@@ -38,6 +38,8 @@ import FunGamesModal from "./components/FunGamesModal";
 
 import HelpModal from "./components/HelpModal";
 
+import AppMenu from "./components/AppMenu";
+
 import { gameCategories } from "./data/gameCategories";
 
 import { supabase } from "./lib/supabase";
@@ -333,6 +335,21 @@ setShowLoadGames,
 ] = useState(false);
 
 const [
+  showHomeMenu,
+  setShowHomeMenu,
+] = useState(false);
+
+const [
+  showSetupMenu,
+  setShowSetupMenu,
+] = useState(false);
+
+const [
+  showJoinSessionModal,
+  setShowJoinSessionModal,
+] = useState(false);
+
+const [
   showGameMenu,
   setShowGameMenu,
 ] = useState(false);
@@ -350,9 +367,15 @@ useEffect(() => {
 useEffect(() => {
   const handleClickOutside = () => {
     setShowGameMenu(false);
+    setShowHomeMenu(false);
+    setShowSetupMenu(false);
   };
 
-  if (showGameMenu) {
+  if (
+    showGameMenu ||
+    showHomeMenu ||
+    showSetupMenu
+  ) {
     document.addEventListener(
       "click",
       handleClickOutside
@@ -365,7 +388,11 @@ useEffect(() => {
       handleClickOutside
     );
   };
-}, [showGameMenu]);
+}, [
+  showGameMenu,
+  showHomeMenu,
+  showSetupMenu,
+]);
 
 useEffect(() => {
   const celebration =
@@ -2824,6 +2851,32 @@ setShowGameSavedModal(
     }
   };
 
+const runSaveCurrentGameFlow =
+  async () => {
+    const saveMetadata =
+      resolveSavedGameMetadata();
+
+    const exists =
+      await checkExistingGameVersion();
+
+    setPendingSaveMetadata(
+      saveMetadata
+    );
+
+    if (exists) {
+      setShowGameVersionModal(
+        true
+      );
+
+      return;
+    }
+
+    await saveGameToSupabase(
+      undefined,
+      saveMetadata
+    );
+  };
+
 const loadSavedGames =
   async () => {
     if (isOnlineGame) {
@@ -3569,7 +3622,7 @@ const buildLobbyReadinessMap = (
     if (!joinSessionId.trim()) {
       alert("Zadej kód místnosti.");
 
-      return;
+      return false;
     }
 
     try {
@@ -3611,7 +3664,7 @@ const buildLobbyReadinessMap = (
           "Online session neobsahuje platný výběr hráčů."
         );
 
-        return;
+        return false;
       }
 
       setGameMode("online");
@@ -3677,12 +3730,16 @@ const buildLobbyReadinessMap = (
           session.game_state
         );
       }
+
+      return true;
     } catch (error) {
       console.error(error);
 
       alert(
         "Nepodařilo se připojit k online hře."
       );
+
+      return false;
     }
   };
 
@@ -5316,32 +5373,46 @@ const renderOnlineChatMessages = () => (
   </button>
 </div>
 
-      <div className="flex flex-wrap gap-3">
-  <button
-    onClick={loadSavedGames}
-    className="rounded-2xl bg-gradient-to-r from-violet-600 to-green-500 px-6 py-3 text-lg font-bold text-white transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
-  >
-    Načíst hru
-  </button>
-
-  <button
-    onClick={() =>
-      setShowAdmin(true)
-    }
-    className="rounded-2xl bg-gradient-to-r from-zinc-900 to-red-600 px-6 py-3 text-lg font-bold  transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
-  >
-    Admin
-  </button>
-
-  <button
-    onClick={() =>
-      setShowStatistics(true)
-    }
-    className="rounded-2xl bg-gradient-to-r from-zinc-900 via-yellow-500 to-yellow-300 px-6 py-3 text-lg font-bold text-white transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
-  >
-    Statistiky
-  </button>
-</div>
+      <AppMenu
+        isOpen={showHomeMenu}
+        onToggle={() =>
+          setShowHomeMenu(
+            (prev) => !prev
+          )
+        }
+        items={[
+          {
+            label: "Načíst hru",
+            onClick: () => {
+              loadSavedGames();
+              setShowHomeMenu(false);
+            },
+          },
+          {
+            label: "Připojit se",
+            onClick: () => {
+              setShowJoinSessionModal(
+                true
+              );
+              setShowHomeMenu(false);
+            },
+          },
+          {
+            label: "Admin",
+            onClick: () => {
+              setShowAdmin(true);
+              setShowHomeMenu(false);
+            },
+          },
+          {
+            label: "Statistiky",
+            onClick: () => {
+              setShowStatistics(true);
+              setShowHomeMenu(false);
+            },
+          },
+        ]}
+      />
     </div>
 
           <div className="mt-8 md:mt-10">
@@ -5351,23 +5422,6 @@ const renderOnlineChatMessages = () => (
     className="rounded-3xl bg-yellow-500 px-8 py-5 text-2xl font-black text-black transition hover:scale-[1.02] hover:bg-yellow-400 md:px-10 md:text-3xl"
   >
     ▶ Nová hra
-  </button>
-
-  <input
-    type="text"
-    value={joinSessionId}
-    onChange={(e) =>
-      setJoinSessionId(e.target.value)
-    }
-    placeholder="Kód místnosti"
-    className="rounded-2xl border border-zinc-700 bg-zinc-900 px-5 py-4 text-white outline-none"
-  />
-
-  <button
-    onClick={handleJoinOnlineSession}
-    className="rounded-2xl bg-blue-600 px-6 py-4 font-bold text-white transition hover:bg-blue-500"
-  >
-    🔗 Připojit se
   </button>
 </div>
           </div>
@@ -5690,7 +5744,13 @@ const renderOnlineChatMessages = () => (
       {/* GAME */}
       {screen === "game" && (
         <div className="mx-auto flex w-full max-w-6xl flex-col">
-          <div className="relative mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div
+            className={`relative mb-8 flex w-full flex-col gap-4 md:flex-row md:items-center md:justify-between ${
+              !gameStarted
+                ? "mx-auto max-w-5xl"
+                : ""
+            }`}
+          >
   <div className="flex items-center gap-3">
   <h1 className="text-5xl font-black tracking-[0.14em] text-yellow-400">
     HERO DICE
@@ -5740,133 +5800,99 @@ const renderOnlineChatMessages = () => (
   ▶ Play Mode
 </button>
 
-    <div
-  className="relative"
-  onClick={(e) =>
-    e.stopPropagation()
-  }
->
-  <button
-    onClick={() =>
-      setShowGameMenu(
-        (prev) => !prev
-      )
-    }
-    className="rounded-2xl bg-blue-600 px-6 py-3 text-lg font-bold transition hover:bg-blue-500"
-  >
-    Hra
-  </button>
-
-  {showGameMenu && (
-    <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl">
-      
-      <button
-  onClick={() => {
-    setShowSettings(true);
-
-    setShowGameMenu(false);
-  }}
-  className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800 hover:text-yellow-400"
->
-  Zvuk
-</button>
-      
-      <button
-        onClick={() => {
-          loadSavedGames();
-          setShowGameMenu(
-            false
-          );
-        }}
-        className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800 hover:text-yellow-400"
-      >
-        Načíst hru
-      </button>
-
-      <button
-        onClick={() => {
-          setShowSaveGameConfirm(
-            true
-          );
-
-          setShowGameMenu(
-            false
-          );
-        }}
-        className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800 hover:text-yellow-400"
-      >
-        Uložit hru
-      </button>
-      
-      <button
-  onClick={() => {
-    setShowHomeRestoreModal(
-      true
-    );
-
-    setShowGameMenu(
-      false
-    );
-  }}
-  className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800 hover:text-yellow-400"
->
-  Nová hra
-</button>
-
-      <button
-        onClick={() => {
-          setShowLeaveConfirm(
-            true
-          );
-
-          setShowGameMenu(
-            false
-          );
-        }}
-        className="w-full px-5 py-4 text-left font-bold transition hover:bg-zinc-800 hover:text-yellow-400"
-      >
-        Ukončit hru
-      </button>
-    </div>
-  )}
-</div>
+    <AppMenu
+      label="MENU"
+      isOpen={showGameMenu}
+      onToggle={() =>
+        setShowGameMenu(
+          (prev) => !prev
+        )
+      }
+      items={[
+        {
+          label: "Zvuk",
+          onClick: () => {
+            setShowSettings(true);
+            setShowGameMenu(false);
+          },
+        },
+        {
+          label: "Načíst hru",
+          onClick: () => {
+            loadSavedGames();
+            setShowGameMenu(false);
+          },
+        },
+        {
+          label: "Uložit hru",
+          onClick: () => {
+            setShowSaveGameConfirm(
+              true
+            );
+            setShowGameMenu(false);
+          },
+        },
+        {
+          label: "Nová hra",
+          onClick: () => {
+            setShowHomeRestoreModal(
+              true
+            );
+            setShowGameMenu(false);
+          },
+        },
+        {
+          label: "Ukončit hru",
+          tone: "danger",
+          onClick: () => {
+            setShowLeaveConfirm(
+              true
+            );
+            setShowGameMenu(false);
+          },
+        },
+      ]}
+    />
   </>
 ) : (
-    <>
-  <button
-    onClick={() =>
-      setShowStatistics(true)
-    }
-    className="rounded-2xl bg-gradient-to-r from-zinc-900 via-yellow-500 to-yellow-300 px-6 py-3 text-lg font-bold text-white transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
-  >
-    Statistiky
-  </button>
-
-  <button
-    onClick={loadSavedGames}
-    className="rounded-2xl bg-gradient-to-r from-violet-600 to-green-400 px-6 py-3 text-lg font-bold text-white transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
-  >
-    Načíst hru
-  </button>
-
-  <button
-    onClick={() =>
-      setShowAdmin(true)
-    }
-    className="rounded-2xl bg-gradient-to-r from-zinc-900 to-red-600 px-6 py-3 text-lg font-bold transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
-  >
-    Admin
-  </button>
-
-  <button
-    onClick={() =>
-      debugSetScreen("home")
-    }
-    className="rounded-2xl bg-zinc-700 px-6 py-3 text-lg font-bold transition hover:scale-[1.02] hover:brightness-110 border border-white/70"
-  >
-    Domů
-  </button>
-</>
+    <AppMenu
+      isOpen={showSetupMenu}
+      onToggle={() =>
+        setShowSetupMenu(
+          (prev) => !prev
+        )
+      }
+      items={[
+        {
+          label: "Načíst hru",
+          onClick: () => {
+            loadSavedGames();
+            setShowSetupMenu(false);
+          },
+        },
+        {
+          label: "Admin",
+          onClick: () => {
+            setShowAdmin(true);
+            setShowSetupMenu(false);
+          },
+        },
+        {
+          label: "Statistiky",
+          onClick: () => {
+            setShowStatistics(true);
+            setShowSetupMenu(false);
+          },
+        },
+        {
+          label: "Domů",
+          onClick: () => {
+            debugSetScreen("home");
+            setShowSetupMenu(false);
+          },
+        },
+      ]}
+    />
   )}
 </div>
 </div>
@@ -8630,7 +8656,19 @@ if (celebrationType === 2) {
       {/* LEAVE CONFIRM */}
       {showLeaveConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="w-full max-w-[420px] rounded-2xl bg-black p-8 text-center text-white">
+          <div className="relative w-full max-w-[420px] rounded-2xl bg-black p-8 text-center text-white">
+            <button
+              onClick={() =>
+                setShowLeaveConfirm(
+                  false
+                )
+              }
+              className="absolute right-4 top-4 rounded-lg border border-zinc-700 px-3 py-1 text-sm font-black text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+              aria-label="Zavřít modal"
+            >
+              X
+            </button>
+
             <h2 className="mb-6 text-3xl font-black">
               Opravdu ukončit hru?
             </h2>
@@ -8641,14 +8679,16 @@ if (celebrationType === 2) {
 
             <div className="flex flex-wrap justify-center gap-4">
   <button
-    onClick={() =>
+    onClick={async () => {
       setShowLeaveConfirm(
         false
-      )
-    }
+      );
+
+      await runSaveCurrentGameFlow();
+    }}
     className="rounded-lg bg-green-600 px-5 py-3 font-bold text-white transition hover:bg-green-500"
   >
-    Pokračovat
+    Uložit hru
   </button>
 
   <button
@@ -8685,6 +8725,76 @@ if (celebrationType === 2) {
         </div>
       )}
 
+      {/* JOIN SESSION MODAL */}
+      {showJoinSessionModal && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/90 p-4">
+          <div className="relative w-full max-w-[460px] rounded-2xl border border-zinc-700 bg-zinc-950 p-8 text-white">
+            <button
+              onClick={() =>
+                setShowJoinSessionModal(
+                  false
+                )
+              }
+              className="absolute right-4 top-4 rounded-lg border border-zinc-700 px-3 py-1 text-sm font-black text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+              aria-label="Zavřít modal"
+            >
+              X
+            </button>
+
+            <h2 className="mb-2 text-3xl font-black text-cyan-300 tracking-[0.08em]">
+              Připojit se
+            </h2>
+
+            <p className="mb-6 text-zinc-400">
+              Zadej kód místnosti a připoj se do online lobby.
+            </p>
+
+            <input
+              type="text"
+              value={joinSessionId}
+              onChange={(e) =>
+                setJoinSessionId(
+                  e.target.value
+                )
+              }
+              onKeyDown={async (event) => {
+                if (event.key !== "Enter") {
+                  return;
+                }
+
+                const joined =
+                  await handleJoinOnlineSession();
+
+                if (joined) {
+                  setShowJoinSessionModal(
+                    false
+                  );
+                }
+              }}
+              placeholder="Kód místnosti"
+              className="mb-6 w-full rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-lg font-bold tracking-[0.08em] text-white outline-none transition focus:border-cyan-400"
+              autoFocus
+            />
+
+            <button
+              onClick={async () => {
+                const joined =
+                  await handleJoinOnlineSession();
+
+                if (joined) {
+                  setShowJoinSessionModal(
+                    false
+                  );
+                }
+              }}
+              className="w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4 text-xl font-black tracking-[0.08em] text-white transition hover:brightness-110"
+            >
+              Připojit se
+            </button>
+          </div>
+        </div>
+      )}
+
 {/* SAVE GAME CONFIRM */}
 {showSaveGameConfirm && (
   <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/90 p-4">
@@ -8711,32 +8821,11 @@ if (celebrationType === 2) {
 
         <button
           onClick={async () => {
-  const saveMetadata =
-    resolveSavedGameMetadata();
-
-  const exists =
-    await checkExistingGameVersion();
-
-  setPendingSaveMetadata(
-    saveMetadata
-  );
-
   setShowSaveGameConfirm(
     false
   );
 
-  if (exists) {
-    setShowGameVersionModal(
-      true
-    );
-
-    return;
-  }
-
-  await saveGameToSupabase(
-    undefined,
-    saveMetadata
-  );
+  await runSaveCurrentGameFlow();
 }}
           className="rounded-lg bg-green-600 px-5 py-3 font-bold text-white transition hover:bg-green-500"
         >
