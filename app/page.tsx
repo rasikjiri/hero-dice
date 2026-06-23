@@ -2313,6 +2313,13 @@ useEffect(() => {
   if (!currentCombination) {
     if (!isComputerPlayerId(playerId)) {
       setRemainingRolls(0);
+    } else if (remainingRolls <= 0) {
+      // Computer player out of rolls with no combination.
+      // End the turn using the existing turn handoff flow.
+      lastComputerAutoTurnRef.current =
+        turnMarker;
+      endTurn();
+      return;
     }
     setHasRolledDice(false);
 
@@ -2387,6 +2394,7 @@ useEffect(() => {
   scores,
   playModeAllowRewrite,
   playModeCategoryMap,
+  remainingRolls,
 ]);
 
 const activateBonus = () => {
@@ -2653,7 +2661,19 @@ useEffect(() => {
   lastComputerAutoRollRef.current =
     rollMarker;
 
+  const scheduledTurnVersion =
+    localTurnVersionRef.current;
+
   const timer = setTimeout(() => {
+    if (
+      lastComputerAutoRollRef.current !==
+        rollMarker ||
+      localTurnVersionRef.current !==
+        scheduledTurnVersion
+    ) {
+      return;
+    }
+
     rollAllDice();
   }, 500);
 

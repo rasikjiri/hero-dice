@@ -18,6 +18,9 @@ export type AIDecision = {
   reason: string;
 };
 
+// Allowed single-die locks (game-rule dependent scoring singles).
+const singleScoringValues = new Set([1, 5]);
+
 /**
  * Represents a candidate combination for AI consideration
  */
@@ -76,24 +79,6 @@ const findDiceIndicesByValue = (
     .filter((index) => index !== -1);
 };
 
-/**
- * Finds indices of a Sequence (1,2,3,4,5,6)
- */
-const findDiceIndicesForSequence = (dice: number[]): number[] => {
-  // We need all 6 dice values exactly
-  if (hasSequence(dice)) {
-    return [0, 1, 2, 3, 4, 5];
-  }
-  
-  // Return which ones we already have
-  const needed = [1, 2, 3, 4, 5, 6];
-  return needed
-    .map((value) => {
-      const index = dice.findIndex((d) => d === value);
-      return index;
-    })
-    .filter((index) => index !== -1);
-};
 
 /**
  * Find the most common die value in the counts object
@@ -119,6 +104,60 @@ const sortByCount = (counts: Record<number, number>) => {
   return Object.entries(counts)
     .map(([value, count]) => ({ value: parseInt(value), count }))
     .sort((a, b) => b.count - a.count);
+};
+
+const uniqueSortedIndices = (
+  indices: number[]
+): number[] =>
+  Array.from(new Set(indices)).sort(
+    (a, b) => a - b
+  );
+
+const filterSafeLocks = (
+  dice: number[],
+  proposedIndices: number[],
+  targetType: string
+): number[] => {
+  const normalized = uniqueSortedIndices(
+    proposedIndices
+  ).filter(
+    (index) => index >= 0 && index < 6
+  );
+
+  if (normalized.length === 0) {
+    return [];
+  }
+
+  // Sequence strategy is safe only for a completed 1-6 sequence.
+  if (targetType === "Postupka") {
+    if (!hasSequence(dice)) {
+      return [];
+    }
+
+    return normalized;
+  }
+
+  const proposedValueCounts: Record<number, number> = {};
+
+  normalized.forEach((index) => {
+    const value = dice[index];
+    proposedValueCounts[value] =
+      (proposedValueCounts[value] || 0) + 1;
+  });
+
+  // For non-sequence strategies, keep only duplicate contributors
+  // or explicitly scoreable single values (1, 5).
+  return normalized.filter((index) => {
+    const value = dice[index];
+
+    if (singleScoringValues.has(value)) {
+      return true;
+    }
+
+    return (
+      (proposedValueCounts[value] || 0) >= 2
+    );
+  });
 };
 
 /**
@@ -176,17 +215,9 @@ const evaluateCombination = (
         candidate.missingCount = 0;
         relevantIndices = [0, 1, 2, 3, 4, 5];
       } else {
-        const hasValues = [1, 2, 3, 4, 5, 6].filter((v) => dice.includes(v));
-
-        // Keep Postupka strategy only when we already have a strong base.
-        if (hasValues.length < 4) {
-          return null;
-        }
-
-        candidate.currentMatchCount = hasValues.length;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 6 - hasValues.length;
-        relevantIndices = findDiceIndicesForSequence(dice);
+        // Partial Postupka locking tends to create invalid single locks.
+        // Keep this strategy only for a complete sequence.
+        return null;
       }
       break;
 
@@ -415,8 +446,24 @@ export function makeAIDecision(
     };
   }
 
+  const safeLockedDiceIndices =
+    filterSafeLocks(
+      currentDice,
+      best.relevantIndices,
+      best.type
+    );
+
+  if (safeLockedDiceIndices.length === 0) {
+    return {
+      lockedDiceIndices: [],
+      reason:
+        "No safe lock candidates, keep rolling",
+    };
+  }
+
   return {
-    lockedDiceIndices: best.relevantIndices,
+    lockedDiceIndices:
+      safeLockedDiceIndices,
     reason: `Targeting ${best.type} (${best.missingCount} missing, potential ${best.potentialScore})`,
   };
 }
