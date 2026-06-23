@@ -429,3 +429,24 @@ Poznámky:
 - Oprava nezavádí novou AI strategii ani obtížnosti.
 - Bonus logika AI nebyla měněna.
 - Scoring pravidla, UI a databáze nebyly touto opravou měněny.
+
+---
+
+## [3.2] - Opravy chyb
+
+### Opraveno
+
+#### Režim hry proti AI
+- Opraveno pořadí vrstev závěrečné oslavy po dokončení hry.
+- Konfety se nyní zobrazují nad oknem s výsledky stejně jako v offline a online režimu.
+- Sjednoceno chování závěrečné oslavy napříč všemi herními režimy.
+
+#### Online režim
+- Opravena nestabilita při označování kostek způsobená synchronizací online stavu.
+- Zabráněno přepisování lokálního výběru kostek vzdáleným (Supabase) snapshotem během tahu aktivního hráče.
+- Doplněna ochrana proti aplikaci zastaralých nebo duplicitních aktualizací herního stavu.
+- Zvuky **„Žádná kombinace“** a **„Maximální skóre“** se nyní přehrávají pouze po platné akci lokálního hráče.
+- Zabráněno spouštění zvuků při pasivní synchronizaci online hry, obnově stavu nebo aktualizaci soupeřova tahu.
+- Výrazně zvýšena stabilita a plynulost označování kostek v online hře.
+- Odstraněno náhodné přehrávání zvukových efektů „Žádná kombinace“ a „Maximální skóre“.
+- Opraveno opožděné přehrávání těchto zvukových efektů způsobené asynchronní synchronizací online stavu.

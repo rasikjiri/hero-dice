@@ -353,6 +353,11 @@ const lastComputerAutoTurnRef =
 const lastComputerAutoRollRef =
   useRef<string | null>(null);
 
+const lastStateChangeSourceRef =
+  useRef<
+    "local-action" | "remote-sync" | null
+  >(null);
+
 const bumpLocalTurnVersion =
   () => {
     localTurnVersionRef.current += 1;
@@ -1427,6 +1432,9 @@ window.scrollTo({
     }
   }
 
+  lastStateChangeSourceRef.current =
+    "local-action";
+
   bumpLocalRuntimeRevision();
 
   setLockedDice((prev) => {
@@ -1760,6 +1768,35 @@ const canSavePlayModeScore =
         currentPlayModeScore;
 
 useEffect(() => {
+  const activePlayerIdForAudio =
+    selectedPlayers[
+      currentPlayPlayerIndex
+    ] ?? null;
+
+  const isLocalCurrentPlayerForAudio =
+    !isOnlineGame ||
+    (
+      localOnlinePlayerId !== null &&
+      localOnlinePlayerId ===
+        activePlayerIdForAudio
+    );
+
+  const shouldBlockMaxScoreAudio =
+    lastStateChangeSourceRef.current ===
+      "remote-sync" ||
+    (
+      isOnlineGame &&
+      !isLocalCurrentPlayerForAudio
+    );
+
+  if (shouldBlockMaxScoreAudio) {
+    setMaxScoreSoundPlayed(
+      false
+    );
+
+    return;
+  }
+
   if (
     !currentCombination ||
     !maxScoreSoundEnabled
@@ -1859,9 +1896,40 @@ useEffect(() => {
   playModeAllowRewrite,
   maxScoreSoundEnabled,
   maxScoreSoundPlayed,
+  isOnlineGame,
+  localOnlinePlayerId,
 ]);
 
 useEffect(() => {
+  const activePlayerIdForAudio =
+    selectedPlayers[
+      currentPlayPlayerIndex
+    ] ?? null;
+
+  const isLocalCurrentPlayerForAudio =
+    !isOnlineGame ||
+    (
+      localOnlinePlayerId !== null &&
+      localOnlinePlayerId ===
+        activePlayerIdForAudio
+    );
+
+  const shouldBlockNoCombinationAudio =
+    lastStateChangeSourceRef.current ===
+      "remote-sync" ||
+    (
+      isOnlineGame &&
+      !isLocalCurrentPlayerForAudio
+    );
+
+  if (shouldBlockNoCombinationAudio) {
+    setNoCombinationSoundPlayed(
+      false
+    );
+
+    return;
+  }
+
   if (
   hasUsefulFutureMove === false &&
   !noCombinationSoundPlayed &&
@@ -1900,6 +1968,10 @@ useEffect(() => {
   noCombinationSoundPlayed,
   noCombinationSoundEnabled,
   suppressNoCombinationSound,
+  isOnlineGame,
+  localOnlinePlayerId,
+  selectedPlayers,
+  currentPlayPlayerIndex,
 ]);
 
         const savePlayModeScore =
@@ -1959,6 +2031,9 @@ if (
 setSuppressNoCombinationSound(
   true
 );
+
+    lastStateChangeSourceRef.current =
+      "local-action";
 
     const savedTurnVersion =
       bumpLocalTurnVersion();
@@ -2245,6 +2320,9 @@ const activateBonus = () => {
   if (
     bonusActivatedThisTurn
   ) {
+      lastStateChangeSourceRef.current =
+        "local-action";
+
       bumpLocalRuntimeRevision();
 
       setRemainingRolls(
@@ -2282,6 +2360,9 @@ if (
   }
 }
 
+  lastStateChangeSourceRef.current =
+    "local-action";
+
   bumpLocalRuntimeRevision();
 
   setRemainingRolls(
@@ -2310,6 +2391,9 @@ const rollAllDice = () => {
   ) {
     return;
   }
+
+  lastStateChangeSourceRef.current =
+    "local-action";
 
   setIsRolling(true);
 
@@ -3432,6 +3516,9 @@ const buildLobbyReadinessMap = (
   const applyOnlineGameState = (
   gameState: any
 ) => {
+  lastStateChangeSourceRef.current =
+    "remote-sync";
+
   const remoteSelectedPlayers =
     Array.isArray(
       gameState.selectedPlayers
@@ -3496,6 +3583,14 @@ const buildLobbyReadinessMap = (
       gameState.runtimeRevision ?? 0
     );
 
+  const isStaleRuntimeRevision =
+    incomingRuntimeRevision <
+    localRuntimeRevisionRef.current;
+
+  if (isStaleRuntimeRevision) {
+    return;
+  }
+
   const incomingTurnIndex =
     gameState.currentPlayPlayerIndex ??
     currentPlayPlayerIndex;
@@ -3506,7 +3601,7 @@ const buildLobbyReadinessMap = (
     gameStarted &&
     incomingTurnIndex ===
       currentPlayPlayerIndex &&
-    incomingRuntimeRevision <
+    incomingRuntimeRevision <=
       localRuntimeRevisionRef.current;
 
   if (isStaleForActiveTurn) {
@@ -7123,6 +7218,7 @@ if (celebrationType === 0) {
             particleCount: 35,
             spread: 100,
             startVelocity: 35,
+            zIndex: 9999,
             origin: {
               x: Math.random(),
               y: 0.6,
@@ -7151,6 +7247,7 @@ if (celebrationType === 1) {
             particleCount: 60,
             spread: 180,
             startVelocity: 60,
+            zIndex: 9999,
             origin: {
               x: 0.5,
               y: 0.6,
@@ -7179,6 +7276,7 @@ if (celebrationType === 2) {
             particleCount: 40,
             angle: 60,
             spread: 55,
+            zIndex: 9999,
             origin: {
               x: 0,
               y: 0.7,
@@ -7189,6 +7287,7 @@ if (celebrationType === 2) {
             particleCount: 40,
             angle: 120,
             spread: 55,
+            zIndex: 9999,
             origin: {
               x: 1,
               y: 0.7,
@@ -7321,6 +7420,7 @@ if (celebrationType === 0) {
             particleCount: 35,
             spread: 100,
             startVelocity: 35,
+            zIndex: 9999,
             origin: {
               x: Math.random(),
               y: 0.6,
@@ -7349,6 +7449,7 @@ if (celebrationType === 1) {
             particleCount: 60,
             spread: 180,
             startVelocity: 60,
+            zIndex: 9999,
             origin: {
               x: 0.5,
               y: 0.6,
@@ -7377,6 +7478,7 @@ if (celebrationType === 2) {
             particleCount: 40,
             angle: 60,
             spread: 55,
+            zIndex: 9999,
             origin: {
               x: 0,
               y: 0.7,
@@ -7387,6 +7489,7 @@ if (celebrationType === 2) {
             particleCount: 40,
             angle: 120,
             spread: 55,
+            zIndex: 9999,
             origin: {
               x: 1,
               y: 0.7,
@@ -8866,6 +8969,7 @@ if (celebrationType === 0) {
             particleCount: 333,
             spread: 100,
             startVelocity: 35,
+            zIndex: 9999,
             origin: {
               x: Math.random(),
               y: 0.6,
@@ -8894,6 +8998,7 @@ if (celebrationType === 1) {
             particleCount: 333,
             spread: 60,
             startVelocity: 60,
+            zIndex: 9999,
             origin: {
               x: 0.5,
               y: 0.6,
@@ -8922,6 +9027,7 @@ if (celebrationType === 2) {
             particleCount: 333,
             angle: 60,
             spread: 55,
+            zIndex: 9999,
             origin: {
               x: 0,
               y: 0.7,
@@ -8932,6 +9038,7 @@ if (celebrationType === 2) {
             particleCount: 333,
             angle: 120,
             spread: 55,
+            zIndex: 9999,
             origin: {
               x: 1,
               y: 0.7,
