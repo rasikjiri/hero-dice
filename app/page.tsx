@@ -46,6 +46,8 @@ import { supabase } from "./lib/supabase";
 
 import { detectCombination } from "./lib/playMode";
 
+import { makeAIDecision } from "./lib/aiPlayer";
+
 import {
   createOnlineSession,
   joinOnlineSession,
@@ -351,6 +353,9 @@ const lastComputerAutoTurnRef =
   useRef<string | null>(null);
 
 const lastComputerAutoRollRef =
+  useRef<string | null>(null);
+
+const lastAIDecisionRef =
   useRef<string | null>(null);
 
 const lastStateChangeSourceRef =
@@ -2185,6 +2190,86 @@ setSelectedGeneralValue(
 );
   setBonusUsed(false);
 };
+
+// 10. AI PLAYER - Decision Logic
+useEffect(() => {
+  // Guard conditions
+  if (
+    isOnlineGame ||
+    !gameStarted ||
+    !hasStartedPlayMode ||
+    gameFinished ||
+    showPlayModeResult ||
+    !hasRolledDice ||
+    isRolling ||
+    selectedPlayers.length === 0
+  ) {
+    lastAIDecisionRef.current = null;
+    return;
+  }
+
+  const playerId = selectedPlayers[currentPlayPlayerIndex];
+
+  // Only for computer players
+  if (!playerId || !isComputerPlayerId(playerId)) {
+    lastAIDecisionRef.current = null;
+    return;
+  }
+
+  const playerScores = scores[playerId] || {};
+  const rollMarker = `${playerId}:${Object.keys(playerScores).length}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}:${remainingRolls}:${playModeDice.join(",")}`;
+
+  // Prevent re-running in same turn
+  if (lastAIDecisionRef.current === rollMarker) {
+    return;
+  }
+
+  // Mark that AI decision has run for this roll
+  lastAIDecisionRef.current = rollMarker;
+
+  // Get AI decision
+  const decision = makeAIDecision(
+    playModeDice,
+    currentCombination,
+    scores,
+    playerId,
+    playModeAllowRewrite
+  );
+
+  // Apply decision to lockedDice (exact AI selection)
+  const newLockedDice =
+    confirmedLockedDice.map(
+      (isConfirmed) =>
+        isConfirmed
+    );
+
+  decision.lockedDiceIndices.forEach(
+    (index) => {
+      if (index >= 0 && index < 6) {
+        newLockedDice[index] = true;
+      }
+    }
+  );
+
+  setLockedDice(newLockedDice);
+}, [
+  isOnlineGame,
+  gameStarted,
+  hasStartedPlayMode,
+  gameFinished,
+  showPlayModeResult,
+  hasRolledDice,
+  isRolling,
+  currentCombination,
+  currentPlayPlayerIndex,
+  selectedPlayers,
+  scores,
+  playModeDice,
+  confirmedLockedDice,
+  remainingRolls,
+  playModeAllowRewrite,
+  isComputerPlayerId,
+]);
 
 useEffect(() => {
   if (
