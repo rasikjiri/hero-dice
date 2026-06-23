@@ -21,22 +21,43 @@ export type AIDecision = {
 // Allowed single-die locks (game-rule dependent scoring singles).
 const singleScoringValues = new Set([1, 5]);
 
-/**
- * Represents a candidate combination for AI consideration
- */
+type CombinationType =
+  | "Generál"
+  | "Pyramida"
+  | "Hrozen"
+  | "Postupka"
+  | "Čtyři-dvě"
+  | "Trojice"
+  | "Dvojice";
+
+type TemplateRequirement = {
+  value: number;
+  count: number;
+};
+
+type CombinationTemplate = {
+  requirements: TemplateRequirement[];
+  templateScore: number;
+};
+
 type CandidateCombination = {
-  type: string;
-  maxScore: number;
+  type: CombinationType;
   currentMatchCount: number;
   totalRequired: number;
   missingCount: number;
-  potentialScore: number;
+  isComplete: boolean;
+  projectedScore: number;
+  absoluteScoreSignal: number;
+  maxPossibleScore: number;
   canWrite: boolean;
+  writeState: "free" | "rewrite";
+  rewriteGainSignal: number;
   relevantIndices: number[];
+  evaluationScore: number;
 };
 
 const combinationToCategoryId: Record<
-  string,
+  CombinationType,
   string
 > = {
   "Generál": "general",
@@ -48,15 +69,40 @@ const combinationToCategoryId: Record<
   "Dvojice": "dvojce",
 };
 
-/**
- * Gets the count of each die value in the dice array
- */
-const getCounts = (dice: number[]): Record<number, number> => {
-  const counts: Record<number, number> = {};
-  dice.forEach((value) => {
-    counts[value] = (counts[value] || 0) + 1;
-  });
-  return counts;
+const combinationTypes: CombinationType[] = [
+  "Generál",
+  "Pyramida",
+  "Hrozen",
+  "Postupka",
+  "Čtyři-dvě",
+  "Trojice",
+  "Dvojice",
+];
+
+const combinationPriority: Record<
+  CombinationType,
+  number
+> = {
+  "Generál": 7,
+  "Pyramida": 6,
+  "Hrozen": 6,
+  "Postupka": 5,
+  "Čtyři-dvě": 4,
+  "Trojice": 3,
+  "Dvojice": 2,
+};
+
+const combinationMaxScore: Record<
+  CombinationType,
+  number
+> = {
+  "Generál": 36,
+  "Pyramida": 32,
+  "Hrozen": 28,
+  "Postupka": 21,
+  "Čtyři-dvě": 34,
+  "Trojice": 33,
+  "Dvojice": 30,
 };
 
 /**
@@ -67,43 +113,19 @@ const hasSequence = (dice: number[]): boolean => {
   return sorted.join(",") === "1,2,3,4,5,6";
 };
 
-/**
- * Finds indices of dice that match the target value
- */
-const findDiceIndicesByValue = (
-  dice: number[],
-  value: number
-): number[] => {
-  return dice
-    .map((d, index) => (d === value ? index : -1))
-    .filter((index) => index !== -1);
-};
+const getIndicesByValue = (
+  dice: number[]
+): Record<number, number[]> => {
+  const byValue: Record<number, number[]> = {};
 
-
-/**
- * Find the most common die value in the counts object
- */
-const getMostCommonValue = (counts: Record<number, number>): number => {
-  let maxCount = 0;
-  let maxValue = 1;
-  
-  Object.entries(counts).forEach(([valueStr, count]) => {
-    if (count > maxCount) {
-      maxCount = count;
-      maxValue = parseInt(valueStr);
+  dice.forEach((value, index) => {
+    if (!byValue[value]) {
+      byValue[value] = [];
     }
+    byValue[value].push(index);
   });
-  
-  return maxValue;
-};
 
-/**
- * Sort counts entries by count descending
- */
-const sortByCount = (counts: Record<number, number>) => {
-  return Object.entries(counts)
-    .map(([value, count]) => ({ value: parseInt(value), count }))
-    .sort((a, b) => b.count - a.count);
+  return byValue;
 };
 
 const uniqueSortedIndices = (
@@ -116,7 +138,8 @@ const uniqueSortedIndices = (
 const filterSafeLocks = (
   dice: number[],
   proposedIndices: number[],
-  targetType: string
+  targetType: CombinationType,
+  allowSingletons: boolean
 ): number[] => {
   const normalized = uniqueSortedIndices(
     proposedIndices
@@ -126,6 +149,10 @@ const filterSafeLocks = (
 
   if (normalized.length === 0) {
     return [];
+  }
+
+  if (allowSingletons) {
+    return normalized;
   }
 
   // Sequence strategy is safe only for a completed 1-6 sequence.
@@ -160,196 +187,354 @@ const filterSafeLocks = (
   });
 };
 
-/**
- * Evaluates a specific combination and returns details
- */
-const evaluateCombination = (
-  dice: number[],
-  combinationType: string,
-  existingScore: number | undefined,
-  allowRewrite: boolean
-): CandidateCombination | null => {
-  const counts = getCounts(dice);
-  const values = Object.values(counts).sort((a, b) => b - a);
-  const score = dice.reduce((sum, val) => sum + val, 0);
+const getProjectedScore = (
+  templateScore: number,
+  currentMatchCount: number,
+  totalRequired: number
+): number => {
+  const missing = totalRequired - currentMatchCount;
+  if (missing <= 0) {
+    return templateScore;
+  }
 
-  const candidate: Partial<CandidateCombination> = {
-    type: combinationType,
-    potentialScore: score,
-  };
+  // Keep projections conservative while still rewarding growth potential.
+  return templateScore - missing * 1.5;
+};
 
-  let relevantIndices: number[] = [];
-
-  // Check each combination type
+const getTemplatesForCombination = (
+  combinationType: CombinationType
+): CombinationTemplate[] => {
   switch (combinationType) {
     case "Generál":
-      // All 6 dice the same
-      if (values[0] === 6) {
-        const value = getMostCommonValue(counts);
-        relevantIndices = findDiceIndicesByValue(dice, value);
-        candidate.currentMatchCount = 6;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 0;
-      } else {
-        // Find the most common value
-        const value = getMostCommonValue(counts);
-        const matchCount = counts[value];
-
-        // Avoid locking a single random die for Generál.
-        if (matchCount < 2) {
-          return null;
-        }
-
-        relevantIndices = findDiceIndicesByValue(dice, value);
-        candidate.currentMatchCount = matchCount;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 6 - matchCount;
-      }
-      break;
+      return Array.from({ length: 6 }, (_, idx) => {
+        const value = idx + 1;
+        return {
+          requirements: [{ value, count: 6 }],
+          templateScore: value * 6,
+        };
+      });
 
     case "Postupka":
-      // 1,2,3,4,5,6
-      if (hasSequence(dice)) {
-        candidate.currentMatchCount = 6;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 0;
-        relevantIndices = [0, 1, 2, 3, 4, 5];
-      } else {
-        // Partial Postupka locking tends to create invalid single locks.
-        // Keep this strategy only for a complete sequence.
-        return null;
-      }
-      break;
+      return [
+        {
+          requirements: [1, 2, 3, 4, 5, 6].map((value) => ({
+            value,
+            count: 1,
+          })),
+          templateScore: 21,
+        },
+      ];
 
-    case "Čtyři-dvě":
-      // 4 of one kind + 2 of another
-      if (values[0] === 4 && values[1] === 2) {
-        candidate.currentMatchCount = 6;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 0;
-        const sorted = sortByCount(counts);
-        const four = sorted[0].value;
-        const two = sorted[1].value;
-        relevantIndices = [
-          ...findDiceIndicesByValue(dice, four),
-          ...findDiceIndicesByValue(dice, two),
-        ];
-      } else if (values[0] === 4) {
-        // Have 4 of a kind, need a pair
-        const sorted = sortByCount(counts);
-        const four = sorted[0].value;
-        candidate.currentMatchCount = 4;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 2;
-        relevantIndices = findDiceIndicesByValue(dice, four);
-      } else if (values[0] === 3 && values[1] === 2) {
-        candidate.currentMatchCount = 5;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 1;
-        const sorted = sortByCount(counts);
-        const three = sorted[0].value;
-        relevantIndices = findDiceIndicesByValue(dice, three);
-      } else {
-        return null; // Too far away
+    case "Čtyři-dvě": {
+      const templates: CombinationTemplate[] = [];
+      for (let four = 1; four <= 6; four += 1) {
+        for (let two = 1; two <= 6; two += 1) {
+          if (two === four) {
+            continue;
+          }
+          templates.push({
+            requirements: [
+              { value: four, count: 4 },
+              { value: two, count: 2 },
+            ],
+            templateScore: four * 4 + two * 2,
+          });
+        }
       }
-      break;
+      return templates;
+    }
 
-    case "Trojice":
-      // Two triplets (3+3)
-      if (values[0] === 3 && values[1] === 3) {
-        candidate.currentMatchCount = 6;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 0;
-        const sorted = sortByCount(counts);
-        relevantIndices = [
-          ...findDiceIndicesByValue(dice, sorted[0].value),
-          ...findDiceIndicesByValue(dice, sorted[1].value),
-        ];
-      } else if (values[0] === 3) {
-        candidate.currentMatchCount = 3;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 3;
-        const triplet = sortByCount(counts)[0].value;
-        relevantIndices = findDiceIndicesByValue(dice, triplet);
-      } else {
-        return null; // No triplet yet
+    case "Trojice": {
+      const templates: CombinationTemplate[] = [];
+      for (let first = 1; first <= 6; first += 1) {
+        for (let second = first + 1; second <= 6; second += 1) {
+          templates.push({
+            requirements: [
+              { value: first, count: 3 },
+              { value: second, count: 3 },
+            ],
+            templateScore: first * 3 + second * 3,
+          });
+        }
       }
-      break;
+      return templates;
+    }
 
-    case "Dvojice":
-      // Three pairs (2+2+2)
-      if (values[0] === 2 && values[1] === 2 && values[2] === 2) {
-        candidate.currentMatchCount = 6;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 0;
-        const sorted = sortByCount(counts);
-        relevantIndices = [
-          ...findDiceIndicesByValue(dice, sorted[0].value),
-          ...findDiceIndicesByValue(dice, sorted[1].value),
-          ...findDiceIndicesByValue(dice, sorted[2].value),
-        ];
-      } else if (
-        values[0] === 2 &&
-        values[1] === 2
-      ) {
-        candidate.currentMatchCount = 4;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 2;
-        const sorted = sortByCount(counts);
-        relevantIndices = [
-          ...findDiceIndicesByValue(dice, sorted[0].value),
-          ...findDiceIndicesByValue(dice, sorted[1].value),
-        ];
-      } else if (values[0] === 2) {
-        candidate.currentMatchCount = 2;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 4;
-        const pair = sortByCount(counts)[0].value;
-        relevantIndices = findDiceIndicesByValue(dice, pair);
-      } else {
-        return null; // Too far away
+    case "Dvojice": {
+      const templates: CombinationTemplate[] = [];
+      for (let first = 1; first <= 6; first += 1) {
+        for (
+          let second = first + 1;
+          second <= 6;
+          second += 1
+        ) {
+          for (
+            let third = second + 1;
+            third <= 6;
+            third += 1
+          ) {
+            templates.push({
+              requirements: [
+                { value: first, count: 2 },
+                { value: second, count: 2 },
+                { value: third, count: 2 },
+              ],
+              templateScore:
+                first * 2 + second * 2 + third * 2,
+            });
+          }
+        }
       }
-      break;
+      return templates;
+    }
 
-    case "Pyramida":
-    case "Hrozen":
-      // These require specific 3-2-1 ordering - complex to evaluate
-      // For now, only consider if already complete
-      if (values[0] === 3 && values[1] === 2 && values[2] === 1) {
-        candidate.currentMatchCount = 6;
-        candidate.totalRequired = 6;
-        candidate.missingCount = 0;
-        relevantIndices = [0, 1, 2, 3, 4, 5];
-      } else {
-        return null;
+    case "Pyramida": {
+      const templates: CombinationTemplate[] = [];
+      for (let triple = 1; triple <= 6; triple += 1) {
+        for (let pair = 1; pair <= 6; pair += 1) {
+          for (let single = 1; single <= 6; single += 1) {
+            if (
+              triple === pair ||
+              pair === single ||
+              triple === single
+            ) {
+              continue;
+            }
+            if (!(triple > pair && pair > single)) {
+              continue;
+            }
+
+            templates.push({
+              requirements: [
+                { value: triple, count: 3 },
+                { value: pair, count: 2 },
+                { value: single, count: 1 },
+              ],
+              templateScore:
+                triple * 3 + pair * 2 + single,
+            });
+          }
+        }
       }
-      break;
+      return templates;
+    }
+
+    case "Hrozen": {
+      const templates: CombinationTemplate[] = [];
+      for (let triple = 1; triple <= 6; triple += 1) {
+        for (let pair = 1; pair <= 6; pair += 1) {
+          for (let single = 1; single <= 6; single += 1) {
+            if (
+              triple === pair ||
+              pair === single ||
+              triple === single
+            ) {
+              continue;
+            }
+            if (!(triple < pair && pair < single)) {
+              continue;
+            }
+
+            templates.push({
+              requirements: [
+                { value: triple, count: 3 },
+                { value: pair, count: 2 },
+                { value: single, count: 1 },
+              ],
+              templateScore:
+                triple * 3 + pair * 2 + single,
+            });
+          }
+        }
+      }
+      return templates;
+    }
 
     default:
-      return null;
+      return [];
+  }
+};
+
+const evaluateCombination = (
+  dice: number[],
+  combinationType: CombinationType,
+  existingScore: number | undefined,
+  allowRewrite: boolean,
+  remainingRolls?: number
+): CandidateCombination | null => {
+  const byValue = getIndicesByValue(dice);
+  const templates = getTemplatesForCombination(
+    combinationType
+  );
+
+  if (templates.length === 0) {
+    return null;
   }
 
-  // Determine if this combination can be written
-  let canWrite = true;
-  if (existingScore !== undefined && !allowRewrite) {
-    canWrite = false;
-  } else if (
-    existingScore !== undefined &&
-    allowRewrite &&
-    existingScore >= score
-  ) {
-    canWrite = false;
+  let bestTemplate:
+    | {
+        relevantIndices: number[];
+        currentMatchCount: number;
+        missingCount: number;
+        templateScore: number;
+        projectedScore: number;
+      }
+    | undefined;
+
+  templates.forEach((template) => {
+    let currentMatchCount = 0;
+    const relevantIndices: number[] = [];
+
+    template.requirements.forEach(
+      ({ value, count }) => {
+        const matchingIndices =
+          byValue[value] || [];
+        const matchedCount = Math.min(
+          matchingIndices.length,
+          count
+        );
+
+        currentMatchCount += matchedCount;
+        relevantIndices.push(
+          ...matchingIndices.slice(0, matchedCount)
+        );
+      }
+    );
+
+    const missingCount = 6 - currentMatchCount;
+    const projectedScore = getProjectedScore(
+      template.templateScore,
+      currentMatchCount,
+      6
+    );
+
+    if (
+      !bestTemplate ||
+      currentMatchCount >
+        bestTemplate.currentMatchCount ||
+      (currentMatchCount ===
+        bestTemplate.currentMatchCount &&
+        projectedScore >
+          bestTemplate.projectedScore)
+    ) {
+      bestTemplate = {
+        relevantIndices,
+        currentMatchCount,
+        missingCount,
+        templateScore: template.templateScore,
+        projectedScore,
+      };
+    }
+  });
+
+  if (!bestTemplate) {
+    return null;
   }
+
+  if (
+    combinationType === "Postupka" &&
+    bestTemplate.missingCount > 0
+  ) {
+    return null;
+  }
+
+  // Avoid weak early commitments that produce random single locks.
+  if (bestTemplate.currentMatchCount < 2) {
+    return null;
+  }
+
+  const isComplete =
+    bestTemplate.missingCount === 0;
+  const absoluteScoreSignal = isComplete
+    ? dice.reduce((sum, value) => sum + value, 0)
+    : bestTemplate.projectedScore;
+  const maxPossibleScore =
+    combinationMaxScore[combinationType];
+
+  let canWrite = true;
+  let writeState: "free" | "rewrite" =
+    "free";
+  let rewriteGainSignal = 0;
+
+  if (existingScore !== undefined) {
+    if (!allowRewrite) {
+      canWrite = false;
+    } else {
+      writeState = "rewrite";
+
+      if (maxPossibleScore <= existingScore) {
+        canWrite = false;
+      } else {
+        rewriteGainSignal =
+          absoluteScoreSignal - existingScore;
+        if (isComplete && rewriteGainSignal <= 0) {
+          canWrite = false;
+        }
+      }
+    }
+  }
+
+  if (!canWrite) {
+    return null;
+  }
+
+  const progressRatio =
+    bestTemplate.currentMatchCount / 6;
+  const writeBonus =
+    writeState === "free" ? 220 : 130;
+  const rewriteImprovementBonus =
+    writeState === "rewrite"
+      ? Math.max(0, rewriteGainSignal) * 8
+      : 0;
+  const categoryBonus =
+    combinationPriority[combinationType] * 25;
+  const completionBonus = isComplete
+    ? 120
+    : progressRatio * 70;
+  const potentialBonus =
+    Math.max(
+      0,
+      maxPossibleScore - absoluteScoreSignal
+    ) * 1.2;
+
+  let rollPressure = 0;
+  if (typeof remainingRolls === "number") {
+    if (remainingRolls <= 1) {
+      rollPressure = isComplete
+        ? 80
+        : -bestTemplate.missingCount * 28;
+    } else {
+      rollPressure =
+        bestTemplate.missingCount <= 2 ? 15 : 0;
+    }
+  }
+
+  const evaluationScore =
+    writeBonus +
+    rewriteImprovementBonus +
+    categoryBonus +
+    absoluteScoreSignal * 5 +
+    completionBonus +
+    potentialBonus +
+    rollPressure;
 
   return {
     type: combinationType,
-    maxScore: candidate.potentialScore as number,
-    currentMatchCount: candidate.currentMatchCount as number,
-    totalRequired: candidate.totalRequired as number,
-    missingCount: candidate.missingCount as number,
-    potentialScore: score,
+    currentMatchCount:
+      bestTemplate.currentMatchCount,
+    totalRequired: 6,
+    missingCount: bestTemplate.missingCount,
+    isComplete,
+    projectedScore:
+      bestTemplate.projectedScore,
+    absoluteScoreSignal,
+    maxPossibleScore,
     canWrite,
-    relevantIndices,
+    writeState,
+    rewriteGainSignal,
+    relevantIndices:
+      bestTemplate.relevantIndices,
+    evaluationScore,
   };
 };
 
@@ -368,7 +553,8 @@ export function makeAIDecision(
   _currentCombination: PlayModeResult | null,
   scores: ScoreMap,
   playerId: string,
-  playModeAllowRewrite: boolean
+  playModeAllowRewrite: boolean,
+  remainingRolls?: number
 ): AIDecision {
   // Guard: validate inputs
   if (!currentDice || currentDice.length !== 6 || !playerId) {
@@ -379,17 +565,6 @@ export function makeAIDecision(
   }
 
   const playerScores = scores[playerId] || {};
-
-  // Combination priority order - matches detectCombination evaluation order
-  const combinationTypes = [
-    "Generál",
-    "Pyramida",
-    "Hrozen",
-    "Postupka",
-    "Čtyři-dvě",
-    "Trojice",
-    "Dvojice",
-  ];
 
   // Evaluate all combinations
   const candidates: CandidateCombination[] = [];
@@ -407,7 +582,8 @@ export function makeAIDecision(
       currentDice,
       combType,
       existingScore,
-      playModeAllowRewrite
+      playModeAllowRewrite,
+      remainingRolls
     );
 
     if (evaluated && evaluated.canWrite) {
@@ -419,30 +595,36 @@ export function makeAIDecision(
   if (candidates.length === 0) {
     return {
       lockedDiceIndices: [],
-      reason: "No useful lock, reroll all",
+      reason: "noChange: no safe opportunity",
     };
   }
 
-  // Sort candidates by strategy:
-  // 1. Primary: Fewest missing dice (closest to completion)
-  // 2. Secondary: Highest potential score
+  // Opportunistic: pick the highest evaluated opportunity from current board state.
   candidates.sort((a, b) => {
-    if (a.missingCount !== b.missingCount) {
-      return a.missingCount - b.missingCount;
+    if (a.evaluationScore !== b.evaluationScore) {
+      return b.evaluationScore - a.evaluationScore;
     }
-    return b.potentialScore - a.potentialScore;
+    if (a.absoluteScoreSignal !== b.absoluteScoreSignal) {
+      return b.absoluteScoreSignal - a.absoluteScoreSignal;
+    }
+    return b.currentMatchCount - a.currentMatchCount;
   });
 
   const best = candidates[0];
 
+  const hasStrongProgressCandidate =
+    best.currentMatchCount >= 3 &&
+    best.absoluteScoreSignal >= 24;
+
   // No-lock safety: if candidate quality is too weak, reroll all.
   if (
-    best.missingCount > 2 ||
+    (best.missingCount > 2 &&
+      !hasStrongProgressCandidate) ||
     best.relevantIndices.length < 2
   ) {
     return {
       lockedDiceIndices: [],
-      reason: "No useful lock, reroll all",
+      reason: "noChange: opportunity too weak",
     };
   }
 
@@ -450,20 +632,21 @@ export function makeAIDecision(
     filterSafeLocks(
       currentDice,
       best.relevantIndices,
-      best.type
+      best.type,
+      best.isComplete
     );
 
   if (safeLockedDiceIndices.length === 0) {
     return {
       lockedDiceIndices: [],
       reason:
-        "No safe lock candidates, keep rolling",
+        "noChange: no safe lock candidates",
     };
   }
 
   return {
     lockedDiceIndices:
       safeLockedDiceIndices,
-    reason: `Targeting ${best.type} (${best.missingCount} missing, potential ${best.potentialScore})`,
+    reason: `Opportunistic ${best.type} (eval ${Math.round(best.evaluationScore)}, missing ${best.missingCount}, ${best.writeState})`,
   };
 }

@@ -358,6 +358,13 @@ const lastComputerAutoRollRef =
 const lastAIDecisionRef =
   useRef<string | null>(null);
 
+const lastAIDecisionOutcomeRef =
+  useRef<{
+    rollMarker: string;
+    lockedDiceIndices: number[];
+    reason: string;
+  } | null>(null);
+
 const lastStateChangeSourceRef =
   useRef<
     "local-action" | "remote-sync" | null
@@ -1552,6 +1559,59 @@ const playModeCategoryMap: Record<
   Trojice: "trojce",
 };
 
+const sanitizeComputerLockMask = (
+  dice: number[],
+  lockMask: boolean[]
+): boolean[] => {
+  const normalized =
+    lockMask.length === 6
+      ? [...lockMask]
+      : [false, false, false, false, false, false];
+
+  const lockedIndices = normalized
+    .map((isLocked, index) =>
+      isLocked ? index : -1
+    )
+    .filter((index) => index !== -1);
+
+  if (lockedIndices.length === 0) {
+    return normalized.map(() => false);
+  }
+
+  if (
+    lockedIndices.length === 6 &&
+    detectCombination(dice)
+  ) {
+    return normalized;
+  }
+
+  const lockedValueCounts: Record<number, number> = {};
+
+  lockedIndices.forEach((index) => {
+    const value = dice[index];
+    lockedValueCounts[value] =
+      (lockedValueCounts[value] || 0) + 1;
+  });
+
+  return normalized.map(
+    (isLocked, index) => {
+      if (!isLocked) {
+        return false;
+      }
+
+      const value = dice[index];
+
+      if (value === 1 || value === 5) {
+        return true;
+      }
+
+      return (
+        (lockedValueCounts[value] || 0) >= 2
+      );
+    }
+  );
+};
+
 const currentPlayModeScore =
   currentCombination
     ? scores[
@@ -1911,6 +1971,30 @@ useEffect(() => {
       currentPlayPlayerIndex
     ] ?? null;
 
+  const audioCategoryId =
+    currentCombination
+      ? playModeCategoryMap[
+          currentCombination.combination
+        ]
+      : null;
+
+  const existingAudioScore =
+    activePlayerIdForAudio &&
+    audioCategoryId
+      ? scores[
+          activePlayerIdForAudio
+        ]?.[audioCategoryId]
+      : undefined;
+
+  const hasWritableCombinationForAudio =
+    !!currentCombination &&
+    !!audioCategoryId &&
+    (existingAudioScore ===
+      undefined ||
+      (playModeAllowRewrite &&
+        currentCombination.score >
+          existingAudioScore));
+
   const isLocalCurrentPlayerForAudio =
     !isOnlineGame ||
     (
@@ -1925,7 +2009,10 @@ useEffect(() => {
     (
       isOnlineGame &&
       !isLocalCurrentPlayerForAudio
-    );
+    ) ||
+    showPlayModeResult ||
+    hasWritableCombinationForAudio ||
+    remainingRolls > 0;
 
   if (shouldBlockNoCombinationAudio) {
     setNoCombinationSoundPlayed(
@@ -1969,6 +2056,11 @@ useEffect(() => {
   );
 }
 }, [
+  currentCombination,
+  scores,
+  playModeAllowRewrite,
+  showPlayModeResult,
+  remainingRolls,
   hasUsefulFutureMove,
   noCombinationSoundPlayed,
   noCombinationSoundEnabled,
@@ -2205,6 +2297,8 @@ useEffect(() => {
     selectedPlayers.length === 0
   ) {
     lastAIDecisionRef.current = null;
+    lastAIDecisionOutcomeRef.current =
+      null;
     return;
   }
 
@@ -2213,6 +2307,8 @@ useEffect(() => {
   // Only for computer players
   if (!playerId || !isComputerPlayerId(playerId)) {
     lastAIDecisionRef.current = null;
+    lastAIDecisionOutcomeRef.current =
+      null;
     return;
   }
 
@@ -2233,8 +2329,31 @@ useEffect(() => {
     currentCombination,
     scores,
     playerId,
-    playModeAllowRewrite
+    playModeAllowRewrite,
+    remainingRolls
   );
+
+  lastAIDecisionOutcomeRef.current = {
+    rollMarker,
+    lockedDiceIndices:
+      decision.lockedDiceIndices,
+    reason: decision.reason,
+  };
+
+  const isNoChangeDecision =
+    decision.lockedDiceIndices.length === 0 ||
+    decision.reason.startsWith("noChange");
+
+  if (isNoChangeDecision) {
+    const rollbackLocks =
+      sanitizeComputerLockMask(
+        playModeDice,
+        confirmedLockedDice
+      );
+
+    setLockedDice(rollbackLocks);
+    return;
+  }
 
   // Apply decision to lockedDice (exact AI selection)
   const newLockedDice =
@@ -2251,7 +2370,15 @@ useEffect(() => {
     }
   );
 
-  setLockedDice(newLockedDice);
+  const sanitizedDecisionLocks =
+    sanitizeComputerLockMask(
+      playModeDice,
+      newLockedDice
+    );
+
+  setLockedDice(
+    sanitizedDecisionLocks
+  );
 }, [
   isOnlineGame,
   gameStarted,
@@ -2618,6 +2745,47 @@ useEffect(() => {
   const currentPlayerScores =
     scores[playerId] || {};
 
+  const aiDecisionRollMarker = `${playerId}:${Object.keys(currentPlayerScores).length}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}:${remainingRolls}:${playModeDice.join(",")}`;
+
+  const aiReturnedNoChange =
+    lastAIDecisionOutcomeRef.current
+      ?.rollMarker ===
+      aiDecisionRollMarker &&
+    lastAIDecisionOutcomeRef.current
+      .lockedDiceIndices.length === 0 &&
+    lastAIDecisionOutcomeRef.current.reason.startsWith(
+      "noChange"
+    );
+
+  if (aiReturnedNoChange) {
+    const rollbackLocks =
+      sanitizeComputerLockMask(
+        playModeDice,
+        confirmedLockedDice
+      );
+
+    const rollbackChanged =
+      rollbackLocks.some(
+        (isLocked, index) =>
+          isLocked !== lockedDice[index]
+      ) ||
+      rollbackLocks.some(
+        (isLocked, index) =>
+          isLocked !==
+          confirmedLockedDice[index]
+      );
+
+    if (rollbackChanged) {
+      setLockedDice(rollbackLocks);
+      setConfirmedLockedDice(
+        rollbackLocks
+      );
+      lastComputerAutoRollRef.current =
+        null;
+      return;
+    }
+  }
+
   const categoryId =
     currentCombination
       ? playModeCategoryMap[
@@ -2642,14 +2810,17 @@ useEffect(() => {
     return;
   }
 
-  if (hasRolledDice) {
+  if (
+    hasRolledDice &&
+    !aiReturnedNoChange
+  ) {
     lastComputerAutoRollRef.current =
       null;
 
     return;
   }
 
-  const rollMarker = `${playerId}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}`;
+  const rollMarker = `${playerId}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}:${remainingRolls}:${playModeDice.join(",")}`;
 
   if (
     lastComputerAutoRollRef.current ===
