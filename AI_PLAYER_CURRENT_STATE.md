@@ -1,35 +1,29 @@
 # Hero Dice v3.3
 ## AI Player - Current State
 
-### Co funguje
-- automaticke stridani hracu
-- computer auto-roll
-- AI vybira kostky
-- ukladani skore
-- scoreboard
-- offline rezim
-- bez dopadu na league/statistiky
+### Stav verze
+Verze 3.3 je uzavrena.
+Vyvojove vlakno bylo zamereno vyhradne na stabilizaci rozhodovaci logiky AI pri vyberu kostek.
 
-### Aktualni problem
-Computer AI muze behem tahu zvolit nevhodnou strategii zamceni kostek.
-V nekterych pripadech se nasledne dostane do stavu, kdy jiz nedokaze svuj tah korektne dokoncit, prestoze zbyvaji hody.
+### Co je hotovo ve v3.3
+- zavedena fazova AI politika podle zaplneni vlastniho scoreboardu
+- sjednocena evaluace kandidatu a jejich uzamceni
+- zprisnena validace strategickych kandidatu
+- pridana podpora rozpracovane postupky
+- rozsiren handling partial combinations
+- upraven fallback: AI radeji no-change nez strategicky spatny lock
+- zachovana flexibilita v pozdni fazi hry (General a podobne cile)
+- vyrazne snizeny situace bez akce a vetsina zaseku auto-rozhodovani
 
-### Co bylo vyzkouseno
-- pridani fallbacku do auto-roll
-- manipulace s lockedDice
-- manipulace s hasRolledDice
+### Vysledek
+AI je ve verzi 3.3 vyrazne stabilnejsi a hratelnejsi nez ve verzi 3.2.
 
-Vysledek:
-vedlo k regresi,
-computer prestal pokracovat jiz po prvnim hodu,
-zmeny byly rollbacknuty.
+### Known Issues presunute do v3.4
+1. Bias ke kombinaci 1 + 5
+AI ma stale tendenci preferovat locky obsahujici hodnotu 1 (casto 1 + 5), i kdyz muze existovat strategicky vyhodnejsi varianta.
 
-### Architektonicke poznatky
-- auto-roll je hlavni orchestrator computer tahu
-- AI decision pouze rozhoduje o lockedDice
-- scoring musi zustat oddeleny
-- human flow nesmi byt ovlivnen
-- online rezim nesmi byt ovlivnen
+2. Nedostatecne zohledneni pravdepodobnosti budouciho vyvoje
+AI nekdy preferuje okamzitou cestu k cilove kombinaci (napr. smer k Pyramide) pred pokracovanim ve sbiru vysoke hodnoty, i kdyz ta muze mit vyssi pravdepodobnost a potencial.
 
-### Otevreny problem pro dalsi vlakno
-Jak navrhnout AI decision tak, aby computer mohl zmenit strategii nebo nevybrat zadnou kostku, aniz by se narusil auto-roll flow.
+### Poznamka pro dalsi iteraci
+Verze 3.4 se ma zamerit na odstraneni biasu a na hlubsi pravdepodobnostni vrstvu rozhodovani (value-aware expected outcome model).

@@ -450,3 +450,40 @@ Poznámky:
 - Výrazně zvýšena stabilita a plynulost označování kostek v online hře.
 - Odstraněno náhodné přehrávání zvukových efektů „Žádná kombinace“ a „Maximální skóre“.
 - Opraveno opožděné přehrávání těchto zvukových efektů způsobené asynchronní synchronizací online stavu.
+
+---
+
+## v3.3 - Stabilizace rozhodovaci logiky AI
+
+Datum:
+2026-06-24
+
+Riziko:
+MEDIUM
+
+Zmenene soubory:
+* app/lib/aiPlayer.ts
+* app/page.tsx
+
+Popis:
+- Zavedena fazova AI politika podle zaplneni vlastniho scoreboardu.
+- Sjednocena evaluace kandidatu a jejich uzamceni v jedne rozhodovaci pipeline.
+- Zprisnena validace strategickych kandidatu a ochrany proti nevhodnym singleton lockum.
+- Pridana podpora rozpracovane postupky a rozsireny handling partial combinations.
+- Upraven fallback tak, aby AI radeji zvolila no-change nez strategicky spatny lock.
+- Zachovana vetsi flexibilita v pozdni fazi hry (vcetne pozdniho tlaku na silne kombinace, napr. General).
+- Vyrazne snizeno mnozstvi situaci, kdy AI neprovedla zadnou akci.
+- Odstranena vetsina zaseku pri automatickem rozhodovani computer tahu.
+
+Duvod:
+- Stabilizovat AI rozhodovani ve hre proti computer hraci bez zasahu do scoring pravidel.
+- Zvysit hratelnost a predikovatelnost AI chovani oproti verzi 3.2.
+
+Dopad:
+- AI ve verzi 3.3 je vyrazne stabilnejsi a hratelnejsi nez ve verzi 3.2.
+- Rozhodovaci tok je konzistentnejsi a mene casto konci nechtenym no-action stavem.
+
+Poznamky:
+- V ramci dlouhodobeho testovani byly identifikovany 2 otevrene strategicke problemy, ktere se presouvaji do verze 3.4:
+	1) Bias ke kombinaci 1 + 5 (preference hodnoty 1 i v situacich, kde existuje vyhodnejsi varianta).
+	2) Nedostatecne zohledneni pravdepodobnosti budouciho vyvoje (AI nekdy preferuje okamzitou cestu k cili pred pravdepodobne silnejsim pokracovanim).

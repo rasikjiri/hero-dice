@@ -2010,9 +2010,10 @@ useEffect(() => {
       isOnlineGame &&
       !isLocalCurrentPlayerForAudio
     ) ||
+    !hasRolledDice ||
+    isRolling ||
     showPlayModeResult ||
-    hasWritableCombinationForAudio ||
-    remainingRolls > 0;
+    hasWritableCombinationForAudio;
 
   if (shouldBlockNoCombinationAudio) {
     setNoCombinationSoundPlayed(
@@ -2059,8 +2060,9 @@ useEffect(() => {
   currentCombination,
   scores,
   playModeAllowRewrite,
+  hasRolledDice,
+  isRolling,
   showPlayModeResult,
-  remainingRolls,
   hasUsefulFutureMove,
   noCombinationSoundPlayed,
   noCombinationSoundEnabled,

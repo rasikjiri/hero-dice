@@ -18,9 +18,6 @@ export type AIDecision = {
   reason: string;
 };
 
-// Allowed single-die locks (game-rule dependent scoring singles).
-const singleScoringValues = new Set([1, 5]);
-
 type CombinationType =
   | "Generál"
   | "Pyramida"
@@ -41,6 +38,7 @@ type CombinationTemplate = {
 };
 
 type CandidateCombination = {
+  candidateOrder: number;
   type: CombinationType;
   currentMatchCount: number;
   totalRequired: number;
@@ -53,7 +51,50 @@ type CandidateCombination = {
   writeState: "free" | "rewrite";
   rewriteGainSignal: number;
   relevantIndices: number[];
+  safeLockedDiceIndices: number[];
+  lockValues: number[];
+  lockValueSum: number;
+  lockMinValue: number;
+  expectedNextTurnValue: number;
+  evaluationBreakdown: {
+    writeBonus: number;
+    rewriteImprovementBonus: number;
+    categoryBonus: number;
+    completionBonus: number;
+    potentialBonus: number;
+    rollPressure: number;
+    phaseAdjustment: number;
+  };
   evaluationScore: number;
+};
+
+type CandidateAuditEntry = {
+  candidateOrder: number;
+  type: CombinationType;
+  stage:
+    | "evaluate-rejected"
+    | "safe-rejected"
+    | "direction-rejected"
+    | "accepted";
+  evaluationScore?: number;
+  currentMatchCount?: number;
+  missingCount?: number;
+  relevantIndices?: number[];
+  safeLockedDiceIndices?: number[];
+  lockValues?: number[];
+  evaluationBreakdown?: CandidateCombination["evaluationBreakdown"];
+  expectedNextTurnValue?: number;
+};
+
+type PhasePolicy = {
+  minTemplateMatchCount: number;
+  minRelevantIndices: number;
+  minSequenceDistinct: number;
+  strongProgressMatch: number;
+  strongProgressScore: number;
+  maxMissingWithoutStrong: number;
+  allowStrategicGeneralSingleton: boolean;
+  strategicGeneralSingletonMinValue: number;
 };
 
 const combinationToCategoryId: Record<
@@ -139,7 +180,9 @@ const filterSafeLocks = (
   dice: number[],
   proposedIndices: number[],
   targetType: CombinationType,
-  allowSingletons: boolean
+  allowSingletons: boolean,
+  allowStrategicGeneralSingleton: boolean,
+  strategicGeneralSingletonMinValue: number
 ): number[] => {
   const normalized = uniqueSortedIndices(
     proposedIndices
@@ -155,9 +198,33 @@ const filterSafeLocks = (
     return normalized;
   }
 
+  if (
+    allowStrategicGeneralSingleton &&
+    targetType === "Generál" &&
+    normalized.length === 1
+  ) {
+    const onlyIndex = normalized[0];
+    if (
+      dice[onlyIndex] >=
+      strategicGeneralSingletonMinValue
+    ) {
+      return normalized;
+    }
+  }
+
   // Sequence strategy is safe only for a completed 1-6 sequence.
   if (targetType === "Postupka") {
-    if (!hasSequence(dice)) {
+    if (hasSequence(dice)) {
+      return normalized;
+    }
+
+    const lockedValues = normalized.map(
+      (index) => dice[index]
+    );
+    const uniqueValues = new Set(lockedValues);
+
+    // Partial sequence lock is valid only when keeping distinct values.
+    if (uniqueValues.size !== lockedValues.length) {
       return [];
     }
 
@@ -172,19 +239,77 @@ const filterSafeLocks = (
       (proposedValueCounts[value] || 0) + 1;
   });
 
-  // For non-sequence strategies, keep only duplicate contributors
-  // or explicitly scoreable single values (1, 5).
+  // For non-sequence strategies, keep only duplicate contributors.
+  // Low-value single locks create noisy turns and weak direction.
   return normalized.filter((index) => {
     const value = dice[index];
-
-    if (singleScoringValues.has(value)) {
-      return true;
-    }
-
     return (
       (proposedValueCounts[value] || 0) >= 2
     );
   });
+};
+
+const hasStrategicDirection = (
+  dice: number[],
+  candidate: CandidateCombination,
+  phasePolicy: PhasePolicy
+): boolean => {
+  const safeLocks =
+    candidate.safeLockedDiceIndices;
+
+  if (
+    safeLocks.length <
+    phasePolicy.minRelevantIndices
+  ) {
+    return false;
+  }
+
+  if (candidate.type === "Postupka") {
+    const distinctValues = new Set(
+      safeLocks.map((index) => dice[index])
+    ).size;
+
+    return (
+      candidate.isComplete ||
+      distinctValues >=
+        phasePolicy.minSequenceDistinct
+    );
+  }
+
+  if (candidate.type === "Generál") {
+    if (candidate.currentMatchCount >= 2) {
+      return true;
+    }
+
+    if (
+      phasePolicy.allowStrategicGeneralSingleton &&
+      safeLocks.length === 1
+    ) {
+      return (
+        dice[safeLocks[0]] >=
+        phasePolicy.strategicGeneralSingletonMinValue
+      );
+    }
+
+    return false;
+  }
+
+  if (
+    candidate.type === "Dvojice" ||
+    candidate.type === "Trojice" ||
+    candidate.type === "Čtyři-dvě"
+  ) {
+    return candidate.currentMatchCount >= 2;
+  }
+
+  if (
+    candidate.type === "Pyramida" ||
+    candidate.type === "Hrozen"
+  ) {
+    return candidate.currentMatchCount >= 3;
+  }
+
+  return true;
 };
 
 const getProjectedScore = (
@@ -356,10 +481,13 @@ const getTemplatesForCombination = (
 };
 
 const evaluateCombination = (
+  candidateOrder: number,
   dice: number[],
   combinationType: CombinationType,
   existingScore: number | undefined,
   allowRewrite: boolean,
+  availableCategoryCount: number,
+  minTemplateMatchCount: number,
   remainingRolls?: number
 ): CandidateCombination | null => {
   const byValue = getIndicesByValue(dice);
@@ -432,19 +560,23 @@ const evaluateCombination = (
   }
 
   if (
-    combinationType === "Postupka" &&
-    bestTemplate.missingCount > 0
+    bestTemplate.currentMatchCount <
+    minTemplateMatchCount
   ) {
-    return null;
-  }
-
-  // Avoid weak early commitments that produce random single locks.
-  if (bestTemplate.currentMatchCount < 2) {
     return null;
   }
 
   const isComplete =
     bestTemplate.missingCount === 0;
+
+  if (
+    (combinationType === "Pyramida" ||
+      combinationType === "Hrozen") &&
+    !isComplete
+  ) {
+    return null;
+  }
+
   const absoluteScoreSignal = isComplete
     ? dice.reduce((sum, value) => sum + value, 0)
     : bestTemplate.projectedScore;
@@ -509,6 +641,33 @@ const evaluateCombination = (
     }
   }
 
+  let phaseAdjustment = 0;
+
+  if (availableCategoryCount >= 6) {
+    if (bestTemplate.currentMatchCount <= 2) {
+      phaseAdjustment -= 55;
+    }
+  } else if (availableCategoryCount <= 2) {
+    // Late game: prefer taking a real direction over repeated noChange.
+    if (bestTemplate.currentMatchCount <= 2) {
+      phaseAdjustment += 40;
+    }
+
+    if (
+      combinationType === "Generál" &&
+      bestTemplate.currentMatchCount >= 1
+    ) {
+      phaseAdjustment += 75;
+    }
+  }
+
+  if (
+    combinationType === "Postupka" &&
+    bestTemplate.currentMatchCount >= 4
+  ) {
+    phaseAdjustment += 140;
+  }
+
   const evaluationScore =
     writeBonus +
     rewriteImprovementBonus +
@@ -516,9 +675,11 @@ const evaluateCombination = (
     absoluteScoreSignal * 5 +
     completionBonus +
     potentialBonus +
-    rollPressure;
+    rollPressure +
+    phaseAdjustment;
 
   return {
+    candidateOrder,
     type: combinationType,
     currentMatchCount:
       bestTemplate.currentMatchCount,
@@ -534,8 +695,369 @@ const evaluateCombination = (
     rewriteGainSignal,
     relevantIndices:
       bestTemplate.relevantIndices,
+    safeLockedDiceIndices: [],
+    lockValues: [],
+    lockValueSum: 0,
+    lockMinValue: 0,
+    expectedNextTurnValue:
+      bestTemplate.projectedScore,
+    evaluationBreakdown: {
+      writeBonus,
+      rewriteImprovementBonus,
+      categoryBonus,
+      completionBonus,
+      potentialBonus,
+      rollPressure,
+      phaseAdjustment,
+    },
     evaluationScore,
   };
+};
+
+const getAvailableCategoryCount = (
+  playerScores: Record<string, number>,
+  allowRewrite: boolean
+): number => {
+  return combinationTypes.reduce(
+    (count, combType) => {
+      const categoryId =
+        combinationToCategoryId[combType];
+      const existingScore =
+        playerScores[categoryId];
+
+      if (existingScore === undefined) {
+        return count + 1;
+      }
+
+      if (!allowRewrite) {
+        return count;
+      }
+
+      if (
+        combinationMaxScore[combType] >
+        existingScore
+      ) {
+        return count + 1;
+      }
+
+      return count;
+    },
+    0
+  );
+};
+
+const getPhasePolicy = (
+  availableCategoryCount: number
+): PhasePolicy => {
+  if (availableCategoryCount >= 6) {
+    return {
+      minTemplateMatchCount: 2,
+      minRelevantIndices: 2,
+      minSequenceDistinct: 4,
+      strongProgressMatch: 3,
+      strongProgressScore: 24,
+      maxMissingWithoutStrong: 2,
+      allowStrategicGeneralSingleton: false,
+      strategicGeneralSingletonMinValue: 5,
+    };
+  }
+
+  if (availableCategoryCount >= 3) {
+    return {
+      minTemplateMatchCount: 2,
+      minRelevantIndices: 2,
+      minSequenceDistinct: 4,
+      strongProgressMatch: 2,
+      strongProgressScore: 18,
+      maxMissingWithoutStrong: 3,
+      allowStrategicGeneralSingleton: false,
+      strategicGeneralSingletonMinValue: 5,
+    };
+  }
+
+  return {
+    minTemplateMatchCount: 1,
+    minRelevantIndices: 1,
+    minSequenceDistinct: 3,
+    strongProgressMatch: 1,
+    strongProgressScore: 12,
+    maxMissingWithoutStrong: 5,
+    allowStrategicGeneralSingleton: true,
+    strategicGeneralSingletonMinValue: 5,
+  };
+};
+
+const shouldDebugAIDecision =
+  process.env.NODE_ENV !== "production";
+
+const getCandidateStrategicStrength = (
+  candidate: CandidateCombination
+): number => {
+  const completeBonus = candidate.isComplete
+    ? 900
+    : 0;
+
+  return (
+    completeBonus +
+    combinationPriority[candidate.type] * 140 +
+    candidate.currentMatchCount * 55 -
+    candidate.missingCount * 30
+  );
+};
+
+const compareCandidatesByPolicy = (
+  a: CandidateCombination,
+  b: CandidateCombination
+): number => {
+  const closeScoreWindow = 35;
+  const isCloseQuality =
+    Math.abs(
+      a.evaluationScore - b.evaluationScore
+    ) <= closeScoreWindow;
+
+  if (isCloseQuality) {
+    const strengthDiff =
+      getCandidateStrategicStrength(b) -
+      getCandidateStrategicStrength(a);
+    if (strengthDiff !== 0) {
+      return strengthDiff;
+    }
+
+    const lockCountDiff =
+      b.safeLockedDiceIndices.length -
+      a.safeLockedDiceIndices.length;
+    if (lockCountDiff !== 0) {
+      return lockCountDiff;
+    }
+
+    const expectedTurnDiff =
+      b.expectedNextTurnValue -
+      a.expectedNextTurnValue;
+    if (expectedTurnDiff !== 0) {
+      return expectedTurnDiff;
+    }
+
+    const lockValueSumDiff =
+      b.lockValueSum - a.lockValueSum;
+    if (lockValueSumDiff !== 0) {
+      return lockValueSumDiff;
+    }
+
+    const lockMinDiff =
+      b.lockMinValue - a.lockMinValue;
+    if (lockMinDiff !== 0) {
+      return lockMinDiff;
+    }
+  }
+
+  if (a.evaluationScore !== b.evaluationScore) {
+    return b.evaluationScore - a.evaluationScore;
+  }
+
+  if (
+    a.absoluteScoreSignal !==
+    b.absoluteScoreSignal
+  ) {
+    return (
+      b.absoluteScoreSignal -
+      a.absoluteScoreSignal
+    );
+  }
+
+  if (
+    a.currentMatchCount !==
+    b.currentMatchCount
+  ) {
+    return (
+      b.currentMatchCount -
+      a.currentMatchCount
+    );
+  }
+
+  if (a.lockValueSum !== b.lockValueSum) {
+    return b.lockValueSum - a.lockValueSum;
+  }
+
+  if (a.lockMinValue !== b.lockMinValue) {
+    return b.lockMinValue - a.lockMinValue;
+  }
+
+  const aKey = `${a.type}:${a.safeLockedDiceIndices.join(",")}`;
+  const bKey = `${b.type}:${b.safeLockedDiceIndices.join(",")}`;
+  return bKey.localeCompare(aKey);
+};
+
+const explainWhyWinnerBeats = (
+  winner: CandidateCombination,
+  loser: CandidateCombination
+): string => {
+  const closeScoreWindow = 35;
+  const isCloseQuality =
+    Math.abs(
+      winner.evaluationScore -
+        loser.evaluationScore
+    ) <= closeScoreWindow;
+
+  if (isCloseQuality) {
+    const winnerStrength =
+      getCandidateStrategicStrength(winner);
+    const loserStrength =
+      getCandidateStrategicStrength(loser);
+
+    if (winnerStrength !== loserStrength) {
+      return "higher strategic strength";
+    }
+
+    if (
+      winner.safeLockedDiceIndices.length !==
+      loser.safeLockedDiceIndices.length
+    ) {
+      return "more locked dice";
+    }
+
+    if (
+      winner.expectedNextTurnValue !==
+      loser.expectedNextTurnValue
+    ) {
+      return "higher expected next-turn value";
+    }
+
+    if (winner.lockValueSum !== loser.lockValueSum) {
+      return "higher lock value sum";
+    }
+
+    if (winner.lockMinValue !== loser.lockMinValue) {
+      return "higher minimum lock value";
+    }
+  }
+
+  if (winner.evaluationScore !== loser.evaluationScore) {
+    return "higher evaluation score";
+  }
+
+  if (
+    winner.absoluteScoreSignal !==
+    loser.absoluteScoreSignal
+  ) {
+    return "higher absolute score signal";
+  }
+
+  if (
+    winner.currentMatchCount !==
+    loser.currentMatchCount
+  ) {
+    return "higher match count";
+  }
+
+  return "deterministic key tie-break";
+};
+
+const logAIDecisionAudit = (
+  dice: number[],
+  remainingRolls: number | undefined,
+  auditEntries: CandidateAuditEntry[],
+  selected:
+    | CandidateCombination
+    | null,
+  finalLockedDiceIndices: number[],
+  rankedCandidates: CandidateCombination[]
+) => {
+  if (!shouldDebugAIDecision) {
+    return;
+  }
+
+  console.debug("[AI Decision Audit]", {
+    dice,
+    remainingRolls,
+    candidates: auditEntries,
+    rankedCandidates: rankedCandidates.map(
+      (candidate) => ({
+        candidateOrder:
+          candidate.candidateOrder,
+        type: candidate.type,
+        evaluationScore:
+          candidate.evaluationScore,
+        currentMatchCount:
+          candidate.currentMatchCount,
+        missingCount:
+          candidate.missingCount,
+        lockValues:
+          candidate.lockValues,
+        safeLockedDiceIndices:
+          candidate.safeLockedDiceIndices,
+        expectedNextTurnValue:
+          candidate.expectedNextTurnValue,
+        evaluationBreakdown:
+          candidate.evaluationBreakdown,
+      })
+    ),
+    winnerReasons: selected
+      ? rankedCandidates
+          .slice(1)
+          .map((candidate) => ({
+            againstType: candidate.type,
+            reason: explainWhyWinnerBeats(
+              selected,
+              candidate
+            ),
+          }))
+      : [],
+    selectedCandidate: selected
+      ? {
+          candidateOrder:
+            selected.candidateOrder,
+          type: selected.type,
+          evaluationScore:
+            selected.evaluationScore,
+          currentMatchCount:
+            selected.currentMatchCount,
+          missingCount:
+            selected.missingCount,
+          lockValues:
+            selected.lockValues,
+          relevantIndices:
+            selected.relevantIndices,
+          safeLockedDiceIndices:
+            selected.safeLockedDiceIndices,
+          expectedNextTurnValue:
+            selected.expectedNextTurnValue,
+          evaluationBreakdown:
+            selected.evaluationBreakdown,
+        }
+      : null,
+    finalLockedDiceIndices,
+  });
+};
+
+const chooseBestStructuralCandidate = (
+  candidates: CandidateCombination[],
+  minSequenceDistinct: number
+): CandidateCombination | null => {
+  const structural = candidates.filter(
+    (candidate) => {
+      if (
+        candidate.type === "Postupka"
+      ) {
+        return (
+          candidate.safeLockedDiceIndices
+            .length >= minSequenceDistinct
+        );
+      }
+
+      return (
+        candidate.safeLockedDiceIndices
+          .length >= 2
+      );
+    }
+  );
+
+  if (structural.length === 0) {
+    return null;
+  }
+
+  structural.sort(compareCandidatesByPolicy);
+
+  return structural[0];
 };
 
 /**
@@ -565,11 +1087,21 @@ export function makeAIDecision(
   }
 
   const playerScores = scores[playerId] || {};
+  const availableCategoryCount =
+    getAvailableCategoryCount(
+      playerScores,
+      playModeAllowRewrite
+    );
+  const phasePolicy = getPhasePolicy(
+    availableCategoryCount
+  );
 
   // Evaluate all combinations
   const candidates: CandidateCombination[] = [];
+  const candidateAudit: CandidateAuditEntry[] =
+    [];
 
-  for (const combType of combinationTypes) {
+  for (const [candidateOrder, combType] of combinationTypes.entries()) {
     const categoryId =
       combinationToCategoryId[combType];
 
@@ -579,74 +1111,248 @@ export function makeAIDecision(
         : undefined;
 
     const evaluated = evaluateCombination(
+      candidateOrder,
       currentDice,
       combType,
       existingScore,
       playModeAllowRewrite,
+      availableCategoryCount,
+      phasePolicy.minTemplateMatchCount,
       remainingRolls
     );
 
-    if (evaluated && evaluated.canWrite) {
-      candidates.push(evaluated);
+    if (!evaluated || !evaluated.canWrite) {
+      candidateAudit.push({
+        candidateOrder,
+        type: combType,
+        stage: "evaluate-rejected",
+      });
+      continue;
     }
+
+    const safeLockedDiceIndices =
+      filterSafeLocks(
+        currentDice,
+        evaluated.relevantIndices,
+        evaluated.type,
+        evaluated.isComplete,
+        phasePolicy.allowStrategicGeneralSingleton,
+        phasePolicy.strategicGeneralSingletonMinValue
+      );
+
+    if (safeLockedDiceIndices.length === 0) {
+      candidateAudit.push({
+        candidateOrder,
+        type: combType,
+        stage: "safe-rejected",
+        evaluationScore:
+          evaluated.evaluationScore,
+        currentMatchCount:
+          evaluated.currentMatchCount,
+        missingCount:
+          evaluated.missingCount,
+        relevantIndices:
+          evaluated.relevantIndices,
+        safeLockedDiceIndices,
+        lockValues:
+          safeLockedDiceIndices.map(
+            (index) => currentDice[index]
+          ),
+        expectedNextTurnValue:
+          evaluated.expectedNextTurnValue,
+        evaluationBreakdown:
+          evaluated.evaluationBreakdown,
+      });
+      continue;
+    }
+
+    const lockValues = safeLockedDiceIndices.map(
+      (index) => currentDice[index]
+    );
+    const lockValueSum = lockValues.reduce(
+      (sum, value) => sum + value,
+      0
+    );
+
+    const candidateWithLocks = {
+      ...evaluated,
+      safeLockedDiceIndices,
+      lockValues,
+      lockValueSum,
+      lockMinValue:
+        lockValues.length > 0
+          ? Math.min(...lockValues)
+          : 0,
+    };
+
+    if (
+      !hasStrategicDirection(
+        currentDice,
+        candidateWithLocks,
+        phasePolicy
+      )
+    ) {
+      candidateAudit.push({
+        candidateOrder,
+        type: combType,
+        stage: "direction-rejected",
+        evaluationScore:
+          candidateWithLocks.evaluationScore,
+        currentMatchCount:
+          candidateWithLocks.currentMatchCount,
+        missingCount:
+          candidateWithLocks.missingCount,
+        relevantIndices:
+          candidateWithLocks.relevantIndices,
+        safeLockedDiceIndices:
+          candidateWithLocks.safeLockedDiceIndices,
+        lockValues:
+          candidateWithLocks.lockValues,
+        expectedNextTurnValue:
+          candidateWithLocks.expectedNextTurnValue,
+        evaluationBreakdown:
+          candidateWithLocks.evaluationBreakdown,
+      });
+      continue;
+    }
+
+    candidateAudit.push({
+      candidateOrder,
+      type: combType,
+      stage: "accepted",
+      evaluationScore:
+        candidateWithLocks.evaluationScore,
+      currentMatchCount:
+        candidateWithLocks.currentMatchCount,
+      missingCount:
+        candidateWithLocks.missingCount,
+      relevantIndices:
+        candidateWithLocks.relevantIndices,
+      safeLockedDiceIndices:
+        candidateWithLocks.safeLockedDiceIndices,
+      lockValues:
+        candidateWithLocks.lockValues,
+      expectedNextTurnValue:
+        candidateWithLocks.expectedNextTurnValue,
+      evaluationBreakdown:
+        candidateWithLocks.evaluationBreakdown,
+    });
+
+    candidates.push(candidateWithLocks);
   }
 
   // If no writable combinations, return empty (roll everything)
   if (candidates.length === 0) {
+    logAIDecisionAudit(
+      currentDice,
+      remainingRolls,
+      candidateAudit,
+      null,
+      [],
+      []
+    );
+
     return {
       lockedDiceIndices: [],
       reason: "noChange: no safe opportunity",
     };
   }
 
-  // Opportunistic: pick the highest evaluated opportunity from current board state.
-  candidates.sort((a, b) => {
-    if (a.evaluationScore !== b.evaluationScore) {
-      return b.evaluationScore - a.evaluationScore;
-    }
-    if (a.absoluteScoreSignal !== b.absoluteScoreSignal) {
-      return b.absoluteScoreSignal - a.absoluteScoreSignal;
-    }
-    return b.currentMatchCount - a.currentMatchCount;
-  });
+  // Opportunistic: pick best by stable multi-criteria policy.
+  candidates.sort(compareCandidatesByPolicy);
 
-  const best = candidates[0];
+  let best = candidates[0];
+
+  const isEarlyTurnSingleton =
+    (remainingRolls ?? 0) >= 4 &&
+    best.safeLockedDiceIndices.length === 1;
+
+  if (isEarlyTurnSingleton) {
+    const structuralCandidate =
+      chooseBestStructuralCandidate(
+        candidates,
+        phasePolicy.minSequenceDistinct
+      );
+
+    if (structuralCandidate) {
+      best = structuralCandidate;
+    } else {
+      logAIDecisionAudit(
+        currentDice,
+        remainingRolls,
+        candidateAudit,
+        null,
+        [],
+        candidates
+      );
+
+      return {
+        lockedDiceIndices: [],
+        reason:
+          "noChange: singleton blocked by early-turn policy",
+      };
+    }
+  }
 
   const hasStrongProgressCandidate =
-    best.currentMatchCount >= 3 &&
-    best.absoluteScoreSignal >= 24;
+    best.currentMatchCount >=
+      phasePolicy.strongProgressMatch &&
+    best.absoluteScoreSignal >=
+      phasePolicy.strongProgressScore;
+
+  const hasStrongSequenceDirection =
+    best.type === "Postupka" &&
+    best.safeLockedDiceIndices.length >=
+      phasePolicy.minSequenceDistinct;
+
+  const bestLockDistinctValues =
+    new Set(
+      best.safeLockedDiceIndices.map(
+        (index) => currentDice[index]
+      )
+    ).size;
+
+  const hasStrongGroupedDirection =
+    best.safeLockedDiceIndices.length >= 3 &&
+    bestLockDistinctValues === 1;
 
   // No-lock safety: if candidate quality is too weak, reroll all.
   if (
-    (best.missingCount > 2 &&
-      !hasStrongProgressCandidate) ||
-    best.relevantIndices.length < 2
+    (best.missingCount >
+      phasePolicy.maxMissingWithoutStrong &&
+      !hasStrongProgressCandidate &&
+      !hasStrongSequenceDirection &&
+      !hasStrongGroupedDirection) ||
+    best.safeLockedDiceIndices.length <
+      phasePolicy.minRelevantIndices
   ) {
+    logAIDecisionAudit(
+      currentDice,
+      remainingRolls,
+      candidateAudit,
+      best,
+      [],
+      candidates
+    );
+
     return {
       lockedDiceIndices: [],
       reason: "noChange: opportunity too weak",
     };
   }
 
-  const safeLockedDiceIndices =
-    filterSafeLocks(
-      currentDice,
-      best.relevantIndices,
-      best.type,
-      best.isComplete
-    );
-
-  if (safeLockedDiceIndices.length === 0) {
-    return {
-      lockedDiceIndices: [],
-      reason:
-        "noChange: no safe lock candidates",
-    };
-  }
+  logAIDecisionAudit(
+    currentDice,
+    remainingRolls,
+    candidateAudit,
+    best,
+    best.safeLockedDiceIndices,
+    candidates
+  );
 
   return {
     lockedDiceIndices:
-      safeLockedDiceIndices,
-    reason: `Opportunistic ${best.type} (eval ${Math.round(best.evaluationScore)}, missing ${best.missingCount}, ${best.writeState})`,
+      best.safeLockedDiceIndices,
+    reason: `Opportunistic ${best.type} (eval ${Math.round(best.evaluationScore)}, missing ${best.missingCount}, ${best.writeState}, available ${availableCategoryCount})`,
   };
 }
