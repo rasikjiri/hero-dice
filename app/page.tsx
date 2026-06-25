@@ -137,6 +137,13 @@ export default function Home() {
   const [selectedHelpImage, setSelectedHelpImage] =
     useState<string | null>(null);
 
+  const [
+    selectedHelpImageSource,
+    setSelectedHelpImageSource,
+  ] = useState<
+    "scoreboard" | "help-modal" | null
+  >(null);
+
   const [playerCount, setPlayerCount] =
     useState<number | "">("");
 
@@ -169,6 +176,18 @@ const resolveGameId = (
   }
 
   return crypto.randomUUID();
+};
+
+const closeSelectedHelpImage = () => {
+  const source =
+    selectedHelpImageSource;
+
+  setSelectedHelpImage(null);
+  setSelectedHelpImageSource(null);
+
+  if (source === "help-modal") {
+    setShowHelp(true);
+  }
 };
 
   const [showFinishedGame, setShowFinishedGame] =
@@ -1380,6 +1399,22 @@ window.scrollTo({
 });
   };
 
+  const submitAccessCode = () => {
+    if (
+      accessCode ===
+      process.env.NEXT_PUBLIC_APP_CODE
+    ) {
+      localStorage.setItem(
+        "heroDiceUnlocked",
+        "true"
+      );
+
+      setIsUnlocked(true);
+    } else {
+      alert("Neplatný kód.");
+    }
+  };
+
     const getPlayerTotal = (
     playerId: string
   ) => {
@@ -1545,6 +1580,30 @@ const gameTypeTagText =
   gameMode === "online"
     ? "ONLINE"
     : "OFFLINE";
+
+const bonusModeInfoText =
+  playModeBonusMode === "all"
+    ? "všechny kombinace"
+    : "pouze Generál";
+
+const bonusRollsInfoText =
+  `+${playModeBonusRolls} ${
+    playModeBonusRolls === 1
+      ? "hod"
+      : playModeBonusRolls <= 4
+      ? "hody"
+      : "hodů"
+  }`;
+
+const playModeConfigInfoText = `${playModeRolls} hodů / Přepis: ${
+  playModeAllowRewrite
+    ? "Ano"
+    : "Ne"
+} / Bonus: ${bonusModeInfoText} ${bonusRollsInfoText} / ${gameTypeInfoText}${
+  hasComputerPlayer
+    ? " / Hra proti počítači"
+    : ""
+}`;
 
 const playModeCategoryMap: Record<
   string,
@@ -5960,28 +6019,18 @@ const renderOnlineChatMessages = () => (
                 e.target.value
               )
             }
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submitAccessCode();
+              }
+            }}
             className="mb-5 w-full rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-center text-2xl font-bold text-white outline-none transition focus:border-yellow-400"
             autoFocus
           />
 
           <button
-            onClick={() => {
-              if (
-                accessCode ===
-                process.env.NEXT_PUBLIC_APP_CODE
-              ) {
-                localStorage.setItem(
-                  "heroDiceUnlocked",
-                  "true"
-                );
-
-                setIsUnlocked(true);
-              } else {
-                alert(
-                  "Neplatný kód."
-                );
-              }
-            }}
+            onClick={submitAccessCode}
             className="w-full rounded-2xl bg-yellow-500 px-6 py-4 text-xl font-black text-black transition hover:bg-yellow-400"
           >
             Vstoupit
@@ -6779,11 +6828,15 @@ const renderOnlineChatMessages = () => (
                       >
                         <td className="border border-white p-3">
                           <button
-                            onClick={() =>
+                            onClick={() => {
+                              setSelectedHelpImageSource(
+                                "scoreboard"
+                              );
+
                               setSelectedHelpImage(
                                 `/help/${category.id}.png`
-                              )
-                            }
+                              );
+                            }}
                             className="transition hover:text-yellow-300"
                           >
                             {
@@ -6906,21 +6959,7 @@ const renderOnlineChatMessages = () => (
   ? "Ligová hra"
   : "Fun hra"}
 :{" "}
-{isLeaguePlayMode
-  ? "4 hody / Bez přepisu / Bonus: Generál +2 hody"
-      : `${playModeRolls} hodů / Přepis: ${
-      playModeAllowRewrite
-        ? "Ano"
-        : "Ne"
-    } / Bonus: ${
-      playModeBonusMode ===
-      "all"
-        ? "Všechny kombinace"
-        : "Generál"
-    } +${
-      playModeBonusRolls -
-      playModeRolls
-        } body`} / {gameTypeInfoText}
+{playModeConfigInfoText}
   </div>
 )}
             </>
@@ -8950,6 +8989,16 @@ canSavePlayModeScore &&
       e.target.value
     )
   }
+  onKeyDown={(e) => {
+    if (
+      e.key === "Enter" &&
+      !isOnlineGame &&
+      !hasComputerPlayer
+    ) {
+      e.preventDefault();
+      saveScore();
+    }
+  }}
   onFocus={(e) =>
   e.target.select()
 }
@@ -8986,9 +9035,7 @@ canSavePlayModeScore &&
       {selectedHelpImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
-          onClick={() =>
-            setSelectedHelpImage(null)
-          }
+          onClick={closeSelectedHelpImage}
         >
           <div
             className="relative"
@@ -9004,9 +9051,7 @@ canSavePlayModeScore &&
 
             <button
               className="absolute right-2 top-2 rounded-lg bg-red-600 px-4 py-2 font-bold text-white transition hover:bg-red-700"
-              onClick={() =>
-                setSelectedHelpImage(null)
-              }
+              onClick={closeSelectedHelpImage}
             >
               Zavřít
             </button>
@@ -9911,6 +9956,18 @@ const { error } =
   open={showHelp}
   onClose={() =>
     setShowHelp(false)
+  }
+  onOpenCombinationHelp={(
+    categoryId
+  ) => {
+    setSelectedHelpImageSource(
+      "help-modal"
+    );
+
+    setSelectedHelpImage(
+      `/help/${categoryId}.png`
+    );
+  }
   }
 />
     
