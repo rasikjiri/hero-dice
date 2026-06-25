@@ -208,6 +208,9 @@ const closeSelectedHelpImage = () => {
       null
     );
 
+  const skipNextTurnEndSoundRef =
+    useRef(false);
+
   const celebrationTimeoutsRef =
     useRef<number[]>([]);
 
@@ -262,6 +265,11 @@ const [
 const [
   noCombinationSoundEnabled,
   setNoCombinationSoundEnabled,
+] = useState(true);
+
+const [
+  turnEndSoundEnabled,
+  setTurnEndSoundEnabled,
 ] = useState(true);
 
 const [
@@ -492,6 +500,11 @@ useEffect(() => {
       "heroDiceNoCombinationSound"
     );
 
+  const turnEnd =
+    localStorage.getItem(
+      "heroDiceTurnEndSound"
+    );
+
   if (celebration !== null) {
     setCelebrationSoundEnabled(
       celebration === "true"
@@ -509,6 +522,12 @@ useEffect(() => {
       noCombination === "true"
     );
   }
+
+  if (turnEnd !== null) {
+    setTurnEndSoundEnabled(
+      turnEnd === "true"
+    );
+  }
 }, []);
 
 // Preload audio files after first user interaction
@@ -521,6 +540,10 @@ useEffect(() => {
     // Preload max-score fanfare
     const fanfareAudio = new Audio('/sounds/win/fanfare.mp3');
     fanfareAudio.preload = 'auto';
+
+    // Preload turn-end sound
+    const turnEndAudio = new Audio('/sounds/playmode/turnend.mp3');
+    turnEndAudio.preload = 'auto';
 
     // Preload win sounds
     const winSoundUrls = [
@@ -559,7 +582,8 @@ useEffect(() => {
 const saveSettings = (
   celebration: boolean,
   maxScore: boolean,
-  noCombination: boolean
+  noCombination: boolean,
+  turnEnd: boolean
 ) => {
   localStorage.setItem(
     "heroDiceCelebrationSound",
@@ -574,6 +598,11 @@ const saveSettings = (
   localStorage.setItem(
     "heroDiceNoCombinationSound",
     String(noCombination)
+  );
+
+  localStorage.setItem(
+    "heroDiceTurnEndSound",
+    String(turnEnd)
   );
 };
 
@@ -1378,6 +1407,9 @@ if (
   parsed === category.max &&
   !finishesPlayer
 ) {
+  skipNextTurnEndSoundRef.current =
+    true;
+
   const audio =
     new Audio(
       `/sounds/win/fanfare.mp3`
@@ -1400,9 +1432,25 @@ window.scrollTo({
   };
 
   const submitAccessCode = () => {
+    const enteredCode =
+      accessCode.trim();
+
+    const expectedCode = (
+      process.env.NEXT_PUBLIC_APP_CODE ??
+      ""
+    ).trim();
+
+    if (!expectedCode) {
+      alert(
+        "Chybí konfigurace NEXT_PUBLIC_APP_CODE."
+      );
+
+      return;
+    }
+
     if (
-      accessCode ===
-      process.env.NEXT_PUBLIC_APP_CODE
+      enteredCode ===
+      expectedCode
     ) {
       localStorage.setItem(
         "heroDiceUnlocked",
@@ -2224,6 +2272,21 @@ const endTurn = async () => {
     !isCurrentPlayer
   ) {
     return;
+  }
+
+  if (turnEndSoundEnabled) {
+    if (
+      skipNextTurnEndSoundRef.current
+    ) {
+      skipNextTurnEndSoundRef.current =
+        false;
+    } else {
+      const audio = new Audio(
+        '/sounds/playmode/turnend.mp3'
+      );
+      audio.volume = 0.35;
+      audio.play().catch(() => {});
+    }
   }
 
   const nextPlayer =
@@ -6810,9 +6873,18 @@ const renderOnlineChatMessages = () => (
   key={index}
   className="border border-white p-3 text-center text-xl font-bold"
 >
-                          {getPlayerDisplayName(
-                            playerId
-                          )}
+                          <span
+                            className={`inline-block transition-all duration-500 ${
+                              index ===
+                              currentPlayPlayerIndex
+                                ? "active-player-name"
+                                : ""
+                            }`}
+                          >
+                            {getPlayerDisplayName(
+                              playerId
+                            )}
+                          </span>
                         </th>
                       )
                     )}
@@ -9140,7 +9212,8 @@ canSavePlayModeScore &&
               saveSettings(
   value,
   maxScoreSoundEnabled,
-  noCombinationSoundEnabled
+  noCombinationSoundEnabled,
+  turnEndSoundEnabled
 );
             }}
             className={`rounded-xl px-5 py-2 font-black ${
@@ -9172,7 +9245,8 @@ canSavePlayModeScore &&
               saveSettings(
   celebrationSoundEnabled,
   value,
-  noCombinationSoundEnabled
+  noCombinationSoundEnabled,
+  turnEndSoundEnabled
 );
             }}
             className={`rounded-xl px-5 py-2 font-black ${
@@ -9203,7 +9277,8 @@ canSavePlayModeScore &&
       saveSettings(
         celebrationSoundEnabled,
         maxScoreSoundEnabled,
-        value
+        value,
+        turnEndSoundEnabled
       );
     }}
     className={`rounded-xl px-5 py-2 font-black ${
@@ -9213,6 +9288,39 @@ canSavePlayModeScore &&
     }`}
   >
     {noCombinationSoundEnabled
+      ? "ZAP"
+      : "VYP"}
+  </button>
+</div>
+
+        <div className="flex items-center justify-between">
+  <span className="font-bold">
+    Zvuk ukončení tahu
+  </span>
+
+  <button
+    onClick={() => {
+      const value =
+        !turnEndSoundEnabled;
+
+      setTurnEndSoundEnabled(
+        value
+      );
+
+      saveSettings(
+        celebrationSoundEnabled,
+        maxScoreSoundEnabled,
+        noCombinationSoundEnabled,
+        value
+      );
+    }}
+    className={`rounded-xl px-5 py-2 font-black ${
+      turnEndSoundEnabled
+        ? "bg-green-600"
+        : "bg-red-600"
+    }`}
+  >
+    {turnEndSoundEnabled
       ? "ZAP"
       : "VYP"}
   </button>
@@ -9234,12 +9342,13 @@ canSavePlayModeScore &&
       {/* WINNER MODAL */}
 {showFinishedGame && (
   <div
-    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
+    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/30 p-4"
     onClick={closeCelebrationOverlay}
   >
-    <div className="max-w-xl rounded-2xl bg-black p-10 text-center text-white">
+    <div className="w-full max-w-[700px] rounded-2xl bg-zinc-950/92 p-8 text-center text-white md:p-10">
+      <div className="mb-8 flex flex-col items-center gap-3">
       <h2
-        className="mb-8 cursor-pointer text-5xl transition hover:scale-110"
+        className="cursor-pointer text-5xl transition hover:scale-110"
         onClick={(e) => {
           e.stopPropagation();
 
@@ -9380,31 +9489,205 @@ if (celebrationType === 2) {
       >
         🏆
       </h2>
+      <div className="text-3xl font-black tracking-[0.18em] text-yellow-300">
+        KONEC HRY
+      </div>
 
-      <p className="mb-3 text-3xl font-bold">
-        vítězem se stává
-      </p>
-
-      <p className="mb-2 animate-pulse text-5xl font-black text-yellow-400">
-        {winner}
-      </p>
-
-      <p
-  className={`mb-6 text-3xl font-black ${
-    winnerScore === 214
-      ? "text-red-500"
-      : "text-yellow-400"
-  }`}
->
-  {winnerScore} bodů
-</p>
-
-      <p className="mb-6 text-sm text-zinc-400">
+      <p className="text-sm text-zinc-400">
         klikni na 🏆 pro další
         oslavu
       </p>
+      </div>
 
-      <div className="flex flex-wrap justify-center gap-4">
+      {(() => {
+        const rankedResults =
+          selectedPlayers
+            .map((playerId) => {
+              const playerScores =
+                scores[playerId] || {};
+
+              const total =
+                Object.values(
+                  playerScores
+                ).reduce(
+                  (sum, value) =>
+                    sum + value,
+                  0
+                );
+
+              return {
+                playerId,
+                playerName:
+                  getPlayerDisplayName(
+                    playerId
+                  ),
+                total,
+              };
+            })
+            .sort(
+              (a, b) =>
+                b.total - a.total
+            );
+
+        const gameTypeText =
+          isLeaguePlayMode
+            ? "Ligová"
+            : "Fun";
+
+        const gameModeText =
+          hasComputerPlayer
+            ? "AI"
+            : gameMode === "online"
+            ? "Online"
+            : "Offline";
+
+        const bonusModeText =
+          playModeBonusMode === "all"
+            ? "všechny kombinace"
+            : "pouze Hero";
+
+        return (
+          <>
+            <div className="mx-auto mb-5 w-full max-w-[520px] rounded-2xl border border-zinc-700 bg-zinc-900/60 p-4 text-center">
+              <div className="text-sm text-zinc-300">
+                <div>
+                  {`Hráči: ${selectedPlayers.length} • Typ: ${gameTypeText} • Režim: ${gameModeText}`}
+                </div>
+
+                <div className="mt-1">
+                  {`Nastavení: ${playModeRolls} hodů / Přepis: ${
+                    playModeAllowRewrite
+                      ? "Ano"
+                      : "Ne"
+                  } / Bonus: ${bonusModeText} +${playModeBonusRolls} hodů`}
+                </div>
+              </div>
+            </div>
+
+            <div className="mx-auto mb-7 w-full max-w-[520px]">
+              {rankedResults.length > 0 && (
+                <div className="grid grid-cols-3 items-end gap-3">
+                  {[1, 0, 2].map(
+                    (rankIndex) => {
+                      const entry =
+                        rankedResults[
+                          rankIndex
+                        ] ?? null;
+
+                      const placeLabel =
+                        rankIndex === 0
+                          ? "🥇 1. místo"
+                          : rankIndex === 1
+                          ? "🥈 2. místo"
+                          : "🥉 3. místo";
+
+                      const heightClass =
+                        rankIndex === 0
+                          ? "min-h-[180px]"
+                          : rankIndex === 1
+                          ? "min-h-[152px]"
+                          : "min-h-[132px]";
+
+                      return (
+                        <div
+                          key={
+                            entry?.playerId ??
+                            `podium-${rankIndex}`
+                          }
+                          className={`flex ${heightClass} flex-col items-center justify-center rounded-2xl border p-4 text-center ${
+                            !entry
+                              ? "border-zinc-700/70 bg-zinc-900/40"
+                              :
+                            rankIndex === 0
+                              ? "winner-first-place border-yellow-500/50 bg-yellow-500/10"
+                              : "border-zinc-400/35 bg-zinc-400/10"
+                          }`}
+                        >
+                          <div
+                            className={`text-sm font-black ${
+                              rankIndex === 0
+                                ? "text-yellow-300"
+                                : "text-zinc-200"
+                            }`}
+                          >
+                            {placeLabel}
+                          </div>
+
+                          <div
+                            className={`mt-1 font-black ${
+                              rankIndex === 0
+                                ? "text-3xl text-yellow-300"
+                                : "text-2xl text-white"
+                            }`}
+                          >
+                            {entry
+                              ? entry.playerName
+                              : " "}
+                          </div>
+
+                          <div
+                            className={`font-bold ${
+                              rankIndex === 0
+                                ? "text-base text-yellow-200"
+                                : "text-sm text-zinc-300"
+                            }`}
+                          >
+                            {entry
+                              ? `Skóre: ${entry.total}`
+                              : " "}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              {rankedResults.length > 3 && (
+                <div className="mt-4 space-y-3">
+                  {rankedResults
+                    .slice(3)
+                    .map(
+                      (
+                        entry,
+                        offset
+                      ) => {
+                        const placeNumber =
+                          offset + 4;
+
+                        return (
+                          <div
+                            key={
+                              entry.playerId
+                            }
+                            className="flex min-h-[110px] flex-col justify-center rounded-2xl border border-zinc-700 bg-zinc-900/50 p-4"
+                          >
+                            <div className="text-center">
+                            <div className="text-sm font-black text-zinc-300">
+                              {`${placeNumber}. místo`}
+                            </div>
+
+                            <div className="mt-1 text-2xl font-black text-white">
+                              {
+                                entry.playerName
+                              }
+                            </div>
+
+                            <div className="text-sm font-bold text-zinc-300">
+                              Skóre: {entry.total}
+                            </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                    )}
+                </div>
+              )}
+            </div>
+          </>
+        );
+      })()}
+
+      <div className="mx-auto flex w-full max-w-[520px] flex-wrap justify-center gap-4">
         <button
           onClick={
             closeCelebrationOverlay
