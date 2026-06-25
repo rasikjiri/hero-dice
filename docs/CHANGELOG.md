@@ -546,3 +546,39 @@ Dopad:
 
 Poznámky:
 - Nedošlo ke změnám herních pravidel ani výpočtů skóre.
+
+---
+
+## Hero Dice v3.5.0.1 - UX finále a audio
+
+Datum:
+2026-06-25
+
+Riziko:
+LOW
+
+Změněné soubory:
+* app/page.tsx
+* app/globals.css
+* public/sounds/playmode/turnend.mp3
+
+Popis:
+- Upraveno finální oslavné okno po dokončení hry (užší layout, přehlednější obsah, podium 1/2/3).
+- Top 3 výsledky jsou nově zobrazeny jako vizuální stupně vítězů místo čistého vertikálního seznamu.
+- Zachována možnost opakované oslavy klikem na trofej, konfety i stávající tlačítka navazujících akcí.
+- Přidán a zapojen zvuk ukončení tahu v Play Mode včetně přepínače v nastavení zvuků.
+- Drobně upravena robustnost přihlášení: porovnání vstupního kódu nyní používá `trim()` na vstupu i konfiguraci.
+
+Důvod:
+- Zlepšit čitelnost a celkový dojem z finálního výsledkového okna.
+- Zpřesnit zvukovou odezvu Play Mode bez zásahu do herních pravidel.
+- Omezit falešné zamítnutí přístupového kódu kvůli neviditelným mezerám.
+
+Dopad:
+- Lepší UX po dohrání partie a konzistentnější vizuální hierarchie vítězů.
+- Rozšířené audio nastavení bez změny skórovací logiky.
+- Stabilnější přihlášení při zachování stávajícího bezpečnostního modelu přes `NEXT_PUBLIC_APP_CODE`.
+
+Poznámky:
+- Bez změn databázového schématu.
+- Bez změn výpočtu kombinací, AI rozhodování a online synchronizační logiky.
