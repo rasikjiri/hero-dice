@@ -8998,9 +8998,9 @@ return (
   <div className="absolute left-1/2 -translate-x-1/2 text-4xl leading-none">
     {hasUsefulFutureMove ===
     null
-      ? "❌"
+      ? " "
       : hasUsefulFutureMove
-        ? "👍🏻"
+        ? "😊"
         : "❌"}
   </div>
 
