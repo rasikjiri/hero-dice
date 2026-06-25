@@ -5,7 +5,10 @@
  * This module is pure functional - no side effects, no state mutations.
  */
 
-import { PlayModeResult } from "./playMode";
+import {
+  detectCombination,
+  PlayModeResult,
+} from "./playMode";
 
 export type ScoreMap = {
   [playerId: string]: {
@@ -13,9 +16,40 @@ export type ScoreMap = {
   };
 };
 
+export type AITurnAction =
+  | "roll"
+  | "save"
+  | "end_turn";
+
+export type AIRiskLevel =
+  | "low"
+  | "medium"
+  | "high";
+
 export type AIDecision = {
+  targetCategory: string | null;
+  lockMask: boolean[];
   lockedDiceIndices: number[];
+  action: AITurnAction;
+  confidence: number;
+  riskLevel: AIRiskLevel;
+  aiScore: number;
+  bestOpponentScore: number;
+  endgameMode: boolean;
+  scoreDelta: number;
+  aiRemainingPotential: number;
+  opponentRemainingPotential: number;
+  requiredScoreEstimate: number;
+  opponentScore: number;
+  remainingCategories: number;
+  riskBecauseBehind: boolean;
+  saveRejectedBecauseTooLow: boolean;
+  currentPlanValue: number;
+  alternativePlanValue: number;
+  pivotThreshold: number;
+  pivotReason: string;
   reason: string;
+  fallbackReason?: string;
 };
 
 type CombinationType =
@@ -955,6 +989,7 @@ const explainWhyWinnerBeats = (
 const logAIDecisionAudit = (
   dice: number[],
   remainingRolls: number | undefined,
+  matchContext: MatchContext,
   auditEntries: CandidateAuditEntry[],
   selected:
     | CandidateCombination
@@ -969,6 +1004,7 @@ const logAIDecisionAudit = (
   console.debug("[AI Decision Audit]", {
     dice,
     remainingRolls,
+    matchContext,
     candidates: auditEntries,
     rankedCandidates: rankedCandidates.map(
       (candidate) => ({
@@ -1060,6 +1096,383 @@ const chooseBestStructuralCandidate = (
   return structural[0];
 };
 
+const toLockMask = (
+  lockedDiceIndices: number[]
+): boolean[] => {
+  const mask = [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ];
+
+  lockedDiceIndices.forEach((index) => {
+    if (index >= 0 && index < 6) {
+      mask[index] = true;
+    }
+  });
+
+  return mask;
+};
+
+const getPlayerTotalScore = (
+  playerScores: Record<string, number>
+) =>
+  Object.values(playerScores).reduce(
+    (sum, score) => sum + score,
+    0
+  );
+
+const getBestOpponentScore = (
+  scores: ScoreMap,
+  playerId: string
+) =>
+  Object.entries(scores).reduce(
+    (best, [candidateId, candidateScores]) => {
+      if (candidateId === playerId) {
+        return best;
+      }
+
+      const candidateTotal = getPlayerTotalScore(
+        candidateScores
+      );
+
+      return Math.max(best, candidateTotal);
+    },
+    0
+  );
+
+const getRemainingPotential = (
+  playerScores: Record<string, number>,
+  allowRewrite: boolean
+) =>
+  combinationTypes.reduce((sum, combType) => {
+    const categoryId =
+      combinationToCategoryId[combType];
+    const maxCategoryScore =
+      combinationMaxScore[combType];
+    const existingScore = playerScores[categoryId];
+
+    if (existingScore === undefined) {
+      return sum + maxCategoryScore;
+    }
+
+    if (!allowRewrite) {
+      return sum;
+    }
+
+    return (
+      sum +
+      Math.max(
+        0,
+        maxCategoryScore - existingScore
+      )
+    );
+  }, 0);
+
+const getBestOpponentContext = (
+  scores: ScoreMap,
+  playerId: string,
+  allowRewrite: boolean
+) =>
+  Object.entries(scores).reduce(
+    (
+      best,
+      [candidateId, candidateScores]
+    ) => {
+      if (candidateId === playerId) {
+        return best;
+      }
+
+      const totalScore =
+        getPlayerTotalScore(candidateScores);
+      const remainingPotential =
+        getRemainingPotential(
+          candidateScores,
+          allowRewrite
+        );
+      const projectedTotal =
+        totalScore + remainingPotential;
+
+      return {
+        bestOpponentScore: Math.max(
+          best.bestOpponentScore,
+          totalScore
+        ),
+        opponentRemainingPotential: Math.max(
+          best.opponentRemainingPotential,
+          remainingPotential
+        ),
+        bestOpponentProjectedTotal: Math.max(
+          best.bestOpponentProjectedTotal,
+          projectedTotal
+        ),
+      };
+    },
+    {
+      bestOpponentScore: 0,
+      opponentRemainingPotential: 0,
+      bestOpponentProjectedTotal: 0,
+    }
+  );
+
+const getUndefinedCategoryIds = (
+  playerScores: Record<string, number>
+) =>
+  combinationTypes
+    .map((combType) =>
+      combinationToCategoryId[combType]
+    )
+    .filter(
+      (categoryId) =>
+        playerScores[categoryId] === undefined
+    );
+
+const getCombinationTypeByCategoryId = (
+  categoryId: string
+): CombinationType | null => {
+  for (const combType of combinationTypes) {
+    if (
+      combinationToCategoryId[combType] ===
+      categoryId
+    ) {
+      return combType;
+    }
+  }
+
+  return null;
+};
+
+const canTargetCategoryWorkWithFixedLocks = (
+  targetCategory: string | null,
+  dice: number[],
+  fixedLocks: boolean[]
+) => {
+  if (!targetCategory) {
+    return true;
+  }
+
+  if (!fixedLocks.some(Boolean)) {
+    return true;
+  }
+
+  const openIndices = fixedLocks
+    .map((isFixed, index) =>
+      isFixed ? -1 : index
+    )
+    .filter((index) => index >= 0);
+
+  const candidateDice = [...dice];
+
+  const matchesTarget = () => {
+    const result = detectCombination(candidateDice);
+
+    if (!result) {
+      return false;
+    }
+
+    const resultType =
+      result.combination as CombinationType;
+
+    return (
+      combinationToCategoryId[resultType] ===
+      targetCategory
+    );
+  };
+
+  if (matchesTarget()) {
+    return true;
+  }
+
+  const canComplete = (position: number): boolean => {
+    if (position >= openIndices.length) {
+      return matchesTarget();
+    }
+
+    const diceIndex = openIndices[position];
+
+    for (let value = 1; value <= 6; value += 1) {
+      candidateDice[diceIndex] = value;
+
+      if (canComplete(position + 1)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  return canComplete(0);
+};
+
+type MatchContext = {
+  aiScore: number;
+  bestOpponentScore: number;
+  aiRemainingPotential: number;
+  opponentRemainingPotential: number;
+  endgameMode: boolean;
+  scoreDelta: number;
+  requiredScoreEstimate: number;
+  opponentScore: number;
+  remainingCategories: number;
+  riskBecauseBehind: boolean;
+};
+
+type AIPivotContext = {
+  previousTargetCategory: string | null;
+  fixedLocks: boolean[];
+};
+
+type AIActionDecision = {
+  action: AITurnAction;
+  saveRejectedBecauseTooLow: boolean;
+};
+
+const toRiskLevel = (
+  remainingRolls: number | undefined,
+  context: MatchContext
+): AIRiskLevel => {
+  if (context.endgameMode && context.riskBecauseBehind) {
+    return "high";
+  }
+
+  if (
+    context.riskBecauseBehind &&
+    (remainingRolls ?? 0) >= 2
+  ) {
+    return "high";
+  }
+
+  if (
+    context.endgameMode &&
+    context.requiredScoreEstimate > 0
+  ) {
+    return "medium";
+  }
+
+  if ((remainingRolls ?? 0) >= 3) {
+    return "high";
+  }
+
+  if ((remainingRolls ?? 0) === 2) {
+    return "medium";
+  }
+
+  return "low";
+};
+
+const toConfidence = (
+  candidate: CandidateCombination
+): number => {
+  const raw =
+    candidate.currentMatchCount / 6 +
+    (candidate.isComplete ? 0.35 : 0);
+
+  return Number(
+    Math.max(0, Math.min(1, raw)).toFixed(2)
+  );
+};
+
+const decideAction = (
+  candidate: CandidateCombination,
+  remainingRolls: number | undefined,
+  context: MatchContext,
+  playerScores: Record<string, number>
+): AIActionDecision => {
+  const categoryId =
+    combinationToCategoryId[candidate.type];
+
+  const existingScore =
+    categoryId !== undefined
+      ? playerScores[categoryId]
+      : undefined;
+
+  const netGain =
+    existingScore === undefined
+      ? candidate.absoluteScoreSignal
+      : Math.max(
+          0,
+          candidate.absoluteScoreSignal -
+            existingScore
+        );
+
+  const stillBehindAfterSave =
+    netGain < context.requiredScoreEstimate;
+
+  const saveTooLowBecauseMatchContext =
+    context.riskBecauseBehind &&
+    stillBehindAfterSave &&
+    (remainingRolls ?? 0) > 0;
+
+  if (candidate.isComplete) {
+    if (
+      saveTooLowBecauseMatchContext &&
+      candidate.maxPossibleScore >
+        candidate.absoluteScoreSignal
+    ) {
+      return {
+        action: "roll",
+        saveRejectedBecauseTooLow: true,
+      };
+    }
+
+    if (
+      context.endgameMode &&
+      saveTooLowBecauseMatchContext &&
+      (remainingRolls ?? 0) > 0
+    ) {
+      return {
+        action: "roll",
+        saveRejectedBecauseTooLow: true,
+      };
+    }
+
+    if (
+      context.scoreDelta >= 0 &&
+      !context.riskBecauseBehind
+    ) {
+      return {
+        action: "save",
+        saveRejectedBecauseTooLow: false,
+      };
+    }
+
+    if ((remainingRolls ?? 0) <= 1) {
+      return {
+        action: "save",
+        saveRejectedBecauseTooLow: false,
+      };
+    }
+
+    if (
+      candidate.writeState === "rewrite" &&
+      candidate.maxPossibleScore -
+        candidate.absoluteScoreSignal >=
+        4
+    ) {
+      return {
+        action: "roll",
+        saveRejectedBecauseTooLow: false,
+      };
+    }
+
+    return {
+      action: "save",
+      saveRejectedBecauseTooLow: false,
+    };
+  }
+
+  return {
+    action:
+      (remainingRolls ?? 0) > 0
+        ? "roll"
+        : "end_turn",
+    saveRejectedBecauseTooLow: false,
+  };
+};
+
 /**
  * Main AI decision function
  * 
@@ -1076,22 +1489,126 @@ export function makeAIDecision(
   scores: ScoreMap,
   playerId: string,
   playModeAllowRewrite: boolean,
-  remainingRolls?: number
+  remainingRolls?: number,
+  strategyContext?: Partial<AIPivotContext>
 ): AIDecision {
   // Guard: validate inputs
   if (!currentDice || currentDice.length !== 6 || !playerId) {
     return {
+      targetCategory: null,
+      lockMask: [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ],
       lockedDiceIndices: [],
+      action: "end_turn",
+      confidence: 0,
+      riskLevel: "low",
+      aiScore: 0,
+      bestOpponentScore: 0,
+      endgameMode: false,
+      scoreDelta: 0,
+      aiRemainingPotential: 0,
+      opponentRemainingPotential: 0,
+      requiredScoreEstimate: 0,
+      opponentScore: 0,
+      remainingCategories: 0,
+      riskBecauseBehind: false,
+      saveRejectedBecauseTooLow: false,
+      currentPlanValue: 0,
+      alternativePlanValue: 0,
+      pivotThreshold: 0,
+      pivotReason: "invalid-input",
       reason: "Invalid input",
+      fallbackReason: "invalid-input",
     };
   }
 
+  const fixedLocks =
+    strategyContext?.fixedLocks?.length === 6
+      ? [...strategyContext.fixedLocks]
+      : [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+        ];
+
+  const previousTargetCategory =
+    strategyContext?.previousTargetCategory ??
+    null;
+
   const playerScores = scores[playerId] || {};
+  const ownScore = getPlayerTotalScore(
+    playerScores
+  );
+  const aiRemainingPotential =
+    getRemainingPotential(
+      playerScores,
+      playModeAllowRewrite
+    );
+
+  const opponentContext =
+    getBestOpponentContext(
+      scores,
+      playerId,
+      playModeAllowRewrite
+    );
+
+  const opponentScore =
+    opponentContext.bestOpponentScore;
+  const bestOpponentProjectedTotal =
+    opponentContext.bestOpponentProjectedTotal;
+
   const availableCategoryCount =
     getAvailableCategoryCount(
       playerScores,
       playModeAllowRewrite
     );
+
+  const requiredScoreEstimate =
+    availableCategoryCount > 0
+      ? Math.max(
+          0,
+          Math.ceil(
+            (bestOpponentProjectedTotal - ownScore) /
+              availableCategoryCount
+          )
+        )
+      : Math.max(
+          0,
+          bestOpponentProjectedTotal - ownScore
+        );
+
+  const scoreDelta = ownScore - opponentScore;
+
+  const undefinedCategoryIds =
+    getUndefinedCategoryIds(playerScores);
+  const forcedEndgameCategoryId =
+    undefinedCategoryIds.length === 1
+      ? undefinedCategoryIds[0]
+      : null;
+
+  const matchContext: MatchContext = {
+    aiScore: ownScore,
+    bestOpponentScore: opponentScore,
+    aiRemainingPotential,
+    opponentRemainingPotential:
+      opponentContext.opponentRemainingPotential,
+    endgameMode: availableCategoryCount <= 2,
+    scoreDelta,
+    requiredScoreEstimate,
+    opponentScore,
+    remainingCategories: availableCategoryCount,
+    riskBecauseBehind: scoreDelta < 0,
+  };
+
   const phasePolicy = getPhasePolicy(
     availableCategoryCount
   );
@@ -1104,6 +1621,33 @@ export function makeAIDecision(
   for (const [candidateOrder, combType] of combinationTypes.entries()) {
     const categoryId =
       combinationToCategoryId[combType];
+
+    if (
+      forcedEndgameCategoryId !== null &&
+      categoryId !== forcedEndgameCategoryId
+    ) {
+      candidateAudit.push({
+        candidateOrder,
+        type: combType,
+        stage: "evaluate-rejected",
+      });
+      continue;
+    }
+
+    if (
+      !canTargetCategoryWorkWithFixedLocks(
+        categoryId,
+        currentDice,
+        fixedLocks
+      )
+    ) {
+      candidateAudit.push({
+        candidateOrder,
+        type: combType,
+        stage: "direction-rejected",
+      });
+      continue;
+    }
 
     const existingScore =
       categoryId !== undefined
@@ -1246,6 +1790,7 @@ export function makeAIDecision(
     logAIDecisionAudit(
       currentDice,
       remainingRolls,
+      matchContext,
       candidateAudit,
       null,
       [],
@@ -1253,8 +1798,48 @@ export function makeAIDecision(
     );
 
     return {
+      targetCategory: null,
+      lockMask: [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ],
       lockedDiceIndices: [],
-      reason: "noChange: no safe opportunity",
+      action:
+        (remainingRolls ?? 0) > 0
+          ? "roll"
+          : "end_turn",
+      confidence: 0.2,
+      riskLevel: toRiskLevel(
+        remainingRolls,
+        matchContext
+      ),
+      aiScore: matchContext.aiScore,
+      bestOpponentScore:
+        matchContext.bestOpponentScore,
+      endgameMode: matchContext.endgameMode,
+      scoreDelta: matchContext.scoreDelta,
+      aiRemainingPotential:
+        matchContext.aiRemainingPotential,
+      opponentRemainingPotential:
+        matchContext.opponentRemainingPotential,
+      requiredScoreEstimate:
+        matchContext.requiredScoreEstimate,
+      opponentScore: matchContext.opponentScore,
+      remainingCategories:
+        matchContext.remainingCategories,
+      riskBecauseBehind:
+        matchContext.riskBecauseBehind,
+      saveRejectedBecauseTooLow: false,
+      currentPlanValue: 0,
+      alternativePlanValue: 0,
+      pivotThreshold: 0,
+      pivotReason: "no-candidates",
+      reason: `noChange: no safe opportunity | endgame=${matchContext.endgameMode} | scoreDelta=${matchContext.scoreDelta} | required=${matchContext.requiredScoreEstimate}`,
+      fallbackReason: "no-safe-opportunity",
     };
   }
 
@@ -1280,6 +1865,7 @@ export function makeAIDecision(
       logAIDecisionAudit(
         currentDice,
         remainingRolls,
+        matchContext,
         candidateAudit,
         null,
         [],
@@ -1287,11 +1873,138 @@ export function makeAIDecision(
       );
 
       return {
+        targetCategory: null,
+        lockMask: [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+        ],
         lockedDiceIndices: [],
+        action:
+          (remainingRolls ?? 0) > 0
+            ? "roll"
+            : "end_turn",
+        confidence: 0.25,
+        riskLevel: toRiskLevel(
+          remainingRolls,
+          matchContext
+        ),
+        aiScore: matchContext.aiScore,
+        bestOpponentScore:
+          matchContext.bestOpponentScore,
+        endgameMode: matchContext.endgameMode,
+        scoreDelta: matchContext.scoreDelta,
+        aiRemainingPotential:
+          matchContext.aiRemainingPotential,
+        opponentRemainingPotential:
+          matchContext.opponentRemainingPotential,
+        requiredScoreEstimate:
+          matchContext.requiredScoreEstimate,
+        opponentScore:
+          matchContext.opponentScore,
+        remainingCategories:
+          matchContext.remainingCategories,
+        riskBecauseBehind:
+          matchContext.riskBecauseBehind,
+        saveRejectedBecauseTooLow: false,
+        currentPlanValue: 0,
+        alternativePlanValue: 0,
+        pivotThreshold: 0,
+        pivotReason:
+          "singleton-blocked-early-turn",
         reason:
-          "noChange: singleton blocked by early-turn policy",
+          `noChange: singleton blocked by early-turn policy | endgame=${matchContext.endgameMode} | scoreDelta=${matchContext.scoreDelta} | required=${matchContext.requiredScoreEstimate}`,
+        fallbackReason:
+          "singleton-blocked-early-turn",
       };
     }
+  }
+
+  const previousPlanCandidate =
+    previousTargetCategory
+      ? candidates.find(
+          (candidate) =>
+            combinationToCategoryId[
+              candidate.type
+            ] === previousTargetCategory
+        ) ?? null
+      : null;
+
+  const dynamicPivotThreshold =
+    matchContext.endgameMode
+      ? 12
+      : matchContext.riskBecauseBehind
+      ? 18
+      : (remainingRolls ?? 0) <= 1
+      ? 24
+      : 42;
+
+  let currentPlanValue =
+    previousPlanCandidate?.evaluationScore ??
+    best.evaluationScore;
+  let alternativePlanValue =
+    best.evaluationScore;
+  let pivotReason = "no-previous-plan";
+
+  if (
+    previousPlanCandidate &&
+    combinationToCategoryId[
+      previousPlanCandidate.type
+    ] !==
+      combinationToCategoryId[best.type]
+  ) {
+    currentPlanValue =
+      previousPlanCandidate.evaluationScore;
+    alternativePlanValue =
+      best.evaluationScore;
+
+    const pivotGain =
+      best.evaluationScore -
+      previousPlanCandidate.evaluationScore;
+
+    const pivotBecausePreviousWeak =
+      previousPlanCandidate.missingCount >= 3 &&
+      best.currentMatchCount >=
+        previousPlanCandidate.currentMatchCount +
+          1;
+
+    const pivotBecauseCompletion =
+      !previousPlanCandidate.isComplete &&
+      best.isComplete;
+
+    const shouldPivot =
+      pivotGain >= dynamicPivotThreshold ||
+      pivotBecausePreviousWeak ||
+      pivotBecauseCompletion;
+
+    if (shouldPivot) {
+      if (pivotGain >= dynamicPivotThreshold) {
+        pivotReason =
+          "alternative-evaluation-significantly-better";
+      } else if (pivotBecauseCompletion) {
+        pivotReason =
+          "alternative-is-complete";
+      } else {
+        pivotReason =
+          "previous-plan-low-completion-probability";
+      }
+    } else {
+      const retainedAlternativeValue =
+        best.evaluationScore;
+      best = previousPlanCandidate;
+      alternativePlanValue =
+        retainedAlternativeValue;
+      pivotReason = "stay-on-current-plan";
+    }
+  } else if (
+    previousTargetCategory &&
+    !previousPlanCandidate
+  ) {
+    pivotReason =
+      "previous-plan-unavailable-or-incompatible";
   }
 
   const hasStrongProgressCandidate =
@@ -1329,6 +2042,7 @@ export function makeAIDecision(
     logAIDecisionAudit(
       currentDice,
       remainingRolls,
+      matchContext,
       candidateAudit,
       best,
       [],
@@ -1336,14 +2050,62 @@ export function makeAIDecision(
     );
 
     return {
+      targetCategory: null,
+      lockMask: [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ],
       lockedDiceIndices: [],
-      reason: "noChange: opportunity too weak",
+      action:
+        (remainingRolls ?? 0) > 0
+          ? "roll"
+          : "end_turn",
+      confidence: 0.3,
+      riskLevel: toRiskLevel(
+        remainingRolls,
+        matchContext
+      ),
+      aiScore: matchContext.aiScore,
+      bestOpponentScore:
+        matchContext.bestOpponentScore,
+      endgameMode: matchContext.endgameMode,
+      scoreDelta: matchContext.scoreDelta,
+      aiRemainingPotential:
+        matchContext.aiRemainingPotential,
+      opponentRemainingPotential:
+        matchContext.opponentRemainingPotential,
+      requiredScoreEstimate:
+        matchContext.requiredScoreEstimate,
+      opponentScore: matchContext.opponentScore,
+      remainingCategories:
+        matchContext.remainingCategories,
+      riskBecauseBehind:
+        matchContext.riskBecauseBehind,
+      saveRejectedBecauseTooLow: false,
+      currentPlanValue: 0,
+      alternativePlanValue: 0,
+      pivotThreshold: 0,
+      pivotReason: "opportunity-too-weak",
+      reason: `noChange: opportunity too weak | endgame=${matchContext.endgameMode} | scoreDelta=${matchContext.scoreDelta} | required=${matchContext.requiredScoreEstimate}`,
+      fallbackReason: "opportunity-too-weak",
     };
   }
+
+  const actionDecision = decideAction(
+    best,
+    remainingRolls,
+    matchContext,
+    playerScores
+  );
 
   logAIDecisionAudit(
     currentDice,
     remainingRolls,
+    matchContext,
     candidateAudit,
     best,
     best.safeLockedDiceIndices,
@@ -1351,8 +2113,41 @@ export function makeAIDecision(
   );
 
   return {
+    targetCategory:
+      combinationToCategoryId[best.type] ?? null,
+    lockMask: toLockMask(
+      best.safeLockedDiceIndices
+    ),
     lockedDiceIndices:
       best.safeLockedDiceIndices,
-    reason: `Opportunistic ${best.type} (eval ${Math.round(best.evaluationScore)}, missing ${best.missingCount}, ${best.writeState}, available ${availableCategoryCount})`,
+    action: actionDecision.action,
+    confidence: toConfidence(best),
+    riskLevel: toRiskLevel(
+      remainingRolls,
+      matchContext
+    ),
+    aiScore: matchContext.aiScore,
+    bestOpponentScore:
+      matchContext.bestOpponentScore,
+    endgameMode: matchContext.endgameMode,
+    scoreDelta: matchContext.scoreDelta,
+    aiRemainingPotential:
+      matchContext.aiRemainingPotential,
+    opponentRemainingPotential:
+      matchContext.opponentRemainingPotential,
+    requiredScoreEstimate:
+      matchContext.requiredScoreEstimate,
+    opponentScore: matchContext.opponentScore,
+    remainingCategories:
+      matchContext.remainingCategories,
+    riskBecauseBehind:
+      matchContext.riskBecauseBehind,
+    saveRejectedBecauseTooLow:
+      actionDecision.saveRejectedBecauseTooLow,
+    currentPlanValue,
+    alternativePlanValue,
+    pivotThreshold: dynamicPivotThreshold,
+    pivotReason,
+    reason: `Opportunistic ${best.type} (eval ${Math.round(best.evaluationScore)}, missing ${best.missingCount}, ${best.writeState}, available ${availableCategoryCount}, endgame=${matchContext.endgameMode}, delta=${matchContext.scoreDelta}, required=${matchContext.requiredScoreEstimate}, behind=${matchContext.riskBecauseBehind}, pivot=${pivotReason})`,
   };
 }

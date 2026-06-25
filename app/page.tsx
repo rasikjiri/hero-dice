@@ -376,21 +376,23 @@ const hasAutoOpenedOnlinePlayModeRef =
 const forceOnlineLobbyUntilHostStartRef =
   useRef(false);
 
-const lastComputerAutoTurnRef =
+const aiControllerTurnRef =
   useRef<string | null>(null);
 
-const lastComputerAutoRollRef =
+const aiControllerExecutionMarkerRef =
   useRef<string | null>(null);
 
-const lastAIDecisionRef =
+const aiControllerLastObservedStateRef =
   useRef<string | null>(null);
 
-const lastAIDecisionOutcomeRef =
-  useRef<{
-    rollMarker: string;
-    lockedDiceIndices: number[];
-    reason: string;
-  } | null>(null);
+const aiControllerStepRef =
+  useRef(0);
+
+const aiControllerNoProgressRef =
+  useRef(0);
+
+const aiControllerPreviousTargetCategoryRef =
+  useRef<string | null>(null);
 
 const lastStateChangeSourceRef =
   useRef<
@@ -1666,6 +1668,204 @@ const playModeCategoryMap: Record<
   Trojice: "trojce",
 };
 
+const shouldDebugAITurnController =
+  process.env.NODE_ENV !== "production";
+
+const areLockMasksEqual = (
+  left: boolean[],
+  right: boolean[]
+) => {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every(
+    (value, index) => value === right[index]
+  );
+};
+
+const logAITurnAudit = (
+  payload: Record<string, unknown>
+) => {
+  if (!shouldDebugAITurnController) {
+    return;
+  }
+
+  console.debug("[AI Turn Controller]", payload);
+};
+
+const mergeWithFixedLocks = (
+  fixedLocks: boolean[],
+  lockMask: boolean[]
+) => {
+  const normalizedMask =
+    lockMask.length === 6
+      ? lockMask
+      : [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+        ];
+
+  return fixedLocks.map(
+    (isFixed, index) =>
+      isFixed || normalizedMask[index]
+  );
+};
+
+const deriveWorkingLocks = (
+  lockMask: boolean[],
+  fixedLocks: boolean[]
+) =>
+  lockMask.map(
+    (isLocked, index) =>
+      !fixedLocks[index] && isLocked
+  );
+
+const canTargetCategoryWorkWithFixedLocks = (
+  targetCategory: string | null,
+  dice: number[],
+  fixedLocks: boolean[]
+) => {
+  if (!targetCategory) {
+    return true;
+  }
+
+  if (!fixedLocks.some(Boolean)) {
+    return true;
+  }
+
+  const openIndices = fixedLocks
+    .map((isFixed, index) =>
+      isFixed ? -1 : index
+    )
+    .filter((index) => index >= 0);
+
+  const candidateDice = [...dice];
+
+  const matchesTarget = () => {
+    const result = detectCombination(candidateDice);
+
+    if (!result) {
+      return false;
+    }
+
+    return (
+      playModeCategoryMap[result.combination] ===
+      targetCategory
+    );
+  };
+
+  if (matchesTarget()) {
+    return true;
+  }
+
+  const canComplete = (position: number): boolean => {
+    if (position >= openIndices.length) {
+      return matchesTarget();
+    }
+
+    const diceIndex = openIndices[position];
+
+    for (let value = 1; value <= 6; value += 1) {
+      candidateDice[diceIndex] = value;
+
+      if (canComplete(position + 1)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  return canComplete(0);
+};
+
+const getCurrentWritableSaveCandidate = (
+  playerId: string
+) => {
+  if (!hasRolledDice) {
+    return {
+      canSave: false,
+      fallbackReason: "first-roll-not-completed",
+      latestCombination: null,
+      categoryId: null as string | null,
+      score: null as number | null,
+    };
+  }
+
+  const latestCombination =
+    hasRolledDice && !isRolling
+      ? detectCombination(playModeDice)
+      : null;
+
+  if (!latestCombination) {
+    return {
+      canSave: false,
+      fallbackReason: "no-combination",
+      latestCombination,
+      categoryId: null as string | null,
+      score: null as number | null,
+    };
+  }
+
+  const categoryId =
+    playModeCategoryMap[
+      latestCombination.combination
+    ] ?? null;
+
+  if (!categoryId) {
+    return {
+      canSave: false,
+      fallbackReason: "unknown-category",
+      latestCombination,
+      categoryId: null as string | null,
+      score: null as number | null,
+    };
+  }
+
+  const existingScore =
+    scores[playerId]?.[categoryId];
+
+  if (
+    existingScore !== undefined &&
+    !playModeAllowRewrite
+  ) {
+    return {
+      canSave: false,
+      fallbackReason: "rewrite-disabled",
+      latestCombination,
+      categoryId,
+      score: latestCombination.score,
+    };
+  }
+
+  if (
+    existingScore !== undefined &&
+    playModeAllowRewrite &&
+    existingScore >= latestCombination.score
+  ) {
+    return {
+      canSave: false,
+      fallbackReason: "not-better-than-existing",
+      latestCombination,
+      categoryId,
+      score: latestCombination.score,
+    };
+  }
+
+  return {
+    canSave: true,
+    fallbackReason: null as string | null,
+    latestCombination,
+    categoryId,
+    score: latestCombination.score,
+  };
+};
+
 const sanitizeComputerLockMask = (
   dice: number[],
   lockMask: boolean[]
@@ -2409,100 +2609,544 @@ setSelectedGeneralValue(
 
 // 10. AI PLAYER - Decision Logic
 useEffect(() => {
-  // Guard conditions
   if (
     isOnlineGame ||
     !gameStarted ||
     !hasStartedPlayMode ||
     gameFinished ||
-    showPlayModeResult ||
-    !hasRolledDice ||
-    isRolling ||
     selectedPlayers.length === 0
   ) {
-    lastAIDecisionRef.current = null;
-    lastAIDecisionOutcomeRef.current =
+    aiControllerTurnRef.current = null;
+    aiControllerExecutionMarkerRef.current =
+      null;
+    aiControllerLastObservedStateRef.current =
+      null;
+    aiControllerStepRef.current = 0;
+    aiControllerNoProgressRef.current = 0;
+    aiControllerPreviousTargetCategoryRef.current =
       null;
     return;
   }
 
-  const playerId = selectedPlayers[currentPlayPlayerIndex];
+  const playerId =
+    selectedPlayers[
+      currentPlayPlayerIndex
+    ];
 
-  // Only for computer players
   if (!playerId || !isComputerPlayerId(playerId)) {
-    lastAIDecisionRef.current = null;
-    lastAIDecisionOutcomeRef.current =
+    aiControllerTurnRef.current = null;
+    aiControllerExecutionMarkerRef.current =
+      null;
+    aiControllerLastObservedStateRef.current =
+      null;
+    aiControllerStepRef.current = 0;
+    aiControllerNoProgressRef.current = 0;
+    aiControllerPreviousTargetCategoryRef.current =
       null;
     return;
   }
 
   const playerScores = scores[playerId] || {};
-  const rollMarker = `${playerId}:${Object.keys(playerScores).length}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}:${remainingRolls}:${playModeDice.join(",")}`;
+  const turnMarker = `${playerId}:${Object.keys(playerScores).length}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}`;
 
-  // Prevent re-running in same turn
-  if (lastAIDecisionRef.current === rollMarker) {
+  if (aiControllerTurnRef.current !== turnMarker) {
+    aiControllerTurnRef.current = turnMarker;
+    aiControllerExecutionMarkerRef.current =
+      null;
+    aiControllerLastObservedStateRef.current =
+      null;
+    aiControllerStepRef.current = 0;
+    aiControllerNoProgressRef.current = 0;
+    aiControllerPreviousTargetCategoryRef.current =
+      null;
+  }
+
+  if (showPlayModeResult || isRolling) {
     return;
   }
 
-  // Mark that AI decision has run for this roll
-  lastAIDecisionRef.current = rollMarker;
+  const observedState = `${turnMarker}:${remainingRolls}:${hasRolledDice ? 1 : 0}:${playModeDice.join(",")}:${lockedDice
+    .map((isLocked) =>
+      isLocked ? "1" : "0"
+    )
+    .join("")}:${confirmedLockedDice
+    .map((isLocked) =>
+      isLocked ? "1" : "0"
+    )
+    .join("")}`;
 
-  // Get AI decision
+  if (
+    aiControllerExecutionMarkerRef.current ===
+    observedState
+  ) {
+    return;
+  }
+
+  aiControllerExecutionMarkerRef.current =
+    observedState;
+
+  if (
+    aiControllerLastObservedStateRef.current ===
+    observedState
+  ) {
+    aiControllerNoProgressRef.current += 1;
+  } else {
+    aiControllerNoProgressRef.current = 0;
+    aiControllerLastObservedStateRef.current =
+      observedState;
+  }
+
+  aiControllerStepRef.current += 1;
+
+  if (
+    aiControllerStepRef.current > 24 ||
+    aiControllerNoProgressRef.current >= 3
+  ) {
+    logAITurnAudit({
+      event: "forced-safe-exit",
+      playerId,
+      remainingRolls,
+      step: aiControllerStepRef.current,
+      reason:
+        aiControllerStepRef.current > 24
+          ? "max-steps-exceeded"
+          : "repeated-no-progress",
+    });
+    endTurn();
+    return;
+  }
+
+  if (!hasRolledDice) {
+    const emptyLockMask = [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ];
+
+    if (!areLockMasksEqual(lockedDice, emptyLockMask)) {
+      setLockedDice(emptyLockMask);
+    }
+
+    if (
+      !areLockMasksEqual(
+        confirmedLockedDice,
+        emptyLockMask
+      )
+    ) {
+      setConfirmedLockedDice(emptyLockMask);
+    }
+
+    logAITurnAudit({
+      event: "first-roll-guard",
+      playerId,
+      hasRolledThisTurn: hasRolledDice,
+      blockedPlanningBeforeFirstRoll: true,
+      firstActionForcedRoll: remainingRolls > 0,
+      remainingRolls,
+      lockMaskApplied: emptyLockMask,
+    });
+
+    aiControllerPreviousTargetCategoryRef.current =
+      null;
+
+    if (remainingRolls <= 0) {
+      logAITurnAudit({
+        event: "final-action",
+        finalAction: "end_turn",
+        playerId,
+        fallbackReason:
+          "first-roll-guard-no-rolls-left",
+      });
+      endTurn();
+      return;
+    }
+
+    rollAllDice(emptyLockMask);
+    return;
+  }
+
   const decision = makeAIDecision(
     playModeDice,
     currentCombination,
     scores,
     playerId,
     playModeAllowRewrite,
-    remainingRolls
-  );
-
-  lastAIDecisionOutcomeRef.current = {
-    rollMarker,
-    lockedDiceIndices:
-      decision.lockedDiceIndices,
-    reason: decision.reason,
-  };
-
-  const isNoChangeDecision =
-    decision.lockedDiceIndices.length === 0 ||
-    decision.reason.startsWith("noChange");
-
-  if (isNoChangeDecision) {
-    const rollbackLocks =
-      sanitizeComputerLockMask(
-        playModeDice,
-        confirmedLockedDice
-      );
-
-    setLockedDice(rollbackLocks);
-    return;
-  }
-
-  // Apply decision to lockedDice (exact AI selection)
-  const newLockedDice =
-    confirmedLockedDice.map(
-      (isConfirmed) =>
-        isConfirmed
-    );
-
-  decision.lockedDiceIndices.forEach(
-    (index) => {
-      if (index >= 0 && index < 6) {
-        newLockedDice[index] = true;
-      }
+    remainingRolls,
+    {
+      fixedLocks: confirmedLockedDice,
+      previousTargetCategory:
+        aiControllerPreviousTargetCategoryRef.current,
     }
   );
 
-  const sanitizedDecisionLocks =
+  const plannedLockMask =
+    decision.lockMask.length === 6
+      ? [...decision.lockMask]
+      : [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+        ];
+
+  const fixedLocks =
+    confirmedLockedDice.length === 6
+      ? [...confirmedLockedDice]
+      : [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+        ];
+
+  const sanitizedWorkingMask =
     sanitizeComputerLockMask(
       playModeDice,
-      newLockedDice
+      plannedLockMask
     );
 
-  setLockedDice(
-    sanitizedDecisionLocks
+  const appliedLockMask =
+    mergeWithFixedLocks(
+      fixedLocks,
+      sanitizedWorkingMask
+    );
+
+  const illegalUnlockPrevented =
+    !areLockMasksEqual(
+      sanitizedWorkingMask,
+      appliedLockMask
+    );
+
+  const previousWorkingLocks =
+    deriveWorkingLocks(
+      lockedDice,
+      fixedLocks
+    );
+
+  const workingLocks = deriveWorkingLocks(
+    appliedLockMask,
+    fixedLocks
   );
+
+  const workingLocksChangedBeforeRoll =
+    !areLockMasksEqual(
+      previousWorkingLocks,
+      workingLocks
+    );
+
+  const targetCategoryCompatibleWithFixedLocks =
+    canTargetCategoryWorkWithFixedLocks(
+      decision.targetCategory,
+      playModeDice,
+      fixedLocks
+    );
+
+  const saveCandidate =
+    getCurrentWritableSaveCandidate(playerId);
+
+  let action = decision.action;
+  let fallbackReason =
+    decision.fallbackReason ?? null;
+
+  if (
+    action === "save" &&
+    !saveCandidate.canSave
+  ) {
+    action =
+      remainingRolls > 0
+        ? "roll"
+        : "end_turn";
+    fallbackReason =
+      saveCandidate.fallbackReason ??
+      "invalid-save-candidate";
+  }
+
+  if (
+    action === "roll" &&
+    remainingRolls <= 0
+  ) {
+    action = saveCandidate.canSave
+      ? "save"
+      : "end_turn";
+    fallbackReason =
+      fallbackReason ?? "no-rolls-left";
+  }
+
+  if (
+    action === "save" &&
+    decision.targetCategory &&
+    saveCandidate.categoryId &&
+    decision.targetCategory !==
+      saveCandidate.categoryId
+  ) {
+    action =
+      remainingRolls > 0
+        ? "roll"
+        : "end_turn";
+    fallbackReason = "target-category-mismatch";
+  }
+
+  if (
+    !targetCategoryCompatibleWithFixedLocks
+  ) {
+    action =
+      remainingRolls > 0
+        ? "roll"
+        : "end_turn";
+    fallbackReason =
+      "target-incompatible-with-fixed-locks";
+  }
+
+  const rejectedBecauseFixedLockViolation =
+    !targetCategoryCompatibleWithFixedLocks;
+
+  const rejectedBecauseInvalidCandidate =
+    (decision.action === "save" &&
+      !saveCandidate.canSave) ||
+    fallbackReason === "target-category-mismatch" ||
+    fallbackReason ===
+      "target-incompatible-with-fixed-locks";
+
+  const fallbackWorkingOnlyMask =
+    mergeWithFixedLocks(
+      fixedLocks,
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]
+    );
+
+  const selectedLockMask =
+    rejectedBecauseInvalidCandidate
+      ? fallbackWorkingOnlyMask
+      : appliedLockMask;
+
+  const effectiveTargetCategory =
+    rejectedBecauseInvalidCandidate
+      ? null
+      : decision.targetCategory;
+
+  if (action === "roll") {
+    aiControllerPreviousTargetCategoryRef.current =
+      effectiveTargetCategory;
+  } else {
+    aiControllerPreviousTargetCategoryRef.current =
+      null;
+  }
+
+  if (
+    rejectedBecauseInvalidCandidate &&
+    remainingRolls > 0
+  ) {
+    if (
+      !areLockMasksEqual(
+        lockedDice,
+        fallbackWorkingOnlyMask
+      )
+    ) {
+      setLockedDice(
+        fallbackWorkingOnlyMask
+      );
+
+      logAITurnAudit({
+        event: "working-replan-before-roll",
+        playerId,
+        previousWorkingLocks,
+        workingLocksCandidate:
+          workingLocks,
+        fixedLocks,
+        workingLocksChangedBeforeRoll: true,
+        rejectedBecauseFixedLockViolation,
+        rejectedBecauseInvalidCandidate,
+        fallbackReason,
+      });
+
+      return;
+    }
+  }
+
+  if (
+    !areLockMasksEqual(
+      lockedDice,
+      selectedLockMask
+    )
+  ) {
+    setLockedDice(selectedLockMask);
+  }
+
+  logAITurnAudit({
+    event: "decision",
+    playerId,
+    hasRolledThisTurn: hasRolledDice,
+    dice: playModeDice,
+    remainingRolls,
+    targetCategory:
+      decision.targetCategory,
+    targetCategoryCompatibleWithFixedLocks,
+    previousWorkingLocks,
+    workingLocksCandidate: workingLocks,
+    fixedLocks,
+    workingLocks,
+    workingLocksChangedBeforeRoll,
+    lockMaskPlanned: plannedLockMask,
+    lockMaskAfterReplan: sanitizedWorkingMask,
+    lockMaskBeforeRoll: selectedLockMask,
+    lockMaskApplied: selectedLockMask,
+    illegalUnlockPrevented,
+    rejectedBecauseFixedLockViolation,
+    rejectedBecauseInvalidCandidate,
+    action,
+    riskLevel: decision.riskLevel,
+    aiScore: decision.aiScore,
+    bestOpponentScore:
+      decision.bestOpponentScore,
+    endgameMode: decision.endgameMode,
+    scoreDelta: decision.scoreDelta,
+    aiRemainingPotential:
+      decision.aiRemainingPotential,
+    opponentRemainingPotential:
+      decision.opponentRemainingPotential,
+    requiredScoreEstimate:
+      decision.requiredScoreEstimate,
+    opponentScore: decision.opponentScore,
+    remainingCategories:
+      decision.remainingCategories,
+    riskBecauseBehind:
+      decision.riskBecauseBehind,
+    saveRejectedBecauseTooLow:
+      decision.saveRejectedBecauseTooLow,
+    currentPlanValue:
+      decision.currentPlanValue,
+    alternativePlanValue:
+      decision.alternativePlanValue,
+    pivotThreshold: decision.pivotThreshold,
+    pivotReason: decision.pivotReason,
+    confidence: decision.confidence,
+    reason: decision.reason,
+    fallbackReason,
+  });
+
+  const timer = setTimeout(() => {
+    if (
+      action === "save" &&
+      saveCandidate.canSave &&
+      saveCandidate.categoryId &&
+      saveCandidate.score !== null
+    ) {
+      const fixedLocksRespectedAtSave =
+        fixedLocks.every(
+          (isFixed, index) =>
+            !isFixed || selectedLockMask[index]
+        );
+
+      if (
+        !fixedLocksRespectedAtSave ||
+        !targetCategoryCompatibleWithFixedLocks
+      ) {
+        logAITurnAudit({
+          event: "save-rejected",
+          playerId,
+          fixedLocks,
+          lockMaskBeforeSave: selectedLockMask,
+          fixedLocksRespectedAtSave,
+          targetCategoryCompatibleWithFixedLocks,
+          reason:
+            "final-validation-fixed-locks",
+        });
+
+        if (remainingRolls > 0) {
+          setHasRolledDice(false);
+          rollAllDice(selectedLockMask);
+        } else {
+          endTurn();
+        }
+
+        return;
+      }
+
+      const saveCategoryId =
+        saveCandidate.categoryId;
+      const saveScore =
+        saveCandidate.score;
+
+      setSuppressNoCombinationSound(true);
+
+      lastStateChangeSourceRef.current =
+        "local-action";
+
+      const savedTurnVersion =
+        bumpLocalTurnVersion();
+
+      localTurnVersionRef.current =
+        savedTurnVersion;
+
+      bumpLocalRuntimeRevision();
+
+      setScores((prev) => ({
+        ...prev,
+        [playerId]: {
+          ...prev[playerId],
+          [saveCategoryId]: saveScore,
+        },
+      }));
+
+      setShowPlayModeResult(false);
+
+      aiControllerPreviousTargetCategoryRef.current =
+        null;
+      aiControllerExecutionMarkerRef.current =
+        null;
+      aiControllerLastObservedStateRef.current =
+        null;
+      aiControllerStepRef.current = 0;
+      aiControllerNoProgressRef.current = 0;
+
+      logAITurnAudit({
+        event: "final-action",
+        finalAction: "save",
+        playerId,
+        fixedLocks,
+        workingLocks,
+        categoryId: saveCandidate.categoryId,
+        score: saveCandidate.score,
+        endsTurnImmediately: true,
+      });
+
+      endTurn();
+
+      return;
+    }
+
+    if (action === "roll") {
+      setHasRolledDice(false);
+      rollAllDice(selectedLockMask);
+      return;
+    }
+
+    logAITurnAudit({
+      event: "final-action",
+      finalAction: "end_turn",
+      playerId,
+      fallbackReason:
+        fallbackReason ??
+        "controller-end-turn",
+    });
+
+    endTurn();
+  }, 450);
+
+  return () => clearTimeout(timer);
 }, [
   isOnlineGame,
   gameStarted,
@@ -2516,136 +3160,13 @@ useEffect(() => {
   selectedPlayers,
   scores,
   playModeDice,
+  lockedDice,
   confirmedLockedDice,
   remainingRolls,
   playModeAllowRewrite,
   isComputerPlayerId,
-]);
-
-useEffect(() => {
-  if (
-    isOnlineGame ||
-    !gameStarted ||
-    !hasStartedPlayMode ||
-    gameFinished ||
-    showPlayModeResult ||
-    selectedPlayers.length === 0
-  ) {
-    return;
-  }
-
-  const playerId =
-    selectedPlayers[
-      currentPlayPlayerIndex
-    ];
-
-  if (
-    !playerId ||
-    !isComputerPlayerId(playerId)
-  ) {
-    lastComputerAutoTurnRef.current =
-      null;
-
-    return;
-  }
-
-  const currentPlayerScores =
-    scores[playerId] || {};
-
-  const turnMarker = `${playerId}:${Object.keys(currentPlayerScores).length}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}`;
-
-  if (
-    lastComputerAutoTurnRef.current ===
-    turnMarker
-  ) {
-    return;
-  }
-
-  if (!currentCombination) {
-    if (!isComputerPlayerId(playerId)) {
-      setRemainingRolls(0);
-    } else if (remainingRolls <= 0) {
-      // Computer player out of rolls with no combination.
-      // End the turn using the existing turn handoff flow.
-      lastComputerAutoTurnRef.current =
-        turnMarker;
-      endTurn();
-      return;
-    }
-    setHasRolledDice(false);
-
-    return;
-  }
-
-  const categoryId =
-    playModeCategoryMap[
-      currentCombination.combination
-    ];
-
-  if (!categoryId) {
-    if (!isComputerPlayerId(playerId)) {
-      setRemainingRolls(0);
-    }
-    setHasRolledDice(false);
-
-    return;
-  }
-
-  const existingScore =
-    currentPlayerScores[categoryId];
-
-  if (
-    existingScore !== undefined &&
-    !playModeAllowRewrite
-  ) {
-    if (!isComputerPlayerId(playerId)) {
-      setRemainingRolls(0);
-    }
-    setHasRolledDice(false);
-
-    return;
-  }
-
-  if (
-    existingScore !== undefined &&
-    playModeAllowRewrite &&
-    existingScore >=
-      currentCombination.score
-  ) {
-    if (!isComputerPlayerId(playerId)) {
-      setRemainingRolls(0);
-    }
-    setHasRolledDice(false);
-
-    return;
-  }
-
-  lastComputerAutoTurnRef.current =
-    turnMarker;
-
-  setScores((prev) => ({
-    ...prev,
-    [playerId]: {
-      ...prev[playerId],
-      [categoryId]:
-        currentCombination.score,
-    },
-  }));
-
-  setShowPlayModeResult(true);
-}, [
-  isOnlineGame,
-  gameStarted,
-  hasStartedPlayMode,
-  gameFinished,
-  showPlayModeResult,
-  currentCombination,
-  selectedPlayers,
-  currentPlayPlayerIndex,
-  scores,
-  playModeAllowRewrite,
-  playModeCategoryMap,
-  remainingRolls,
+  endTurn,
+  rollAllDice,
 ]);
 
 const activateBonus = () => {
@@ -2721,7 +3242,9 @@ setBonusActivatedThisTurn(
 );
 };
 
-const rollAllDice = () => {
+function rollAllDice(
+  plannedLockMask?: boolean[]
+) {
   if (
     isOnlineGame &&
     !isCurrentPlayer
@@ -2739,6 +3262,12 @@ const rollAllDice = () => {
   lastStateChangeSourceRef.current =
     "local-action";
 
+  const activeLockMask =
+    plannedLockMask &&
+    plannedLockMask.length === 6
+      ? [...plannedLockMask]
+      : [...lockedDice];
+
   setIsRolling(true);
 
   let ticks = 0;
@@ -2753,7 +3282,7 @@ const rollAllDice = () => {
               index
             ) => {
               if (
-                lockedDice[
+                activeLockMask[
                   index
                 ]
               ) {
@@ -2786,7 +3315,7 @@ const rollAllDice = () => {
               index
             ) => {
               if (
-                lockedDice[
+                activeLockMask[
                   index
                 ]
               ) {
@@ -2822,8 +3351,12 @@ setRemainingRolls(
     prev - 1
 );
 
-        setConfirmedLockedDice(
-  [...lockedDice]
+        setConfirmedLockedDice((prev) =>
+  prev.map(
+    (isFixed, index) =>
+      isFixed ||
+      activeLockMask[index]
+  )
 );
 
 setBonusActivatedThisTurn(
@@ -2835,161 +3368,7 @@ setIsRolling(
 );
       }
     }, 133);
-};
-
-useEffect(() => {
-  if (
-    isOnlineGame ||
-    !gameStarted ||
-    !hasStartedPlayMode ||
-    gameFinished ||
-    showPlayModeResult ||
-    remainingRolls <= 0 ||
-    isRolling ||
-    selectedPlayers.length === 0
-  ) {
-    return;
-  }
-
-  const playerId =
-    selectedPlayers[
-      currentPlayPlayerIndex
-    ];
-
-  if (
-    !playerId ||
-    !isComputerPlayerId(playerId)
-  ) {
-    lastComputerAutoRollRef.current =
-      null;
-
-    return;
-  }
-
-  const currentPlayerScores =
-    scores[playerId] || {};
-
-  const aiDecisionRollMarker = `${playerId}:${Object.keys(currentPlayerScores).length}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}:${remainingRolls}:${playModeDice.join(",")}`;
-
-  const aiReturnedNoChange =
-    lastAIDecisionOutcomeRef.current
-      ?.rollMarker ===
-      aiDecisionRollMarker &&
-    lastAIDecisionOutcomeRef.current
-      .lockedDiceIndices.length === 0 &&
-    lastAIDecisionOutcomeRef.current.reason.startsWith(
-      "noChange"
-    );
-
-  if (aiReturnedNoChange) {
-    const rollbackLocks =
-      sanitizeComputerLockMask(
-        playModeDice,
-        confirmedLockedDice
-      );
-
-    const rollbackChanged =
-      rollbackLocks.some(
-        (isLocked, index) =>
-          isLocked !== lockedDice[index]
-      ) ||
-      rollbackLocks.some(
-        (isLocked, index) =>
-          isLocked !==
-          confirmedLockedDice[index]
-      );
-
-    if (rollbackChanged) {
-      setLockedDice(rollbackLocks);
-      setConfirmedLockedDice(
-        rollbackLocks
-      );
-      lastComputerAutoRollRef.current =
-        null;
-      return;
-    }
-  }
-
-  const categoryId =
-    currentCombination
-      ? playModeCategoryMap[
-          currentCombination.combination
-        ]
-      : null;
-
-  const existingScore =
-    categoryId
-      ? currentPlayerScores[categoryId]
-      : undefined;
-
-  const hasWritableCombination =
-    !!currentCombination &&
-    !!categoryId &&
-    (existingScore === undefined ||
-      (playModeAllowRewrite &&
-        currentCombination.score >
-          existingScore));
-
-  if (hasWritableCombination) {
-    return;
-  }
-
-  if (
-    hasRolledDice &&
-    !aiReturnedNoChange
-  ) {
-    lastComputerAutoRollRef.current =
-      null;
-
-    return;
-  }
-
-  const rollMarker = `${playerId}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}:${remainingRolls}:${playModeDice.join(",")}`;
-
-  if (
-    lastComputerAutoRollRef.current ===
-    rollMarker
-  ) {
-    return;
-  }
-
-  lastComputerAutoRollRef.current =
-    rollMarker;
-
-  const scheduledTurnVersion =
-    localTurnVersionRef.current;
-
-  const timer = setTimeout(() => {
-    if (
-      lastComputerAutoRollRef.current !==
-        rollMarker ||
-      localTurnVersionRef.current !==
-        scheduledTurnVersion
-    ) {
-      return;
-    }
-
-    rollAllDice();
-  }, 500);
-
-  return () => clearTimeout(timer);
-}, [
-  isOnlineGame,
-  gameStarted,
-  hasStartedPlayMode,
-  gameFinished,
-  showPlayModeResult,
-  hasRolledDice,
-  isRolling,
-  currentCombination,
-  playModeCategoryMap,
-  playModeAllowRewrite,
-  currentPlayPlayerIndex,
-  selectedPlayers,
-  scores,
-  rollAllDice,
-  remainingRolls,
-]);
+}
 
   // 12. SAVE / LOAD
   const saveFunGame =
@@ -8793,8 +9172,8 @@ canSavePlayModeScore &&
 )}
 {remainingRolls > 0 && (
           <button
-            onClick={
-              rollAllDice
+            onClick={() =>
+              rollAllDice()
             }
             disabled={
               remainingRolls <=
