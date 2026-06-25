@@ -1,7 +1,7 @@
 export const gameCategories = [
   {
     id: "general",
-    name: "Generál",
+    name: "Hero",
     min: 6,
     max: 36,
   },

@@ -1584,7 +1584,7 @@ const gameTypeTagText =
 const bonusModeInfoText =
   playModeBonusMode === "all"
     ? "všechny kombinace"
-    : "pouze Generál";
+    : "pouze Hero";
 
 const bonusRollsInfoText =
   `+${playModeBonusRolls} ${
@@ -7217,7 +7217,7 @@ const renderOnlineChatMessages = () => (
                     game.play_mode_bonus_mode ===
                     "all"
                       ? "Všechny kombinace"
-                      : "Generál"
+                      : "Hero"
                   } +${
                     Math.max(
                       (game.play_mode_bonus_rolls ?? 2) -
@@ -7936,7 +7936,7 @@ if (celebrationType === 2) {
         </div>
 
         <div>
-          • bonus pouze u generála (2 bonus hody)
+          • bonus pouze u hero (2 bonus hody)
         </div>
       </div>
     </div>
@@ -8068,7 +8068,7 @@ if (celebrationType === 2) {
                     : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
                 }`}
               >
-                Pouze generál
+                Pouze Hero
               </button>
 
               <button
@@ -8627,7 +8627,7 @@ return (
               ? "Bonus"
               : playModeBonusMode ===
             "general-only"
-              ? `Bonus generál +${bonusDifference}`
+              ? `Bonus Hero +${bonusDifference}`
 : `Bonus +${bonusDifference}`}
           </button>
 

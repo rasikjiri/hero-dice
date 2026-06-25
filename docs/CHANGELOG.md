@@ -487,3 +487,62 @@ Poznamky:
 - V ramci dlouhodobeho testovani byly identifikovany 2 otevrene strategicke problemy, ktere se presouvaji do verze 3.4:
 	1) Bias ke kombinaci 1 + 5 (preference hodnoty 1 i v situacich, kde existuje vyhodnejsi varianta).
 	2) Nedostatecne zohledneni pravdepodobnosti budouciho vyvoje (AI nekdy preferuje okamzitou cestu k cili pred pravdepodobne silnejsim pokracovanim).
+
+---
+
+## Hero Dice v3.4 - Souhrn změn
+
+Datum:
+2026-06-25
+
+Riziko:
+LOW
+
+Změněné soubory:
+* app/page.tsx
+* app/components/HelpModal.tsx
+* app/components/FunGamesModal.tsx
+* app/data/gameCategories.ts
+
+Popis:
+
+### v3.4.0.1 - Potvrzení klávesou Enter
+- Přidáno potvrzení přihlášení klávesou Enter.
+- Přidáno potvrzení ručního zadání skóre klávesou Enter.
+- Omezeno pouze na přihlášení a ruční zadání skóre v offline PvP.
+- Bez dopadu na online hru, hru proti počítači a Play Mode logiku.
+
+### v3.4.0.2 - Kompletní redesign Průvodce hrou
+- Kompletně přepracovaná struktura průvodce.
+- Zpřesněné vysvětlení pravidel Hero Dice.
+- Jasné oddělení pravidel hry, způsobů hraní, Ligové/Fun hry, statistik a ukládání her.
+- Přidány přesnější popisy režimů, zápisu skóre, bonusů a FAQ.
+- Zlepšena čitelnost, zkráceny texty a upraveno pořadí sekcí.
+
+### v3.4.0.3 - Kombinace v Průvodci hrou
+- Přidán interaktivní seznam kombinací.
+- Přidáno otevírání existující obrázkové nápovědy přímo z průvodce.
+- Opraven návrat po zavření náhledu kombinace zpět do Průvodce hrou.
+- Upraven vzhled odkazů tak, aby byl klikací pouze název kombinace.
+
+### v3.4.0.4 - Informační řádek hry
+- Zpřesněno zobrazení bonusového režimu.
+- Přidáno dynamické zobrazení počtu bonusových hodů podle aktuální konfigurace.
+- Přidáno označení Hra proti počítači při aktivním AI hráči.
+- Zachována stávající logika rozlišení Ligová/Fun hra.
+
+### v3.4.0.5 - Branding hlavní kombinace
+- Provedeno bezpečné prezentační přejmenování hlavní kombinace Generál -> Hero.
+- Zachovány interní identifikátory, databázové struktury, statistiky, uložené hry i herní logika.
+
+Důvod:
+- Zvýšit kvalitu každodenního používání aplikace bez zásahu do herních pravidel a výpočtů skóre.
+- Zpřehlednit pravidla, sjednotit UX a odstranit drobné nedostatky v uživatelském rozhraní.
+
+Dopad:
+- Verze 3.4 nepřináší nové herní funkce, ale výrazně zlepšuje použitelnost a orientaci hráče.
+- Zachována stabilita, kompatibilita uložených dat a konzistence herních mechanismů.
+- Vytvořen pevný základ pro další rozvoj v oblasti AI, herního zážitku a budoucích komunitních funkcí.
+
+Poznámky:
+- Nedošlo ke změnám herních pravidel ani výpočtů skóre.

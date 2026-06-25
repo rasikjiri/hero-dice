@@ -467,7 +467,7 @@ export default function FunGamesModal({
                 </option>
 
                 <option value="general-only">
-                  Pouze Generál
+                  Pouze Hero
                 </option>
 
                 <option value="bonus-all">
@@ -532,7 +532,7 @@ export default function FunGamesModal({
                 {mostPlayedConfig.bonusMode ===
                 "all"
                   ? "Všechny kombinace"
-                  : "Pouze Generál"}
+                  : "Pouze Hero"}
               </div>
 
               <div>
@@ -859,7 +859,7 @@ export default function FunGamesModal({
                 {game.bonus_mode ===
                 "all"
                   ? "Všechny kombinace"
-                  : "Pouze Generál"}
+                  : "Pouze Hero"}
               </span>
 
               <span className="rounded-lg bg-zinc-900 px-3 py-1">

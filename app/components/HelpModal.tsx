@@ -233,7 +233,7 @@ export default function HelpModal({
                 onClick={() => openCombinationHelp("general")}
                 className="font-bold text-yellow-300 transition hover:text-yellow-200"
               >
-                Generál
+                Hero
               </button>
               <span className="text-zinc-400">
                 {" "}— 6 až 36 bodů
@@ -320,7 +320,7 @@ export default function HelpModal({
             <br />
             • bez přepisování
             <br />
-            • bonus pouze pro Generála
+            • bonus pouze pro Hero
             <br />
             • 2 bonusové hody
             <br />
