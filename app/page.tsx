@@ -2849,6 +2849,14 @@ setSelectedGeneralValue(
   }
 };
 
+// BUGFIX #2: Reset AI execution marker when result is dismissed to allow fresh turn detection
+useEffect(() => {
+  if (!showPlayModeResult && aiControllerExecutionMarkerRef.current !== null) {
+    // Result was dismissed, reset marker so AI turn detection runs fresh
+    aiControllerExecutionMarkerRef.current = null;
+  }
+}, [showPlayModeResult]);
+
 // 10. AI PLAYER - Decision Logic
 useEffect(() => {
   if (
@@ -3570,14 +3578,8 @@ useEffect(() => {
     aiControllerPreviousTargetCategoryRef.current =
       null;
 
-    if (
-      !areLockMasksEqual(
-        lockedDice,
-        fallbackWorkingOnlyMask
-      )
-    ) {
-      setLockedDice(fallbackWorkingOnlyMask);
-    }
+    // BUGFIX #1: Don't set locks before save - it triggers effect rerun that cancels setTimeout
+    // Locks will be set after save completes or in the setTimeout handler
 
     logAITurnAudit({
       event: "save-first-guard",
@@ -3663,6 +3665,38 @@ useEffect(() => {
           });
         }
         return;
+      }
+
+      // BUGFIX #1 & #3: Ensure target is still writable (may have changed since decision)
+      const saveTargetIsStillWritable = writableCategorySet.has(
+        saveCandidate.categoryId
+      );
+      if (!saveTargetIsStillWritable) {
+        if (remainingRolls > 0) {
+          setHasRolledDice(false);
+          rollAllDice(fallbackWorkingOnlyMask);
+        } else {
+          endTurn({
+            playerId,
+            savedScore: false,
+            combination: null,
+            score: null,
+            categoryId: null,
+            reason:
+              "ai-save-target-not-writable",
+          });
+        }
+        return;
+      }
+
+      // BUGFIX #1: Set locks now before save validation (not earlier to avoid effect rerun)
+      if (
+        !areLockMasksEqual(
+          lockedDice,
+          fallbackWorkingOnlyMask
+        )
+      ) {
+        setLockedDice(fallbackWorkingOnlyMask);
       }
 
       const fixedLocksRespectedAtSave =
@@ -4075,6 +4109,9 @@ useEffect(() => {
         fallbackReason,
       });
 
+      // Reset previousTargetCategory to prevent deadlock when decision is invalid
+      aiControllerPreviousTargetCategoryRef.current = null;
+
       return;
     }
   }
@@ -4284,6 +4321,28 @@ useEffect(() => {
       saveCandidate.categoryId &&
       saveCandidate.score !== null
     ) {
+      // BUGFIX #3: Ensure save target is writable (may have become non-writable)
+      const saveTargetIsWritable = writableCategorySet.has(
+        saveCandidate.categoryId
+      );
+      if (!saveTargetIsWritable) {
+        if (remainingRolls > 0) {
+          setHasRolledDice(false);
+          rollAllDice(selectedLockMask);
+        } else {
+          endTurn({
+            playerId,
+            savedScore: false,
+            combination: null,
+            score: null,
+            categoryId: null,
+            reason:
+              "ai-save-target-became-non-writable",
+          });
+        }
+        return;
+      }
+
       const fixedLocksRespectedAtSave =
         fixedLocks.every(
           (isFixed, index) =>
