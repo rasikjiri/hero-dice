@@ -46,6 +46,10 @@ import { supabase } from "./lib/supabase";
 
 import { detectCombination } from "./lib/playMode";
 
+import {
+  getWritableCategoryIds,
+} from "./lib/combinationValidation";
+
 import { makeAIDecision } from "./lib/aiPlayer";
 
 import {
@@ -393,6 +397,12 @@ const aiControllerNoProgressRef =
 
 const aiControllerPreviousTargetCategoryRef =
   useRef<string | null>(null);
+
+const aiRollTimeoutSequenceRef =
+  useRef(0);
+
+const aiActiveRollTimeoutIdRef =
+  useRef<number | null>(null);
 
 const lastStateChangeSourceRef =
   useRef<
@@ -790,6 +800,21 @@ const [
   showPlayModeResult,
   setShowPlayModeResult,
 ] = useState(false);
+
+type PlayModeTurnSummary = {
+  playerId: string;
+  nextPlayerId: string;
+  savedScore: boolean;
+  combination: string | null;
+  score: number | null;
+  categoryId: string | null;
+  reason: string;
+};
+
+const [
+  playModeTurnSummary,
+  setPlayModeTurnSummary,
+] = useState<PlayModeTurnSummary | null>(null);
 
 const [
   currentPlayPlayerIndex,
@@ -1866,8 +1891,247 @@ const getCurrentWritableSaveCandidate = (
   };
 };
 
+const playModeCategoryMaxScore: Record<string, number> = {
+  general: 36,
+  pyramida: 32,
+  hrozen: 28,
+  postupka: 21,
+  ctyri_dva: 34,
+  trojce: 33,
+  dvojce: 30,
+};
+
+const getStrongSaveCandidateDecision = (
+  saveCandidate: {
+    canSave: boolean;
+    fallbackReason: string | null;
+    latestCombination: {
+      combination: string;
+      score: number;
+    } | null;
+    categoryId: string | null;
+    score: number | null;
+  },
+  existingScore: number | undefined,
+  rewriteAllowed: boolean,
+  remainingRolls: number,
+  targetCategoryCompatibleWithFixedLocks: boolean
+) => {
+  if (!saveCandidate.canSave) {
+    return {
+      accepted: false,
+      reason:
+        saveCandidate.fallbackReason ??
+        "candidate-not-writable",
+    };
+  }
+
+  if (
+    !saveCandidate.latestCombination ||
+    !saveCandidate.categoryId ||
+    saveCandidate.score === null
+  ) {
+    return {
+      accepted: false,
+      reason: "candidate-missing-data",
+    };
+  }
+
+  if (!targetCategoryCompatibleWithFixedLocks) {
+    return {
+      accepted: false,
+      reason: "candidate-incompatible-with-fixed-locks",
+    };
+  }
+
+  const categoryMaxScore =
+    playModeCategoryMaxScore[
+      saveCandidate.categoryId
+    ] ?? null;
+
+  if (
+    saveCandidate.categoryId === "postupka" &&
+    saveCandidate.score === 21
+  ) {
+    return {
+      accepted: true,
+      reason: "max-postupka-always-save",
+    };
+  }
+
+  if (
+    categoryMaxScore !== null &&
+    saveCandidate.score >= categoryMaxScore
+  ) {
+    return {
+      accepted: true,
+      reason: "max-category-score",
+    };
+  }
+
+  if (
+    rewriteAllowed &&
+    existingScore !== undefined &&
+    saveCandidate.score > existingScore
+  ) {
+    return {
+      accepted: true,
+      reason: "rewrite-improves-existing-score",
+    };
+  }
+
+  if (remainingRolls <= 0) {
+    return {
+      accepted: true,
+      reason: "no-rolls-left",
+    };
+  }
+
+  if (
+    categoryMaxScore !== null &&
+    saveCandidate.score >=
+      Math.floor(categoryMaxScore * 0.85)
+  ) {
+    return {
+      accepted: true,
+      reason: "very-high-category-score",
+    };
+  }
+
+  if (saveCandidate.score >= 26) {
+    return {
+      accepted: true,
+      reason: "high-absolute-score",
+    };
+  }
+
+  return {
+    accepted: false,
+    reason: "candidate-not-strong-enough",
+  };
+};
+
+const getSaveTimingGuardDecision = (
+  saveCandidate: {
+    canSave: boolean;
+    fallbackReason: string | null;
+    latestCombination: {
+      combination: string;
+      score: number;
+    } | null;
+    categoryId: string | null;
+    score: number | null;
+  },
+  existingScore: number | undefined,
+  rewriteAllowed: boolean,
+  remainingRolls: number,
+  targetCategoryCompatibleWithFixedLocks: boolean,
+  writableCategoryIds: string[]
+) => {
+  if (!saveCandidate.canSave) {
+    return {
+      accepted: false,
+      reason:
+        saveCandidate.fallbackReason ??
+        "candidate-not-writable",
+    };
+  }
+
+  if (
+    !saveCandidate.latestCombination ||
+    !saveCandidate.categoryId ||
+    saveCandidate.score === null
+  ) {
+    return {
+      accepted: false,
+      reason: "candidate-missing-data",
+    };
+  }
+
+  if (!targetCategoryCompatibleWithFixedLocks) {
+    return {
+      accepted: false,
+      reason: "candidate-incompatible-with-fixed-locks",
+    };
+  }
+
+  const categoryMaxScore =
+    playModeCategoryMaxScore[
+      saveCandidate.categoryId
+    ] ?? null;
+
+  if (
+    categoryMaxScore !== null &&
+    saveCandidate.score >= categoryMaxScore
+  ) {
+    return {
+      accepted: true,
+      reason: "save-now-because-max-score",
+    };
+  }
+
+  if (
+    rewriteAllowed &&
+    existingScore !== undefined &&
+    saveCandidate.score > existingScore
+  ) {
+    return {
+      accepted: true,
+      reason: "save-now-because-rewrite-improves-existing",
+    };
+  }
+
+  if (remainingRolls <= 1) {
+    return {
+      accepted: true,
+      reason: "save-now-because-remaining-rolls-low",
+    };
+  }
+
+  const bestWritableCategoryMaxScore =
+    writableCategoryIds.length > 0
+      ? Math.max(
+          ...writableCategoryIds.map(
+            (categoryId) =>
+              playModeCategoryMaxScore[categoryId] ?? 0
+          )
+        )
+      : 0;
+
+  if (
+    saveCandidate.score >= bestWritableCategoryMaxScore
+  ) {
+    return {
+      accepted: true,
+      reason:
+        "save-now-because-no-better-legal-improvement",
+    };
+  }
+
+  if (remainingRolls <= 0) {
+    return {
+      accepted: true,
+      reason: "save-now-because-no-rolls-left",
+    };
+  }
+
+  return {
+    accepted: false,
+    reason: "save-delayed-because-better-legal-option-remains",
+  };
+};
+
+const isTargetAlreadyScoredWhenRewriteDisabled = (
+  targetCategory: string | null,
+  playerScores: Record<string, number>,
+  rewriteAllowed: boolean
+) =>
+  !!targetCategory &&
+  !rewriteAllowed &&
+  playerScores[targetCategory] !== undefined;
+
 const sanitizeComputerLockMask = (
-  dice: number[],
+  _dice: number[],
   lockMask: boolean[]
 ): boolean[] => {
   const normalized =
@@ -1875,48 +2139,9 @@ const sanitizeComputerLockMask = (
       ? [...lockMask]
       : [false, false, false, false, false, false];
 
-  const lockedIndices = normalized
-    .map((isLocked, index) =>
-      isLocked ? index : -1
-    )
-    .filter((index) => index !== -1);
-
-  if (lockedIndices.length === 0) {
-    return normalized.map(() => false);
-  }
-
-  if (
-    lockedIndices.length === 6 &&
-    detectCombination(dice)
-  ) {
-    return normalized;
-  }
-
-  const lockedValueCounts: Record<number, number> = {};
-
-  lockedIndices.forEach((index) => {
-    const value = dice[index];
-    lockedValueCounts[value] =
-      (lockedValueCounts[value] || 0) + 1;
-  });
-
-  return normalized.map(
-    (isLocked, index) => {
-      if (!isLocked) {
-        return false;
-      }
-
-      const value = dice[index];
-
-      if (value === 1 || value === 5) {
-        return true;
-      }
-
-      return (
-        (lockedValueCounts[value] || 0) >= 2
-      );
-    }
-  );
+  // Controller sanitization only normalizes shape; strategic lock choices
+  // are validated later against fixed locks and writable targets.
+  return normalized.map((isLocked) => !!isLocked);
 };
 
 const currentPlayModeScore =
@@ -2463,7 +2688,12 @@ setSuppressNoCombinationSound(
     return true;
   };
 
-const endTurn = async () => {
+const endTurn = async (
+  turnSummary?: Omit<
+    PlayModeTurnSummary,
+    "nextPlayerId"
+  > | null
+) => {
   // Reset sound flag for new player
   setNoCombinationSoundPlayed(false);
 
@@ -2605,6 +2835,18 @@ setSelectedGeneralValue(
   null
 );
   setBonusUsed(false);
+
+  if (turnSummary) {
+    setPlayModeTurnSummary({
+      ...turnSummary,
+      nextPlayerId:
+        selectedPlayers[nextPlayer] ?? "",
+    });
+    setShowPlayModeResult(true);
+  } else {
+    setPlayModeTurnSummary(null);
+    setShowPlayModeResult(false);
+  }
 };
 
 // 10. AI PLAYER - Decision Logic
@@ -2662,6 +2904,21 @@ useEffect(() => {
   }
 
   if (showPlayModeResult || isRolling) {
+    if (isRolling) {
+      logAITurnAudit({
+        event: "aiControllerSkippedBecauseIsRolling",
+        playerId,
+        remainingRolls,
+        hasRolledThisTurn: hasRolledDice,
+        showPlayModeResult,
+        activeRollTimeoutId:
+          aiActiveRollTimeoutIdRef.current,
+        lockedDice,
+        confirmedLockedDice,
+        dice: playModeDice,
+      });
+    }
+
     return;
   }
 
@@ -2712,7 +2969,17 @@ useEffect(() => {
           ? "max-steps-exceeded"
           : "repeated-no-progress",
     });
-    endTurn();
+    endTurn({
+      playerId,
+      savedScore: false,
+      combination: null,
+      score: null,
+      categoryId: null,
+      reason:
+        aiControllerStepRef.current > 24
+          ? "forced-safe-exit-max-steps"
+          : "forced-safe-exit-repeated-no-progress",
+    });
     return;
   }
 
@@ -2743,7 +3010,18 @@ useEffect(() => {
       event: "first-roll-guard",
       playerId,
       hasRolledThisTurn: hasRolledDice,
+      noCombinationGuardPhase:
+        "beforeFirstRoll",
+      beforeFirstRollNoCombinationIgnored:
+        currentCombination === null,
+      noCombinationEndTurnBlockedBecauseRollsRemain:
+        false,
+      terminalNoCombinationEndTurnAllowed:
+        false,
+      forcedFirstRollBecauseNoCombinationAtTurnStart:
+        currentCombination === null,
       blockedPlanningBeforeFirstRoll: true,
+      aiAutoStartGuardTriggered: true,
       firstActionForcedRoll: remainingRolls > 0,
       remainingRolls,
       lockMaskApplied: emptyLockMask,
@@ -2753,38 +3031,46 @@ useEffect(() => {
       null;
 
     if (remainingRolls <= 0) {
+      setRemainingRolls((prev) =>
+        prev > 0
+          ? prev
+          : Math.max(1, playModeRolls)
+      );
+
       logAITurnAudit({
-        event: "final-action",
-        finalAction: "end_turn",
+        event: "first-roll-guard",
         playerId,
+        hasRolledThisTurn: hasRolledDice,
+        noCombinationGuardPhase:
+          "beforeFirstRoll",
+        beforeFirstRollNoCombinationIgnored:
+          true,
+        noCombinationEndTurnBlockedBecauseRollsRemain:
+          true,
+        terminalNoCombinationEndTurnAllowed:
+          false,
+        forcedFirstRollBecauseNoCombinationAtTurnStart:
+          true,
+        blockedPlanningBeforeFirstRoll: true,
+        aiAutoStartGuardTriggered: true,
+        firstActionForcedRoll: true,
+        remainingRollsRecoveredTo:
+          Math.max(1, playModeRolls),
         fallbackReason:
-          "first-roll-guard-no-rolls-left",
+          "before-first-roll-no-combination-recovery",
       });
-      endTurn();
+
       return;
     }
 
+    setHasRolledDice(false);
     rollAllDice(emptyLockMask);
     return;
   }
 
-  const decision = makeAIDecision(
-    playModeDice,
-    currentCombination,
-    scores,
-    playerId,
-    playModeAllowRewrite,
-    remainingRolls,
-    {
-      fixedLocks: confirmedLockedDice,
-      previousTargetCategory:
-        aiControllerPreviousTargetCategoryRef.current,
-    }
-  );
-
-  const plannedLockMask =
-    decision.lockMask.length === 6
-      ? [...decision.lockMask]
+  const fixedLocks =
+    confirmedLockedDice.length === 6
+      ? [...confirmedLockedDice]
       : [
           false,
           false,
@@ -2794,9 +3080,730 @@ useEffect(() => {
           false,
         ];
 
-  const fixedLocks =
-    confirmedLockedDice.length === 6
-      ? [...confirmedLockedDice]
+  const legalMoveContext = {
+    currentCombination,
+    writableSaveCandidate:
+      getCurrentWritableSaveCandidate(playerId),
+    availableTargetCategories:
+      getWritableCategoryIds(
+        scores[playerId] || {},
+        playModeAllowRewrite
+      ),
+    lockCompatibility: Object.fromEntries(
+      Object.values(playModeCategoryMap).map(
+        (categoryId) => [
+          categoryId,
+          canTargetCategoryWorkWithFixedLocks(
+            categoryId,
+            playModeDice,
+            fixedLocks
+          ),
+        ]
+      )
+    ),
+    rewriteAllowed: playModeAllowRewrite,
+    fixedLocks,
+    remainingRolls,
+  };
+
+  const availableTargetCategoriesAtDecisionStart = [
+    ...legalMoveContext.availableTargetCategories,
+  ];
+
+  const scoredCategories = Object.values(
+    playModeCategoryMap
+  ).filter(
+    (categoryId) =>
+      scores[playerId]?.[categoryId] !== undefined
+  );
+
+  const writableCategorySet = new Set<string>(
+    availableTargetCategoriesAtDecisionStart
+  );
+
+  const scoredCategoriesFilteredOut =
+    scoredCategories.filter(
+      (categoryId) =>
+        !writableCategorySet.has(categoryId)
+    );
+
+  const detectedCombinationCategoryAtDecisionStart =
+    currentCombination
+      ? playModeCategoryMap[
+          currentCombination.combination
+        ] ?? null
+      : null;
+
+  const detectedCombinationIgnoredBecauseAlreadyScored =
+    isTargetAlreadyScoredWhenRewriteDisabled(
+      detectedCombinationCategoryAtDecisionStart,
+      scores[playerId] || {},
+      playModeAllowRewrite
+    );
+
+  const saveCandidate =
+    legalMoveContext.writableSaveCandidate;
+
+  const noCombinationAtDecisionStart =
+    currentCombination === null &&
+    !saveCandidate.canSave;
+
+  const noCombinationGuardPhase =
+    !hasRolledDice
+      ? "beforeFirstRoll"
+      : noCombinationAtDecisionStart &&
+          remainingRolls <= 0
+        ? "terminalNoCombination"
+        : noCombinationAtDecisionStart
+          ? "afterRollNoCombination"
+          : "not-applicable";
+
+  const fallbackWorkingOnlyMask =
+    mergeWithFixedLocks(
+      fixedLocks,
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]
+    );
+
+  const saveCandidateFixedLockCompatible =
+    canTargetCategoryWorkWithFixedLocks(
+      saveCandidate.categoryId,
+      playModeDice,
+      fixedLocks
+    );
+
+  const saveCandidateExistingScore =
+    saveCandidate.categoryId
+      ? scores[playerId]?.[
+          saveCandidate.categoryId
+        ]
+      : undefined;
+
+  const saveTimingDecision =
+    getSaveTimingGuardDecision(
+      saveCandidate,
+      saveCandidateExistingScore,
+      playModeAllowRewrite,
+      remainingRolls,
+      saveCandidateFixedLockCompatible,
+      legalMoveContext.availableTargetCategories
+    );
+
+  const strongSaveDecision =
+    getStrongSaveCandidateDecision(
+      saveCandidate,
+      saveCandidateExistingScore,
+      playModeAllowRewrite,
+      remainingRolls,
+      saveCandidateFixedLockCompatible
+    );
+
+  const candidateNotWritableNow =
+    !!saveCandidate.latestCombination &&
+    !saveCandidate.canSave;
+
+  const shouldClearWorkingLocksBecauseCandidateNotWritable =
+    candidateNotWritableNow &&
+    remainingRolls > 0 &&
+    !areLockMasksEqual(
+      lockedDice,
+      fallbackWorkingOnlyMask
+    );
+
+  const previousTargetCategoryBeforeClear =
+    aiControllerPreviousTargetCategoryRef.current;
+
+  const previousTargetRejectedBecauseAlreadyScored =
+    isTargetAlreadyScoredWhenRewriteDisabled(
+      previousTargetCategoryBeforeClear,
+      scores[playerId] || {},
+      playModeAllowRewrite
+    );
+
+  const previousTargetNotWritable =
+    previousTargetCategoryBeforeClear !== null &&
+    !writableCategorySet.has(
+      previousTargetCategoryBeforeClear
+    );
+
+  const currentWorkingLocksBeforeDecision =
+    deriveWorkingLocks(
+      lockedDice,
+      fixedLocks
+    );
+  const lockStateHasWorkingLocks =
+    currentWorkingLocksBeforeDecision.some(Boolean);
+  const lockStateCurrentCombinationWritable =
+    !!saveCandidate.canSave &&
+    !!saveCandidate.categoryId &&
+    writableCategorySet.has(
+      saveCandidate.categoryId
+    );
+  const lockStatePreviousTargetWritable =
+    previousTargetCategoryBeforeClear !== null &&
+    writableCategorySet.has(
+      previousTargetCategoryBeforeClear
+    );
+  const lockStateHasWritableTarget =
+    legalMoveContext.availableTargetCategories
+      .length > 0 &&
+    (
+      lockStateCurrentCombinationWritable ||
+      lockStatePreviousTargetWritable
+    );
+  const lockStateRejectedBecauseNoWritableTarget =
+    lockStateHasWorkingLocks &&
+    remainingRolls > 0 &&
+    !lockStateHasWritableTarget;
+
+  const afterRollNoCombinationWithRollsLeft =
+    hasRolledDice &&
+    currentCombination === null &&
+    !saveCandidate.canSave &&
+    remainingRolls > 0;
+
+  const noCombinationWithWorkingLocksDetected =
+    afterRollNoCombinationWithRollsLeft &&
+    lockStateHasWorkingLocks;
+
+  const noWorkingLocksAfterRollHandled =
+    afterRollNoCombinationWithRollsLeft &&
+    !lockStateHasWorkingLocks;
+
+  const previousTargetClearedBecauseNoCombination =
+    previousTargetCategoryBeforeClear !== null &&
+    !lockStatePreviousTargetWritable;
+
+  let noCombinationDecisionAllowed = false;
+  let noCombinationImmediateRerollSkipped = false;
+  let decisionReachedAfterNoCombination = false;
+  let clearLockProgressEnsured = false;
+  let clearLockEarlyReturnPrevented = false;
+  let rerollAfterClearLockIfNeeded = false;
+
+  if (afterRollNoCombinationWithRollsLeft) {
+    if (previousTargetClearedBecauseNoCombination) {
+      aiControllerPreviousTargetCategoryRef.current =
+        null;
+    }
+
+    if (
+      !areLockMasksEqual(
+        lockedDice,
+        fallbackWorkingOnlyMask
+      )
+    ) {
+      setLockedDice(fallbackWorkingOnlyMask);
+    }
+
+    noCombinationDecisionAllowed = true;
+    noCombinationImmediateRerollSkipped = true;
+
+    logAITurnAudit({
+      event: "working-replan-before-roll",
+      playerId,
+      legalMoveContextUsed: true,
+      noCombinationGuardPhase,
+      beforeFirstRollNoCombinationIgnored:
+        false,
+      noCombinationEndTurnBlockedBecauseRollsRemain:
+        true,
+      terminalNoCombinationEndTurnAllowed:
+        false,
+      forcedFirstRollBecauseNoCombinationAtTurnStart:
+        false,
+      afterRollNoCombinationWithRollsLeft: true,
+      noScoreSummaryBlockedBecauseRollsRemain:
+        true,
+      rerollBecauseNoCombinationAndRollsRemain:
+        false,
+      terminalNoCombinationSummaryAllowed:
+        false,
+      noCombinationDecisionAllowed,
+      noCombinationImmediateRerollSkipped,
+      noWorkingLocksAfterRollHandled,
+      noCombinationGuardChecked: true,
+      noCombinationWithWorkingLocksDetected,
+      workingLocksClearedBecauseNoCombination:
+        noCombinationWithWorkingLocksDetected,
+      fixedLocksPreservedAfterWorkingClear:
+        fixedLocks.every(
+          (isFixed, index) =>
+            !isFixed || fallbackWorkingOnlyMask[index]
+        ),
+      previousTargetClearedBecauseNoCombination,
+      rerollAfterNoCombinationGuard:
+        remainingRolls > 0,
+      stallPreventedByNoCombinationGuard: true,
+      availableTargetCategoriesAtDecisionStart,
+      scoredCategoriesFilteredOut,
+      lockStateLegalityChecked: true,
+      lockStateHasWritableTarget,
+      lockStateRejectedBecauseNoWritableTarget: false,
+      workingLocksClearedBecauseNoWritableTarget: false,
+      previousTargetClearedBecauseNoWritableTarget: false,
+      rerollAllowedAfterLockStateGuard: true,
+      endTurnBecauseNoLegalContinuation: false,
+      currentCombinationExists: false,
+      currentCombinationWritable: false,
+      saveButtonDisabled: true,
+      lockMaskApplied: fallbackWorkingOnlyMask,
+      fallbackReason:
+        "no-combination-decision-window-opened",
+    });
+  }
+
+  if (
+    lockStateRejectedBecauseNoWritableTarget &&
+    !afterRollNoCombinationWithRollsLeft
+  ) {
+    aiControllerPreviousTargetCategoryRef.current =
+      null;
+
+    if (
+      !areLockMasksEqual(
+        lockedDice,
+        fallbackWorkingOnlyMask
+      )
+    ) {
+      setLockedDice(fallbackWorkingOnlyMask);
+    }
+
+    logAITurnAudit({
+      event: "working-replan-before-roll",
+      playerId,
+      legalMoveContextUsed: true,
+      noCombinationGuardChecked: true,
+      noCombinationWithWorkingLocksDetected: false,
+      workingLocksClearedBecauseNoCombination: false,
+      fixedLocksPreservedAfterWorkingClear: true,
+      previousTargetClearedBecauseNoCombination: false,
+      rerollAfterNoCombinationGuard: false,
+      stallPreventedByNoCombinationGuard: false,
+      availableTargetCategoriesAtDecisionStart,
+      scoredCategoriesFilteredOut,
+      lockStateLegalityChecked: true,
+      lockStateHasWritableTarget,
+      lockStateRejectedBecauseNoWritableTarget: true,
+      workingLocksClearedBecauseNoWritableTarget: true,
+      previousTargetClearedBecauseNoWritableTarget:
+        previousTargetCategoryBeforeClear !== null,
+      rerollAllowedAfterLockStateGuard:
+        remainingRolls > 0,
+      endTurnBecauseNoLegalContinuation: false,
+      currentCombinationExists:
+        !!currentCombination,
+      currentCombinationWritable:
+        lockStateCurrentCombinationWritable,
+      saveButtonDisabled:
+        !saveCandidate.canSave,
+      previousTargetClearedBecauseNotWritable:
+        previousTargetNotWritable,
+      previousTargetClearedBecauseAlreadyScored:
+        previousTargetRejectedBecauseAlreadyScored,
+      targetRejectedBeforeLockBecauseAlreadyScored:
+        previousTargetRejectedBecauseAlreadyScored,
+      targetRejectedBecauseAlreadyScored:
+        previousTargetRejectedBecauseAlreadyScored,
+      detectedCombinationIgnoredBecauseAlreadyScored,
+      fallbackBlockedBecauseTargetNotWritable: true,
+      lockMaskApplied: fallbackWorkingOnlyMask,
+      fallbackReason:
+        "lock-state-without-writable-target",
+    });
+
+    return;
+  }
+
+  if (
+    previousTargetNotWritable &&
+    !afterRollNoCombinationWithRollsLeft
+  ) {
+    aiControllerPreviousTargetCategoryRef.current =
+      null;
+
+    const shouldClearWorkingLocksBecauseIllegalTarget =
+      remainingRolls > 0 &&
+      !areLockMasksEqual(
+        lockedDice,
+        fallbackWorkingOnlyMask
+      );
+
+    if (shouldClearWorkingLocksBecauseIllegalTarget) {
+      setLockedDice(fallbackWorkingOnlyMask);
+
+      logAITurnAudit({
+        event: "working-replan-before-roll",
+        playerId,
+        legalMoveContextUsed: true,
+        noCombinationGuardPhase,
+        beforeFirstRollNoCombinationIgnored:
+          false,
+        noCombinationEndTurnBlockedBecauseRollsRemain:
+          false,
+        terminalNoCombinationEndTurnAllowed:
+          false,
+        forcedFirstRollBecauseNoCombinationAtTurnStart:
+          false,
+        noCombinationGuardChecked: true,
+        noCombinationWithWorkingLocksDetected: false,
+        workingLocksClearedBecauseNoCombination: false,
+        fixedLocksPreservedAfterWorkingClear: true,
+        previousTargetClearedBecauseNoCombination: false,
+        rerollAfterNoCombinationGuard: false,
+        stallPreventedByNoCombinationGuard: false,
+        availableTargetCategoriesAtDecisionStart,
+        scoredCategoriesFilteredOut,
+        lockStateLegalityChecked: true,
+        lockStateHasWritableTarget: true,
+        lockStateRejectedBecauseNoWritableTarget: false,
+        workingLocksClearedBecauseNoWritableTarget: false,
+        previousTargetClearedBecauseNoWritableTarget: false,
+        rerollAllowedAfterLockStateGuard: true,
+        endTurnBecauseNoLegalContinuation: false,
+        previousTargetClearedBecauseNotWritable: true,
+        previousTargetClearedBecauseAlreadyScored:
+          previousTargetRejectedBecauseAlreadyScored,
+        workingLocksClearedBecauseIllegalTarget: true,
+        targetRejectedByGameRules: true,
+        targetRejectedBeforeLockBecauseAlreadyScored:
+          previousTargetRejectedBecauseAlreadyScored,
+        targetRejectedBecauseAlreadyScored:
+          previousTargetRejectedBecauseAlreadyScored,
+        detectedCombinationIgnoredBecauseAlreadyScored,
+        fallbackBlockedBecauseTargetNotWritable: true,
+        saveBlockedReason:
+          "previous-target-not-writable",
+        strategyBlockedFromOverridingSave: false,
+      });
+
+      return;
+    }
+  }
+
+  if (shouldClearWorkingLocksBecauseCandidateNotWritable) {
+    aiControllerPreviousTargetCategoryRef.current =
+      null;
+    setLockedDice(fallbackWorkingOnlyMask);
+
+    clearLockProgressEnsured = true;
+    clearLockEarlyReturnPrevented = true;
+    rerollAfterClearLockIfNeeded = false;
+
+    logAITurnAudit({
+      event: "save-first-guard",
+      playerId,
+      dice: playModeDice,
+      remainingRolls,
+      saveFirstGuardChecked: true,
+      saveFirstCandidate:
+        saveCandidate.categoryId,
+      saveFirstCandidateScore:
+        saveCandidate.score,
+      saveFirstCandidateWritable:
+        saveCandidate.canSave,
+      saveFirstAccepted: false,
+      saveFirstRejectedReason:
+        saveCandidate.fallbackReason ??
+        "candidate-not-writable",
+      availableTargetCategoriesAtDecisionStart,
+      scoredCategoriesFilteredOut,
+      noCombinationGuardChecked: true,
+      noCombinationWithWorkingLocksDetected: false,
+      workingLocksClearedBecauseNoCombination: false,
+      fixedLocksPreservedAfterWorkingClear: true,
+      previousTargetClearedBecauseNoCombination: false,
+      rerollAfterNoCombinationGuard: false,
+      stallPreventedByNoCombinationGuard: false,
+      lockStateLegalityChecked: true,
+      lockStateHasWritableTarget,
+      lockStateRejectedBecauseNoWritableTarget: false,
+      workingLocksClearedBecauseNoWritableTarget: false,
+      previousTargetClearedBecauseNoWritableTarget: false,
+      rerollAllowedAfterLockStateGuard: true,
+      endTurnBecauseNoLegalContinuation: false,
+      writableSaveCandidateFound:
+        !!saveCandidate.canSave,
+      saveTimingGuardChecked: true,
+      saveForcedBecauseMaxScore: false,
+      saveForcedBecauseRemainingRollsLow: false,
+      saveNowBecauseMaxScore: false,
+      saveNowBecauseNoBetterLegalImprovement: false,
+      saveDelayedReason:
+        saveTimingDecision.reason,
+      saveBlockedReason:
+        saveCandidate.fallbackReason ??
+        "candidate-not-writable",
+      strategyBlockedFromOverridingLegalSave: false,
+      strategySkippedBecauseStrongSave: false,
+      workingLocksClearedBecauseCandidateNotWritable: true,
+      workingLocksClearedBecauseIllegalTarget: true,
+      previousTargetClearedBecauseNotWritable: true,
+      previousTargetClearedBecauseAlreadyScored:
+        previousTargetRejectedBecauseAlreadyScored,
+      targetRejectedBeforeLockBecauseAlreadyScored:
+        saveCandidate.fallbackReason ===
+        "rewrite-disabled",
+      targetRejectedBecauseAlreadyScored:
+        saveCandidate.fallbackReason ===
+          "rewrite-disabled" ||
+        saveCandidate.fallbackReason ===
+          "not-better-than-existing",
+      detectedCombinationIgnoredBecauseAlreadyScored,
+      fallbackBlockedBecauseTargetNotWritable:
+        saveCandidate.fallbackReason ===
+        "rewrite-disabled",
+      lockMaskApplied: fallbackWorkingOnlyMask,
+      clearLockProgressEnsured,
+      clearLockEarlyReturnPrevented,
+      rerollAfterClearLockIfNeeded,
+    });
+  }
+
+  if (strongSaveDecision.accepted || saveTimingDecision.accepted) {
+    aiControllerPreviousTargetCategoryRef.current =
+      null;
+
+    if (
+      !areLockMasksEqual(
+        lockedDice,
+        fallbackWorkingOnlyMask
+      )
+    ) {
+      setLockedDice(fallbackWorkingOnlyMask);
+    }
+
+    logAITurnAudit({
+      event: "save-first-guard",
+      playerId,
+      dice: playModeDice,
+      remainingRolls,
+      saveFirstGuardChecked: true,
+      saveFirstCandidate:
+        saveCandidate.categoryId,
+      saveFirstCandidateScore:
+        saveCandidate.score,
+      saveFirstCandidateWritable:
+        saveCandidate.canSave,
+      saveFirstAccepted: true,
+      saveFirstRejectedReason: null,
+      strategySkippedBecauseStrongSave: true,
+      workingLocksClearedBecauseCandidateNotWritable: false,
+      availableTargetCategoriesAtDecisionStart,
+      scoredCategoriesFilteredOut,
+      noCombinationGuardChecked: true,
+      noCombinationWithWorkingLocksDetected: false,
+      workingLocksClearedBecauseNoCombination: false,
+      fixedLocksPreservedAfterWorkingClear: true,
+      previousTargetClearedBecauseNoCombination: false,
+      rerollAfterNoCombinationGuard: false,
+      stallPreventedByNoCombinationGuard: false,
+      lockStateLegalityChecked: true,
+      lockStateHasWritableTarget,
+      lockStateRejectedBecauseNoWritableTarget: false,
+      workingLocksClearedBecauseNoWritableTarget: false,
+      previousTargetClearedBecauseNoWritableTarget: false,
+      rerollAllowedAfterLockStateGuard: true,
+      endTurnBecauseNoLegalContinuation: false,
+      writableSaveCandidateFound:
+        !!saveCandidate.canSave,
+      saveTimingGuardChecked: true,
+      saveForcedBecauseMaxScore:
+        saveTimingDecision.reason ===
+        "save-now-because-max-score",
+      saveForcedBecauseRemainingRollsLow:
+        saveTimingDecision.reason ===
+        "save-now-because-remaining-rolls-low",
+      saveNowBecauseMaxScore:
+        saveTimingDecision.reason ===
+        "save-now-because-max-score",
+      saveNowBecauseNoBetterLegalImprovement:
+        saveTimingDecision.reason ===
+        "save-now-because-no-better-legal-improvement",
+      saveDelayedReason: null,
+      saveBlockedReason: null,
+      strategyBlockedFromOverridingLegalSave: true,
+      previousTargetClearedBecauseNotWritable: false,
+      previousTargetClearedBecauseAlreadyScored: false,
+      targetRejectedBeforeLockBecauseAlreadyScored: false,
+      targetRejectedBecauseAlreadyScored: false,
+      detectedCombinationIgnoredBecauseAlreadyScored,
+      fallbackBlockedBecauseTargetNotWritable: false,
+      saveFirstAcceptedReason:
+        strongSaveDecision.accepted
+          ? strongSaveDecision.reason
+          : saveTimingDecision.reason,
+      lockMaskApplied: fallbackWorkingOnlyMask,
+    });
+
+    const timer = setTimeout(() => {
+      if (
+        !saveCandidate.canSave ||
+        !saveCandidate.categoryId ||
+        saveCandidate.score === null
+      ) {
+        if (remainingRolls > 0) {
+          setHasRolledDice(false);
+          rollAllDice(fallbackWorkingOnlyMask);
+        } else {
+          endTurn({
+            playerId,
+            savedScore: false,
+            combination: null,
+            score: null,
+            categoryId: null,
+            reason:
+              "ai-save-invalid-no-rolls-left",
+          });
+        }
+        return;
+      }
+
+      const fixedLocksRespectedAtSave =
+        fixedLocks.every(
+          (isFixed, index) =>
+            !isFixed || fallbackWorkingOnlyMask[index]
+        );
+
+      if (
+        !fixedLocksRespectedAtSave ||
+        !saveCandidateFixedLockCompatible
+      ) {
+        logAITurnAudit({
+          event: "save-rejected",
+          playerId,
+          fixedLocks,
+          lockMaskBeforeSave:
+            fallbackWorkingOnlyMask,
+          fixedLocksRespectedAtSave,
+          targetCategoryCompatibleWithFixedLocks:
+            saveCandidateFixedLockCompatible,
+          reason:
+            "final-validation-fixed-locks",
+        });
+
+        if (remainingRolls > 0) {
+          setHasRolledDice(false);
+          rollAllDice(fallbackWorkingOnlyMask);
+        } else {
+          endTurn({
+            playerId,
+            savedScore: false,
+            combination: null,
+            score: null,
+            categoryId: null,
+            reason:
+              "ai-save-rejected-no-rolls-left",
+          });
+        }
+
+        return;
+      }
+
+      setSuppressNoCombinationSound(true);
+
+      lastStateChangeSourceRef.current =
+        "local-action";
+
+      const savedTurnVersion =
+        bumpLocalTurnVersion();
+
+      localTurnVersionRef.current =
+        savedTurnVersion;
+
+      bumpLocalRuntimeRevision();
+
+      setScores((prev) => ({
+        ...prev,
+        [playerId]: {
+          ...prev[playerId],
+          [saveCandidate.categoryId as string]:
+            saveCandidate.score as number,
+        },
+      }));
+
+      setShowPlayModeResult(false);
+
+      aiControllerPreviousTargetCategoryRef.current =
+        null;
+      aiControllerExecutionMarkerRef.current =
+        null;
+      aiControllerLastObservedStateRef.current =
+        null;
+      aiControllerStepRef.current = 0;
+      aiControllerNoProgressRef.current = 0;
+
+      logAITurnAudit({
+        event: "final-action",
+        finalAction: "save",
+        playerId,
+        fixedLocks,
+        workingLocks: deriveWorkingLocks(
+          fallbackWorkingOnlyMask,
+          fixedLocks
+        ),
+        categoryId: saveCandidate.categoryId,
+        score: saveCandidate.score,
+        saveFirstGuardChecked: true,
+        strategySkippedBecauseStrongSave: true,
+        endsTurnImmediately: true,
+      });
+
+      endTurn({
+        playerId,
+        savedScore: true,
+        combination:
+          saveCandidate.latestCombination?.combination ?? null,
+        score:
+          saveCandidate.score,
+        categoryId:
+          saveCandidate.categoryId,
+        reason: "ai-save",
+      });
+    }, 220);
+
+    return () => clearTimeout(timer);
+  }
+
+  logAITurnAudit({
+    event: "make-ai-decision-call",
+    playerId,
+    dice: playModeDice,
+    remainingRolls,
+    noCombinationGuardPhase,
+    afterRollNoCombinationWithRollsLeft,
+    noCombinationDecisionAllowed,
+    noCombinationImmediateRerollSkipped,
+  });
+
+  const decision = makeAIDecision(
+    playModeDice,
+    currentCombination,
+    scores,
+    playerId,
+    playModeAllowRewrite,
+    remainingRolls,
+    {
+      fixedLocks,
+      previousTargetCategory:
+        aiControllerPreviousTargetCategoryRef.current,
+      legalMoveContext,
+    }
+  );
+
+  if (afterRollNoCombinationWithRollsLeft) {
+    decisionReachedAfterNoCombination = true;
+  }
+
+  const plannedLockMask =
+    decision.lockMask.length === 6
+      ? [...decision.lockMask]
       : [
           false,
           false,
@@ -2835,6 +3842,13 @@ useEffect(() => {
     fixedLocks
   );
 
+  const candidateHasWorkingLocks =
+    workingLocks.some(Boolean);
+
+  const firstLockAttempt =
+    !previousWorkingLocks.some(Boolean) &&
+    candidateHasWorkingLocks;
+
   const workingLocksChangedBeforeRoll =
     !areLockMasksEqual(
       previousWorkingLocks,
@@ -2847,9 +3861,6 @@ useEffect(() => {
       playModeDice,
       fixedLocks
     );
-
-  const saveCandidate =
-    getCurrentWritableSaveCandidate(playerId);
 
   let action = decision.action;
   let fallbackReason =
@@ -2904,6 +3915,41 @@ useEffect(() => {
       "target-incompatible-with-fixed-locks";
   }
 
+  const targetCategoryWritableByRules =
+    !candidateHasWorkingLocks ||
+    (
+      decision.targetCategory !== null &&
+      writableCategorySet.has(
+        decision.targetCategory
+      )
+    );
+
+  const anonymousLockRejected =
+    candidateHasWorkingLocks &&
+    decision.targetCategory === null;
+
+  if (anonymousLockRejected) {
+    action =
+      remainingRolls > 0
+        ? "roll"
+        : "end_turn";
+    fallbackReason =
+      "anonymous-lock-without-target";
+  }
+
+  const candidateRejectedBeforeFirstLockBecauseNotWritable =
+    firstLockAttempt &&
+    !targetCategoryWritableByRules;
+
+  if (!targetCategoryWritableByRules) {
+    action =
+      remainingRolls > 0
+        ? "roll"
+        : "end_turn";
+    fallbackReason =
+      "target-not-writable-by-game-rules";
+  }
+
   const rejectedBecauseFixedLockViolation =
     !targetCategoryCompatibleWithFixedLocks;
 
@@ -2912,30 +3958,46 @@ useEffect(() => {
       !saveCandidate.canSave) ||
     fallbackReason === "target-category-mismatch" ||
     fallbackReason ===
-      "target-incompatible-with-fixed-locks";
+      "target-incompatible-with-fixed-locks" ||
+    fallbackReason ===
+      "target-not-writable-by-game-rules" ||
+    fallbackReason ===
+      "anonymous-lock-without-target";
 
-  const fallbackWorkingOnlyMask =
-    mergeWithFixedLocks(
-      fixedLocks,
-      [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ]
-    );
-
-  const selectedLockMask =
+  let selectedLockMask =
     rejectedBecauseInvalidCandidate
       ? fallbackWorkingOnlyMask
       : appliedLockMask;
 
-  const effectiveTargetCategory =
+  let effectiveTargetCategory =
     rejectedBecauseInvalidCandidate
       ? null
       : decision.targetCategory;
+
+  if (
+    afterRollNoCombinationWithRollsLeft &&
+    !candidateHasWorkingLocks
+  ) {
+    // Keep progress-safe fallback only when decision returned no working locks.
+    selectedLockMask = fallbackWorkingOnlyMask;
+    effectiveTargetCategory = null;
+  }
+
+  const targetRejectedBecauseAlreadyScored =
+    fallbackReason ===
+      "target-not-writable-by-game-rules" &&
+    isTargetAlreadyScoredWhenRewriteDisabled(
+      decision.targetCategory,
+      scores[playerId] || {},
+      playModeAllowRewrite
+    );
+
+  const targetRejectedBeforeLockBecauseAlreadyScored =
+    targetRejectedBecauseAlreadyScored;
+
+  const fallbackBlockedBecauseTargetNotWritable =
+    fallbackReason ===
+      "target-not-writable-by-game-rules";
 
   if (action === "roll") {
     aiControllerPreviousTargetCategoryRef.current =
@@ -2962,6 +4024,17 @@ useEffect(() => {
       logAITurnAudit({
         event: "working-replan-before-roll",
         playerId,
+        legalMoveContextUsed: true,
+        firstLockGuardChecked: true,
+        availableTargetCategoriesBeforeFirstLock:
+          availableTargetCategoriesAtDecisionStart,
+        candidateTargetCategory:
+          decision.targetCategory,
+        candidateRejectedBeforeFirstLockBecauseNotWritable,
+        anonymousLockRejected,
+        workingLocksSkippedBecauseNoWritableTarget:
+          rejectedBecauseInvalidCandidate,
+        aiAutoStartGuardTriggered: false,
         previousWorkingLocks,
         workingLocksCandidate:
           workingLocks,
@@ -2969,6 +4042,36 @@ useEffect(() => {
         workingLocksChangedBeforeRoll: true,
         rejectedBecauseFixedLockViolation,
         rejectedBecauseInvalidCandidate,
+        noCombinationGuardChecked: true,
+        noCombinationWithWorkingLocksDetected: false,
+        workingLocksClearedBecauseNoCombination: false,
+        fixedLocksPreservedAfterWorkingClear: true,
+        previousTargetClearedBecauseNoCombination: false,
+        rerollAfterNoCombinationGuard: false,
+        stallPreventedByNoCombinationGuard: false,
+        availableTargetCategoriesAtDecisionStart,
+        scoredCategoriesFilteredOut,
+        lockStateLegalityChecked: true,
+        lockStateHasWritableTarget,
+        lockStateRejectedBecauseNoWritableTarget: false,
+        workingLocksClearedBecauseNoWritableTarget: false,
+        previousTargetClearedBecauseNoWritableTarget: false,
+        rerollAllowedAfterLockStateGuard: true,
+        endTurnBecauseNoLegalContinuation: false,
+        previousTargetClearedBecauseNotWritable:
+          rejectedBecauseInvalidCandidate,
+        previousTargetClearedBecauseAlreadyScored:
+          previousTargetRejectedBecauseAlreadyScored,
+        targetRejectedByGameRules:
+          rejectedBecauseInvalidCandidate,
+        targetRejectedBeforeLockBecauseAlreadyScored,
+        targetRejectedBecauseAlreadyScored,
+        detectedCombinationIgnoredBecauseAlreadyScored,
+        fallbackBlockedBecauseTargetNotWritable,
+        saveBlockedReason: fallbackReason,
+        strategyBlockedFromOverridingSave: false,
+        writableSaveCandidateFound:
+          !!saveCandidate.canSave,
         fallbackReason,
       });
 
@@ -2976,12 +4079,14 @@ useEffect(() => {
     }
   }
 
-  if (
+  const shouldApplyLockMaskBeforeAction =
+    action !== "roll" &&
     !areLockMasksEqual(
       lockedDice,
       selectedLockMask
-    )
-  ) {
+    );
+
+  if (shouldApplyLockMaskBeforeAction) {
     setLockedDice(selectedLockMask);
   }
 
@@ -2991,6 +4096,47 @@ useEffect(() => {
     hasRolledThisTurn: hasRolledDice,
     dice: playModeDice,
     remainingRolls,
+    legalMoveContextUsed: true,
+      noCombinationGuardPhase,
+      beforeFirstRollNoCombinationIgnored:
+        false,
+      noCombinationEndTurnBlockedBecauseRollsRemain:
+        false,
+      terminalNoCombinationEndTurnAllowed:
+        false,
+      forcedFirstRollBecauseNoCombinationAtTurnStart:
+        false,
+    noCombinationGuardChecked: true,
+    noCombinationDecisionAllowed,
+    noCombinationImmediateRerollSkipped,
+    decisionReachedAfterNoCombination,
+    noCombinationWithWorkingLocksDetected: false,
+    workingLocksClearedBecauseNoCombination: false,
+    fixedLocksPreservedAfterWorkingClear: true,
+    previousTargetClearedBecauseNoCombination: false,
+    rerollAfterNoCombinationGuard: false,
+    stallPreventedByNoCombinationGuard: false,
+    firstLockGuardChecked: true,
+    availableTargetCategoriesBeforeFirstLock:
+      availableTargetCategoriesAtDecisionStart,
+    candidateTargetCategory:
+      decision.targetCategory,
+    candidateRejectedBeforeFirstLockBecauseNotWritable,
+    anonymousLockRejected,
+    workingLocksSkippedBecauseNoWritableTarget:
+      rejectedBecauseInvalidCandidate,
+    aiAutoStartGuardTriggered: false,
+    availableTargetCategoriesAtDecisionStart,
+    scoredCategoriesFilteredOut,
+    lockStateLegalityChecked: true,
+    lockStateHasWritableTarget,
+    lockStateRejectedBecauseNoWritableTarget: false,
+    workingLocksClearedBecauseNoWritableTarget: false,
+    previousTargetClearedBecauseNoWritableTarget: false,
+    rerollAllowedAfterLockStateGuard:
+      action !== "roll" ||
+      effectiveTargetCategory !== null,
+    endTurnBecauseNoLegalContinuation: false,
     targetCategory:
       decision.targetCategory,
     targetCategoryCompatibleWithFixedLocks,
@@ -3035,9 +4181,103 @@ useEffect(() => {
     confidence: decision.confidence,
     reason: decision.reason,
     fallbackReason,
+    targetRejectedByGameRules:
+      rejectedBecauseFixedLockViolation ||
+      rejectedBecauseInvalidCandidate,
+    targetRejectedBeforeLockBecauseAlreadyScored,
+    targetRejectedBecauseAlreadyScored,
+    detectedCombinationIgnoredBecauseAlreadyScored,
+    fallbackBlockedBecauseTargetNotWritable,
+    saveFirstGuardChecked: true,
+    writableSaveCandidateFound:
+      !!saveCandidate.canSave,
+    saveTimingGuardChecked: true,
+    saveForcedBecauseMaxScore:
+      saveTimingDecision.reason ===
+      "save-now-because-max-score",
+    saveForcedBecauseRemainingRollsLow:
+      saveTimingDecision.reason ===
+      "save-now-because-remaining-rolls-low",
+    saveNowBecauseMaxScore:
+      saveTimingDecision.reason ===
+      "save-now-because-max-score",
+    saveNowBecauseNoBetterLegalImprovement:
+      saveTimingDecision.reason ===
+      "save-now-because-no-better-legal-improvement",
+    saveDelayedReason:
+      saveTimingDecision.reason,
+    saveBlockedReason: fallbackReason,
+    saveFirstCandidate:
+      saveCandidate.categoryId,
+    saveFirstCandidateScore:
+      saveCandidate.score,
+    saveFirstCandidateWritable:
+      saveCandidate.canSave,
+    saveFirstAccepted: false,
+    saveFirstRejectedReason:
+      strongSaveDecision.reason,
+    strategySkippedBecauseStrongSave:
+      saveTimingDecision.accepted ||
+      strongSaveDecision.accepted,
+    strategyBlockedFromOverridingLegalSave:
+      saveTimingDecision.accepted ||
+      strongSaveDecision.accepted,
+    clearLockProgressEnsured,
+    clearLockEarlyReturnPrevented,
+    rerollAfterClearLockIfNeeded,
+    workingLocksClearedBecauseCandidateNotWritable: false,
+    workingLocksClearedBecauseIllegalTarget: false,
+    previousTargetClearedBecauseNotWritable:
+      rejectedBecauseInvalidCandidate,
+    previousTargetClearedBecauseAlreadyScored:
+      previousTargetRejectedBecauseAlreadyScored,
   });
 
+  const rollTimeoutAuditId =
+    action === "roll"
+      ? ++aiRollTimeoutSequenceRef.current
+      : null;
+
+  if (rollTimeoutAuditId !== null) {
+    aiActiveRollTimeoutIdRef.current =
+      rollTimeoutAuditId;
+
+    logAITurnAudit({
+      event: "aiRollTimeoutScheduled",
+      playerId,
+      timeoutId: rollTimeoutAuditId,
+      remainingRolls,
+      selectedLockMask,
+      fixedLocks,
+      workingLocks,
+      isRolling,
+      hasRolledThisTurn: hasRolledDice,
+    });
+  }
+
   const timer = setTimeout(() => {
+    if (rollTimeoutAuditId !== null) {
+      logAITurnAudit({
+        event: "aiRollTimeoutFired",
+        playerId,
+        timeoutId: rollTimeoutAuditId,
+        activeRollTimeoutId:
+          aiActiveRollTimeoutIdRef.current,
+        remainingRolls,
+        selectedLockMask,
+        isRolling,
+        hasRolledThisTurn: hasRolledDice,
+      });
+
+      if (
+        aiActiveRollTimeoutIdRef.current ===
+        rollTimeoutAuditId
+      ) {
+        aiActiveRollTimeoutIdRef.current =
+          null;
+      }
+    }
+
     if (
       action === "save" &&
       saveCandidate.canSave &&
@@ -3061,6 +4301,9 @@ useEffect(() => {
           lockMaskBeforeSave: selectedLockMask,
           fixedLocksRespectedAtSave,
           targetCategoryCompatibleWithFixedLocks,
+          targetRejectedByGameRules:
+            !targetCategoryCompatibleWithFixedLocks,
+          legalMoveContextUsed: true,
           reason:
             "final-validation-fixed-locks",
         });
@@ -3069,7 +4312,15 @@ useEffect(() => {
           setHasRolledDice(false);
           rollAllDice(selectedLockMask);
         } else {
-          endTurn();
+          endTurn({
+            playerId,
+            savedScore: false,
+            combination: null,
+            score: null,
+            categoryId: null,
+            reason:
+              "ai-save-validation-no-rolls-left",
+          });
         }
 
         return;
@@ -3123,14 +4374,214 @@ useEffect(() => {
         endsTurnImmediately: true,
       });
 
-      endTurn();
+      endTurn({
+        playerId,
+        savedScore: true,
+        combination:
+          saveCandidate.latestCombination?.combination ?? null,
+        score: saveCandidate.score,
+        categoryId: saveCandidate.categoryId,
+        reason: "ai-save",
+      });
 
       return;
     }
 
     if (action === "roll") {
+      const fixedLocksRespectedAtRoll =
+        fixedLocks.every(
+          (isFixed, index) =>
+            !isFixed || selectedLockMask[index]
+        );
+
+      const rollWorkingLocks =
+        deriveWorkingLocks(
+          selectedLockMask,
+          fixedLocks
+        );
+
+      const rollHasWritableTarget =
+        effectiveTargetCategory !== null &&
+        writableCategorySet.has(
+          effectiveTargetCategory
+        );
+
+      const rerollAllowedAfterLockStateGuard =
+        fixedLocksRespectedAtRoll &&
+        (
+          !rollWorkingLocks.some(Boolean) ||
+          rollHasWritableTarget
+        );
+
+      if (!rerollAllowedAfterLockStateGuard) {
+        aiControllerPreviousTargetCategoryRef.current =
+          null;
+
+        if (
+          !areLockMasksEqual(
+            lockedDice,
+            fallbackWorkingOnlyMask
+          )
+        ) {
+          setLockedDice(
+            fallbackWorkingOnlyMask
+          );
+        }
+
+        const endTurnBecauseNoLegalContinuation =
+          remainingRolls <= 0;
+
+        logAITurnAudit({
+          event: "working-replan-before-roll",
+          playerId,
+          legalMoveContextUsed: true,
+          noCombinationGuardChecked: true,
+          noCombinationWithWorkingLocksDetected: false,
+          workingLocksClearedBecauseNoCombination: false,
+          fixedLocksPreservedAfterWorkingClear: true,
+          previousTargetClearedBecauseNoCombination: false,
+          rerollAfterNoCombinationGuard: false,
+          stallPreventedByNoCombinationGuard: false,
+          firstLockGuardChecked: true,
+          availableTargetCategoriesBeforeFirstLock:
+            availableTargetCategoriesAtDecisionStart,
+          candidateTargetCategory:
+            decision.targetCategory,
+          candidateRejectedBeforeFirstLockBecauseNotWritable,
+          anonymousLockRejected,
+          workingLocksSkippedBecauseNoWritableTarget:
+            true,
+          aiAutoStartGuardTriggered: false,
+          availableTargetCategoriesAtDecisionStart,
+          scoredCategoriesFilteredOut,
+          lockStateLegalityChecked: true,
+          lockStateHasWritableTarget:
+            rollHasWritableTarget,
+          lockStateRejectedBecauseNoWritableTarget: true,
+          workingLocksClearedBecauseNoWritableTarget: true,
+          previousTargetClearedBecauseNoWritableTarget:
+            true,
+          rerollAllowedAfterLockStateGuard,
+          endTurnBecauseNoLegalContinuation,
+          fixedLocksRespectedAtRoll,
+          lockMaskBeforeRoll:
+            selectedLockMask,
+          lockMaskApplied:
+            fallbackWorkingOnlyMask,
+          fallbackReason:
+            "reroll-blocked-no-writable-target",
+        });
+
+        if (!endTurnBecauseNoLegalContinuation) {
+          setHasRolledDice(false);
+          rollAllDice(fallbackWorkingOnlyMask);
+          return;
+        }
+
+        endTurn({
+          playerId,
+          savedScore: false,
+          combination: null,
+          score: null,
+          categoryId: null,
+          reason:
+            "ai-no-legal-continuation-after-lock-guard",
+        });
+        return;
+      }
+
+      if (
+        !areLockMasksEqual(
+          lockedDice,
+          selectedLockMask
+        )
+      ) {
+        setLockedDice(selectedLockMask);
+      }
+
       setHasRolledDice(false);
       rollAllDice(selectedLockMask);
+      return;
+    }
+
+    const terminalNoCombinationEndTurnAllowed =
+      hasRolledDice &&
+      currentCombination === null &&
+      !saveCandidate.canSave &&
+      remainingRolls <= 0;
+
+    if (
+      !terminalNoCombinationEndTurnAllowed &&
+      remainingRolls > 0
+    ) {
+      if (
+        !areLockMasksEqual(
+          lockedDice,
+          fallbackWorkingOnlyMask
+        )
+      ) {
+        setLockedDice(
+          fallbackWorkingOnlyMask
+        );
+      }
+
+      logAITurnAudit({
+        event: "working-replan-before-roll",
+        playerId,
+        legalMoveContextUsed: true,
+        noCombinationGuardPhase:
+          noCombinationGuardPhase ===
+          "not-applicable"
+            ? "afterRollNoCombination"
+            : noCombinationGuardPhase,
+        beforeFirstRollNoCombinationIgnored:
+          false,
+        noCombinationEndTurnBlockedBecauseRollsRemain:
+          true,
+        terminalNoCombinationEndTurnAllowed:
+          false,
+        forcedFirstRollBecauseNoCombinationAtTurnStart:
+          false,
+        afterRollNoCombinationWithRollsLeft:
+          noCombinationAtDecisionStart &&
+          hasRolledDice,
+        noScoreSummaryBlockedBecauseRollsRemain:
+          true,
+        rerollBecauseNoCombinationAndRollsRemain:
+          true,
+        terminalNoCombinationSummaryAllowed:
+          false,
+        noWorkingLocksAfterRollHandled:
+          !deriveWorkingLocks(
+            lockedDice,
+            fixedLocks
+          ).some(Boolean),
+        noCombinationGuardChecked: true,
+        noCombinationWithWorkingLocksDetected:
+          noCombinationAtDecisionStart,
+        workingLocksClearedBecauseNoCombination:
+          true,
+        fixedLocksPreservedAfterWorkingClear:
+          fixedLocks.every(
+            (isFixed, index) =>
+              !isFixed ||
+              fallbackWorkingOnlyMask[index]
+          ),
+        previousTargetClearedBecauseNoCombination:
+          aiControllerPreviousTargetCategoryRef.current !==
+          null,
+        rerollAfterNoCombinationGuard: true,
+        stallPreventedByNoCombinationGuard: true,
+        lockMaskApplied:
+          fallbackWorkingOnlyMask,
+        fallbackReason:
+          "end-turn-blocked-rolls-remain",
+      });
+
+      aiControllerPreviousTargetCategoryRef.current =
+        null;
+      setHasRolledDice(false);
+      rollAllDice(fallbackWorkingOnlyMask);
       return;
     }
 
@@ -3138,15 +4589,79 @@ useEffect(() => {
       event: "final-action",
       finalAction: "end_turn",
       playerId,
+      noCombinationGuardPhase,
+      beforeFirstRollNoCombinationIgnored:
+        false,
+      noCombinationEndTurnBlockedBecauseRollsRemain:
+        false,
+      terminalNoCombinationEndTurnAllowed,
+      forcedFirstRollBecauseNoCombinationAtTurnStart:
+        false,
+      afterRollNoCombinationWithRollsLeft: false,
+      noScoreSummaryBlockedBecauseRollsRemain:
+        false,
+      rerollBecauseNoCombinationAndRollsRemain:
+        false,
+      terminalNoCombinationSummaryAllowed:
+        terminalNoCombinationEndTurnAllowed,
+      noWorkingLocksAfterRollHandled: false,
+      noCombinationGuardChecked: true,
+      noCombinationWithWorkingLocksDetected: false,
+      workingLocksClearedBecauseNoCombination: false,
+      fixedLocksPreservedAfterWorkingClear: true,
+      previousTargetClearedBecauseNoCombination: false,
+      rerollAfterNoCombinationGuard: false,
+      stallPreventedByNoCombinationGuard: false,
+      lockStateLegalityChecked: true,
+      lockStateHasWritableTarget,
+      lockStateRejectedBecauseNoWritableTarget: false,
+      workingLocksClearedBecauseNoWritableTarget: false,
+      previousTargetClearedBecauseNoWritableTarget: false,
+      rerollAllowedAfterLockStateGuard: false,
+      endTurnBecauseNoLegalContinuation: true,
       fallbackReason:
         fallbackReason ??
         "controller-end-turn",
     });
 
-    endTurn();
+    endTurn({
+      playerId,
+      savedScore: false,
+      combination: null,
+      score: null,
+      categoryId: null,
+      reason:
+        fallbackReason ?? "controller-end-turn",
+    });
   }, 450);
 
-  return () => clearTimeout(timer);
+  return () => {
+    if (rollTimeoutAuditId !== null) {
+      logAITurnAudit({
+        event: "aiRollTimeoutCleanedUp",
+        playerId,
+        timeoutId: rollTimeoutAuditId,
+        activeRollTimeoutId:
+          aiActiveRollTimeoutIdRef.current,
+        remainingRolls,
+        selectedLockMask,
+        isRolling,
+        hasRolledThisTurn: hasRolledDice,
+        showPlayModeResult,
+        cleanupContext: "effect-dispose",
+      });
+
+      if (
+        aiActiveRollTimeoutIdRef.current ===
+        rollTimeoutAuditId
+      ) {
+        aiActiveRollTimeoutIdRef.current =
+          null;
+      }
+    }
+
+    clearTimeout(timer);
+  };
 }, [
   isOnlineGame,
   gameStarted,
@@ -3163,6 +4678,7 @@ useEffect(() => {
   lockedDice,
   confirmedLockedDice,
   remainingRolls,
+  playModeRolls,
   playModeAllowRewrite,
   isComputerPlayerId,
   endTurn,
@@ -3245,17 +4761,69 @@ setBonusActivatedThisTurn(
 function rollAllDice(
   plannedLockMask?: boolean[]
 ) {
+  logAITurnAudit({
+    event: "rollAllDiceEntered",
+    remainingRolls,
+    isRolling,
+    plannedLockMask:
+      plannedLockMask &&
+      plannedLockMask.length === 6
+        ? plannedLockMask
+        : null,
+    lockedDice,
+    confirmedLockedDice,
+    activeRollTimeoutId:
+      aiActiveRollTimeoutIdRef.current,
+  });
+
   if (
     isOnlineGame &&
     !isCurrentPlayer
   ) {
+    logAITurnAudit({
+      event: "rollAllDiceEarlyReturn",
+      reason: "not-current-online-player",
+      remainingRolls,
+      isRolling,
+      plannedLockMask:
+        plannedLockMask &&
+        plannedLockMask.length === 6
+          ? plannedLockMask
+          : null,
+    });
+
     return;
   }
 
-  if (
-    remainingRolls <= 0 ||
-    isRolling
-  ) {
+  if (remainingRolls <= 0) {
+    logAITurnAudit({
+      event: "rollAllDiceEarlyReturn",
+      reason: "remainingRolls<=0",
+      remainingRolls,
+      isRolling,
+      plannedLockMask:
+        plannedLockMask &&
+        plannedLockMask.length === 6
+          ? plannedLockMask
+          : null,
+    });
+
+    return;
+  }
+
+  if (isRolling) {
+    logAITurnAudit({
+      event: "rollAllDiceEarlyReturn",
+      reason: "isRolling",
+      remainingRolls,
+      isRolling,
+      plannedLockMask:
+        plannedLockMask &&
+        plannedLockMask.length === 6
+          ? plannedLockMask
+          : null,
+    });
+
     return;
   }
 
@@ -8855,12 +10423,8 @@ currentCombination && (
       <div className="mt-8 grid grid-cols-2 gap-4">
   <button
     onClick={() => {
-  setShowPlayModeResult(
-    false
-  );
-
-  endTurn();
-
+  setShowPlayModeResult(false);
+  setPlayModeTurnSummary(null);
   debugSetIsPlayModeActive(
     false
   );
@@ -8873,11 +10437,8 @@ currentCombination && (
 
   <button
     onClick={() => {
-      setShowPlayModeResult(
-        false
-      );
-
-      endTurn();
+      setShowPlayModeResult(false);
+      setPlayModeTurnSummary(null);
     }}
     className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
   >
@@ -9097,9 +10658,23 @@ return (
     return;
   }
 
-  setShowPlayModeResult(
-    true
-  );
+  const categoryId =
+    playModeCategoryMap[
+      currentCombination.combination
+    ] ?? null;
+
+  endTurn({
+    playerId:
+      selectedPlayers[
+        currentPlayPlayerIndex
+      ] ?? "",
+    savedScore: true,
+    combination:
+      currentCombination.combination,
+    score: currentCombination.score,
+    categoryId,
+    reason: "human-save",
+  });
 }}
             disabled={
   !currentCombination ||
@@ -9163,7 +10738,20 @@ canSavePlayModeScore &&
 
 {remainingRolls <= 0 && (
   <button
-    onClick={endTurn}
+    onClick={() =>
+      endTurn({
+        playerId:
+          selectedPlayers[
+            currentPlayPlayerIndex
+          ] ?? "",
+        savedScore: false,
+        combination: null,
+        score: null,
+        categoryId: null,
+        reason:
+          "human-no-score-end-turn",
+      })
+    }
     disabled={!canControlOnlinePlayMode}
     className="h-24 rounded-2xl bg-yellow-500 px-8 text-2xl font-black text-black transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:col-span-2"
   >
@@ -9298,65 +10886,45 @@ canSavePlayModeScore &&
     )}
 
     {showPlayModeResult &&
-      currentCombination && (
+      playModeTurnSummary && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-6">
           <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950 p-8 text-center shadow-2xl">
             <div className="text-sm font-bold uppercase tracking-[0.25em] text-zinc-500">
-              Zapsaný výsledek hodu
+              Výsledek tahu
             </div>
 
             <div className="mt-6 text-4xl font-black text-green-400">
-              {
-                currentCombination.combination
-              }
+              {playModeTurnSummary.combination ??
+                "Žádná kombinace"}
             </div>
 
             <div className="mt-3 text-xl font-bold text-zinc-300">
               Hráč:
               {" "}
               {getPlayerDisplayName(
-                selectedPlayers[
-                  currentPlayPlayerIndex
-                ] ?? ""
+                playModeTurnSummary.playerId
               )}
             </div>
 
-            <div
-              className={`mt-2 text-2xl font-black ${(() => {
-                const categoryId =
-                  playModeCategoryMap[
-                    currentCombination
-                      .combination
-                  ];
+            <div className="mt-2 text-lg font-bold text-zinc-400">
+              Další hráč:
+              {" "}
+              {getPlayerDisplayName(
+                playModeTurnSummary.nextPlayerId
+              )}
+            </div>
 
-                const category =
-                  gameCategories.find(
-                    (c) =>
-                      c.id ===
-                      categoryId
-                  );
-
-                return (
-                  category &&
-                  currentCombination.score ===
-                    category.max
-                    ? "text-red-500"
-                    : "text-white"
-                );
-              })()}`}
-            >
-              Skóre: {currentCombination.score}
+            <div className="mt-2 text-2xl font-black text-white">
+              {playModeTurnSummary.savedScore
+                ? `Skóre: ${playModeTurnSummary.score ?? 0}`
+                : "Hráč nezapsal skóre"}
             </div>
 
             <div className="mt-8 grid grid-cols-2 gap-4">
   <button
     onClick={() => {
-  setShowPlayModeResult(
-    false
-  );
-
-  endTurn();
-
+  setShowPlayModeResult(false);
+  setPlayModeTurnSummary(null);
   debugSetIsPlayModeActive(
     false
   );
@@ -9368,11 +10936,8 @@ canSavePlayModeScore &&
 
   <button
     onClick={() => {
-      setShowPlayModeResult(
-        false
-      );
-
-      endTurn();
+      setShowPlayModeResult(false);
+      setPlayModeTurnSummary(null);
     }}
     disabled={!canControlOnlinePlayMode}
     className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
