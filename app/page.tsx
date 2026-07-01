@@ -48,6 +48,8 @@ import { detectCombination } from "./lib/playMode";
 
 import {
   getWritableCategoryIds,
+  PlayModeCategoryId,
+  canTargetCategoryWorkWithFixedLocks,
 } from "./lib/combinationValidation";
 
 import { makeAIDecision } from "./lib/aiPlayer";
@@ -1750,65 +1752,6 @@ const deriveWorkingLocks = (
       !fixedLocks[index] && isLocked
   );
 
-const canTargetCategoryWorkWithFixedLocks = (
-  targetCategory: string | null,
-  dice: number[],
-  fixedLocks: boolean[]
-) => {
-  if (!targetCategory) {
-    return true;
-  }
-
-  if (!fixedLocks.some(Boolean)) {
-    return true;
-  }
-
-  const openIndices = fixedLocks
-    .map((isFixed, index) =>
-      isFixed ? -1 : index
-    )
-    .filter((index) => index >= 0);
-
-  const candidateDice = [...dice];
-
-  const matchesTarget = () => {
-    const result = detectCombination(candidateDice);
-
-    if (!result) {
-      return false;
-    }
-
-    return (
-      playModeCategoryMap[result.combination] ===
-      targetCategory
-    );
-  };
-
-  if (matchesTarget()) {
-    return true;
-  }
-
-  const canComplete = (position: number): boolean => {
-    if (position >= openIndices.length) {
-      return matchesTarget();
-    }
-
-    const diceIndex = openIndices[position];
-
-    for (let value = 1; value <= 6; value += 1) {
-      candidateDice[diceIndex] = value;
-
-      if (canComplete(position + 1)) {
-        return true;
-      }
-    }
-
-    return false;
-  };
-
-  return canComplete(0);
-};
-
 const getCurrentWritableSaveCandidate = (
   playerId: string
 ) => {
@@ -2026,7 +1969,8 @@ const getSaveTimingGuardDecision = (
   rewriteAllowed: boolean,
   remainingRolls: number,
   targetCategoryCompatibleWithFixedLocks: boolean,
-  writableCategoryIds: string[]
+  writableCategoryIds: string[],
+  availableCategoryCount: number
 ) => {
   if (!saveCandidate.canSave) {
     return {
@@ -2052,6 +1996,20 @@ const getSaveTimingGuardDecision = (
     return {
       accepted: false,
       reason: "candidate-incompatible-with-fixed-locks",
+    };
+  }
+
+  // ENDGAME SPECIAL CASE: In endgame (≤2 categories remaining),
+  // if Postupka is complete (always 21 pts), save immediately.
+  // Postupka cannot improve and must be secured before endgame ends.
+  if (
+    availableCategoryCount <= 2 &&
+    saveCandidate.categoryId === "postupka" &&
+    saveCandidate.score === 21
+  ) {
+    return {
+      accepted: true,
+      reason: "save-now-because-endgame-postupka-guaranteed",
     };
   }
 
@@ -2813,16 +2771,17 @@ const endTurn = async (
     }
   }
 
-  setCurrentPlayPlayerIndex(
-    nextPlayer
-  );
-
-  setPlayModeDice(nextPlayModeDice);
-
+  // CRITICAL FIX: Reset locks BEFORE changing player so AI sees clean state
   setLockedDice(nextLockedDice);
 
   setConfirmedLockedDice(
     nextConfirmedLockedDice
+  );
+
+  setPlayModeDice(nextPlayModeDice);
+
+  setCurrentPlayPlayerIndex(
+    nextPlayer
   );
 
   setRemainingRolls(
@@ -3114,6 +3073,16 @@ useEffect(() => {
     remainingRolls,
   };
 
+  // DEBUG: Log available categories for AI
+  if (playerId === 'computer-rocky') {
+    console.log('🔍 AVAILABLE CATEGORIES FOR AI:', {
+      playerId,
+      playerScores: scores[playerId],
+      availableCategories: legalMoveContext.availableTargetCategories,
+      rewriteAllowed: playModeAllowRewrite,
+    });
+  }
+
   const availableTargetCategoriesAtDecisionStart = [
     ...legalMoveContext.availableTargetCategories,
   ];
@@ -3193,6 +3162,9 @@ useEffect(() => {
         ]
       : undefined;
 
+  const availableCategoryCount =
+    legalMoveContext.availableTargetCategories.length;
+
   const saveTimingDecision =
     getSaveTimingGuardDecision(
       saveCandidate,
@@ -3200,7 +3172,8 @@ useEffect(() => {
       playModeAllowRewrite,
       remainingRolls,
       saveCandidateFixedLockCompatible,
-      legalMoveContext.availableTargetCategories
+      legalMoveContext.availableTargetCategories,
+      availableCategoryCount
     );
 
   const strongSaveDecision =
@@ -4978,13 +4951,9 @@ setRemainingRolls(
     prev - 1
 );
 
-        setConfirmedLockedDice((prev) =>
-  prev.map(
-    (isFixed, index) =>
-      isFixed ||
-      activeLockMask[index]
-  )
-);
+        setConfirmedLockedDice(
+          activeLockMask
+        );
 
 setBonusActivatedThisTurn(
   false
@@ -10556,7 +10525,13 @@ currentCombination && (
 
       <div className="mt-3 min-h-[84px]">
         {currentCombination &&
-        hasRolledDice ? (
+        hasRolledDice &&
+        hasStartedPlayMode &&
+        (() => {
+          const categoryId = playModeCategoryMap[currentCombination.combination] as PlayModeCategoryId;
+          const writableCategories = getWritableCategoryIds(scores[currentPlayPlayerIndex] || {}, playModeAllowRewrite);
+          return writableCategories.includes(categoryId);
+        })() ? (
           <>
             <div className="text-2xl font-black text-green-400 md:text-3xl">
               {
@@ -10680,7 +10655,8 @@ return (
   hasComputerPlayer ||
   generalBonusBlocked ||
           !canUseGeneralBonus ||
-          !canControlOnlinePlayMode
+          !canControlOnlinePlayMode ||
+          showPlayModeResult
 }
             className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
   hasComputerPlayer ||
@@ -10740,6 +10716,7 @@ return (
   !hasRolledDice ||
   !canSavePlayModeScore ||
   !canControlOnlinePlayMode ||
+  showPlayModeResult ||
   (
     bonusUsed &&
     playModeBonusMode ===
@@ -10825,7 +10802,8 @@ canSavePlayModeScore &&
             disabled={
               remainingRolls <=
               0 ||
-              !canControlOnlinePlayMode
+              !canControlOnlinePlayMode ||
+              showPlayModeResult
             }
             className={`h-24 rounded-2xl px-8 text-2xl font-black text-white transition md:col-span-2 ${
               remainingRolls <=

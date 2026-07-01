@@ -302,8 +302,8 @@ export const getDetectedCombinationWriteState = (
 export const getWritableCategoryIds = (
   playerScores: Record<string, number>,
   playModeAllowRewrite: boolean
-): PlayModeCategoryId[] =>
-  Object.values(playModeCategoryMap).filter(
+): PlayModeCategoryId[] => {
+  const result = Object.values(playModeCategoryMap).filter(
     (categoryId, index, allCategories) => {
       if (allCategories.indexOf(categoryId) !== index) {
         return false;
@@ -322,3 +322,27 @@ export const getWritableCategoryIds = (
       return combinationMaxScore[categoryId] > existingScore;
     }
   );
+
+  // DEBUG: Log filtered categories to localStorage
+  if (typeof window !== 'undefined') {
+    const logs = JSON.parse(localStorage.getItem('debugLogs') || '[]');
+    logs.push({
+      timestamp: new Date().toISOString(),
+      function: 'getWritableCategoryIds',
+      playerScores,
+      playModeAllowRewrite,
+      resultCategories: result,
+    });
+    // Keep only last 20 logs
+    localStorage.setItem('debugLogs', JSON.stringify(logs.slice(-20)));
+  }
+
+  console.log('🔍 GET WRITABLE CATEGORIES:', {
+    playerScores,
+    playModeAllowRewrite,
+    resultCategories: result,
+    allCategories: Object.values(playModeCategoryMap),
+  });
+
+  return result;
+};

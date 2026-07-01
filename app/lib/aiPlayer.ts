@@ -9,6 +9,10 @@ import {
   detectCombination,
   PlayModeResult,
 } from "./playMode";
+import {
+  canTargetCategoryWorkWithFixedLocks,
+  type PlayModeCategoryId,
+} from "./combinationValidation";
 
 export type ScoreMap = {
   [playerId: string]: {
@@ -177,6 +181,16 @@ type CandidateCombination = {
   evaluationScore: number;
 };
 
+type LegalPathsAnalysis = {
+  liveTargetCategories: string[];
+  deadTargetCategories: string[];
+  legalPathsFlexibilityScore: number;
+  lockKillsAllPaths: boolean;
+  lockPreservesPrimaryPath: boolean;
+  primaryPathBlocked: boolean;
+  alternativePathsAvailable: boolean;
+};
+
 type StrategyScoreBreakdown = {
   baseScoreValue: number;
   expectedScoreValue: number;
@@ -200,6 +214,7 @@ type StrategyScoreBreakdown = {
   lowValuePenalty: number;
   earlyGamePenalty: number;
   detectedCombinationModifier: number;
+  legalPathsFlexibilityScore: number;
 };
 
 type OpenOptionSummary = {
@@ -882,6 +897,15 @@ const hasStrategicDirection = (
   }
 
   if (candidate.type === "Generál") {
+    if (
+      phasePolicy.allowStrategicGeneralSingleton &&
+      safeLocks.length >= 1 &&
+      candidate.lockValues.every(
+        (v) => v >= phasePolicy.strategicGeneralSingletonMinValue
+      )
+    ) {
+      return true;
+    }
     return candidate.currentMatchCount >= 2;
   }
 
@@ -1950,13 +1974,103 @@ const getCandidateStrategicStrength = (
   );
 };
 
+/**
+ * Analyze legal paths remaining after this lock selection
+ * Returns flexibility score: higher = more legal paths available
+ */
+const computeLegalPathsForCandidate = (
+  candidate: CandidateCombination,
+  availableTargetCategories: string[],
+  lockCompatibility: Record<string, boolean>,
+  targetType: CombinationType,
+  previousTargetCategory: string | null
+): LegalPathsAnalysis => {
+  const candidateTargetCategory =
+    combinationToCategoryId[targetType] ?? null;
+
+  // Check which categories remain writable after this lock
+  const liveTargetCategories: string[] = [];
+  const deadTargetCategories: string[] = [];
+
+  for (const categoryId of availableTargetCategories) {
+    // If this lock is for structural target, check compatibility
+    const isStructural =
+      targetType === "Pyramida" ||
+      targetType === "Hrozen" ||
+      targetType === "Postupka";
+
+    // After this lock is applied, can we still write to this category?
+    if (
+      isStructural &&
+      categoryId !== candidateTargetCategory
+    ) {
+      // Structural locks (Pyramida, Hrozen, Postupka) are specific
+      // Check if this category remains compatible
+      if (lockCompatibility[categoryId]) {
+        liveTargetCategories.push(categoryId);
+      } else {
+        deadTargetCategories.push(categoryId);
+      }
+    } else if (!isStructural) {
+      // Non-structural locks are more flexible
+      if (lockCompatibility[categoryId]) {
+        liveTargetCategories.push(categoryId);
+      } else {
+        deadTargetCategories.push(categoryId);
+      }
+    } else {
+      // Structural lock for this category - keep it alive
+      liveTargetCategories.push(categoryId);
+    }
+  }
+
+  const lockKillsAllPaths = liveTargetCategories.length === 0;
+  const lockPreservesPrimaryPath =
+    candidateTargetCategory === null ||
+    liveTargetCategories.includes(candidateTargetCategory);
+  const primaryPathBlocked =
+    previousTargetCategory !== null &&
+    deadTargetCategories.includes(previousTargetCategory);
+  const alternativePathsAvailable =
+    liveTargetCategories.length >= 2;
+
+  // Flexibility score: based on number of remaining legal paths
+  // Penalty if we killed the primary path
+  let flexibilityScore =
+    liveTargetCategories.length * 85 -
+    deadTargetCategories.length * 120;
+
+  if (primaryPathBlocked && previousTargetCategory) {
+    flexibilityScore -= 180;
+  }
+
+  if (lockKillsAllPaths) {
+    flexibilityScore = -500; // Critical: lock creates dead end
+  }
+
+  if (alternativePathsAvailable) {
+    flexibilityScore += 60; // Bonus for flexibility
+  }
+
+  return {
+    liveTargetCategories,
+    deadTargetCategories,
+    legalPathsFlexibilityScore: flexibilityScore,
+    lockKillsAllPaths,
+    lockPreservesPrimaryPath,
+    primaryPathBlocked,
+    alternativePathsAvailable,
+  };
+};
+
 const getCandidateStrategyScore = (
   candidate: CandidateCombination,
   remainingRolls: number | undefined,
   context: MatchContext,
   playerScores: Record<string, number>,
   legalMoveContext: AILegalMoveContext,
-  allowRewrite: boolean
+  allowRewrite: boolean,
+  previousTargetCategory: string | null = null
 ): {
   total: number;
   breakdown: StrategyScoreBreakdown;
@@ -1967,6 +2081,16 @@ const getCandidateStrategyScore = (
     categoryId !== undefined
       ? playerScores[categoryId]
       : undefined;
+
+  // Compute legal paths after this lock
+  const legalPathsAnalysis =
+    computeLegalPathsForCandidate(
+      candidate,
+      legalMoveContext.availableTargetCategories,
+      legalMoveContext.lockCompatibility,
+      candidate.type,
+      previousTargetCategory
+    );
 
   const baseScoreValue = candidate.maxPossibleScore;
   const expectedScoreValue =
@@ -2121,7 +2245,8 @@ const getCandidateStrategyScore = (
     openOptionsScore +
     remainingRollsOpenStrategyBonus +
     tooNarrowPenalty +
-    detectedCombinationModifier;
+    detectedCombinationModifier +
+    legalPathsAnalysis.legalPathsFlexibilityScore;
 
   return {
     total,
@@ -2148,6 +2273,8 @@ const getCandidateStrategyScore = (
       remainingRollsOpenStrategyBonus,
       tooNarrowPenalty,
       detectedCombinationModifier,
+      legalPathsFlexibilityScore:
+        legalPathsAnalysis.legalPathsFlexibilityScore,
     },
   };
 };
@@ -3489,6 +3616,51 @@ export function makeAIDecision(
       continue;
     }
 
+    // Pyramida/Hrozen: skip unless they are among last 2 remaining categories
+    // Exception: if last <=2 categories remain, allow only if writing this score would beat opponent
+    if (
+      (combType === "Pyramida" || combType === "Hrozen") &&
+      availableCategoryCount > 2
+    ) {
+      candidateAudit.push({
+        candidateOrder,
+        type: combType,
+        stage: "evaluate-rejected",
+        rejectedBeforeStrategy: true,
+        rejectedBecauseAlreadyScored: false,
+        categoryRejectedBecauseTooLow: false,
+        rewriteAllowed: playModeAllowRewrite,
+        diceValuePolicy,
+        playModeRiskProfile,
+        validationReason: "pyramida-hrozen-skipped-not-endgame",
+      });
+      continue;
+    }
+
+    if (
+      (combType === "Pyramida" || combType === "Hrozen") &&
+      availableCategoryCount <= 2
+    ) {
+      // Only allow if this score can help beat the opponent
+      const candidateScore = currentDice.reduce((s, v) => s + v, 0);
+      const projectedAiTotal = matchContext.aiScore + candidateScore;
+      if (projectedAiTotal <= matchContext.bestOpponentScore) {
+        candidateAudit.push({
+          candidateOrder,
+          type: combType,
+          stage: "evaluate-rejected",
+          rejectedBeforeStrategy: true,
+          rejectedBecauseAlreadyScored: false,
+          categoryRejectedBecauseTooLow: true,
+          rewriteAllowed: playModeAllowRewrite,
+          diceValuePolicy,
+          playModeRiskProfile,
+          validationReason: "pyramida-hrozen-endgame-score-insufficient-to-win",
+        });
+        continue;
+      }
+    }
+
     const existingScore =
       categoryId !== undefined
         ? playerScores[categoryId]
@@ -3903,7 +4075,8 @@ export function makeAIDecision(
         matchContext,
         playerScores,
         legalMoveContext,
-        playModeAllowRewrite
+        playModeAllowRewrite,
+        previousTargetCategory
       );
 
     const candidateWithStrategy = {
@@ -4594,7 +4767,10 @@ export function makeAIDecision(
     if (
       (remainingRolls ?? 0) <= 0 &&
       fallbackSaveCandidate.canSave &&
-      fallbackSaveCandidate.categoryId
+      fallbackSaveCandidate.categoryId &&
+      availableTargetCategories.includes(
+        fallbackSaveCandidate.categoryId
+      )
     ) {
       logAIDecisionAudit(
         currentDice,
@@ -4783,7 +4959,56 @@ export function makeAIDecision(
       bestTargetCategory
     );
 
-  if (!bestTargetWritable) {
+  // CRITICAL FIX: Check if candidate's locks would block ALL available targets
+  // Merge candidate's locks with fixedLocks to see what remains compatible
+  let locksWouldBlockAllTargets = false;
+  if (
+    best.safeLockedDiceIndices &&
+    best.safeLockedDiceIndices.length > 0 &&
+    availableTargetCategories.length > 0
+  ) {
+    // Create merged locks from fixedLocks + candidate's locks
+    const candidateLockMask = [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ];
+    best.safeLockedDiceIndices.forEach((index) => {
+      if (index >= 0 && index < 6) {
+        candidateLockMask[index] = true;
+      }
+    });
+    
+    const mergedLocks = fixedLocks.map(
+      (isFixed, index) =>
+        isFixed || candidateLockMask[index]
+    );
+
+    // Check if ANY available target is still compatible with merged locks
+    let anyCompatibleTarget = false;
+    for (const targetCategoryId of availableTargetCategories) {
+      // Re-check compatibility with merged locks using the legalMoveContext
+      // If the merged locks DON'T violate this target, it's still viable
+      const isStillCompatible = canTargetCategoryWorkWithFixedLocks(
+        targetCategoryId as PlayModeCategoryId,
+        currentDice,
+        mergedLocks
+      );
+      if (isStillCompatible) {
+        anyCompatibleTarget = true;
+        break;
+      }
+    }
+
+    if (!anyCompatibleTarget) {
+      locksWouldBlockAllTargets = true;
+    }
+  }
+
+  if (!bestTargetWritable || locksWouldBlockAllTargets) {
     logAIDecisionAudit(
       currentDice,
       remainingRolls,
@@ -5249,12 +5474,27 @@ export function makeAIDecision(
     false;
   let highValueBuilderPromotedOverNoLock = false;
 
+  // Check if high-value builder kills all legal paths before promoting
+  const builderLegalPaths = bestSeedCandidate
+    ? computeLegalPathsForCandidate(
+        bestSeedCandidate,
+        availableTargetCategories,
+        lockCompatibility,
+        bestSeedCandidate.type,
+        previousTargetCategory
+      )
+    : null;
+
+  const builderKillsAllPaths =
+    builderLegalPaths?.lockKillsAllPaths ?? false;
+
   if (
     bestSeedCandidate !== null &&
     !allowLowBaseException &&
     !best.isComplete &&
     (selectedBestIsLowCompletion ||
-      best.safeLockedDiceIndices.length === 0)
+      best.safeLockedDiceIndices.length === 0) &&
+    !builderKillsAllPaths  // Legal paths check
   ) {
     best = bestSeedCandidate;
     seedPromotedBecauseNoBetterPattern = true;
@@ -5267,7 +5507,8 @@ export function makeAIDecision(
   if (
     (remainingRolls ?? 0) > 0 &&
     best.safeLockedDiceIndices.length === 0 &&
-    bestSeedCandidate !== null
+    bestSeedCandidate !== null &&
+    !builderKillsAllPaths  // Legal paths check
   ) {
     best = bestSeedCandidate;
     seedPromotedBecauseNoBetterPattern = true;
@@ -5304,7 +5545,8 @@ export function makeAIDecision(
         !forceImmediateStrongWritableSave &&
       bestSeedCandidate !== null &&
       (remainingRolls ?? 0) > 0 &&
-      !hasStrongCompleteWritableSave;
+      !hasStrongCompleteWritableSave &&
+      !builderKillsAllPaths;  // Legal paths check
 
       if (forceImmediateStrongWritableSave) {
         // Strong writable complete save is the only allowed override of high-value builder.
