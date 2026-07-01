@@ -1999,17 +1999,16 @@ const getSaveTimingGuardDecision = (
     };
   }
 
-  // ENDGAME SPECIAL CASE: In endgame (≤2 categories remaining),
-  // if Postupka is complete (always 21 pts), save immediately.
-  // Postupka cannot improve and must be secured before endgame ends.
+  // POSTUPKA SPECIAL CASE: Postupka is a complete sequence (1,2,3,4,5,6 = 21 pts)
+  // and cannot improve, so save it immediately whenever it's complete.
+  // This applies at any point in the game - early, mid, or endgame.
   if (
-    availableCategoryCount <= 2 &&
     saveCandidate.categoryId === "postupka" &&
     saveCandidate.score === 21
   ) {
     return {
       accepted: true,
-      reason: "save-now-because-endgame-postupka-guaranteed",
+      reason: "save-now-because-postupka-complete",
     };
   }
 
@@ -4707,8 +4706,6 @@ useEffect(() => {
   selectedPlayers,
   scores,
   playModeDice,
-  lockedDice,
-  confirmedLockedDice,
   remainingRolls,
   playModeRolls,
   playModeAllowRewrite,
