@@ -1615,15 +1615,56 @@ const generalBonusBlocked =
     );
   })();
 
+const playModeCategoryMap: Record<
+  string,
+  string
+> = {
+  Generál: "general",
+  Pyramida: "pyramida",
+  Hrozen: "hrozen",
+  Postupka: "postupka",
+  "Čtyři-dvě": "ctyri_dva",
+  Dvojice: "dvojce",
+  Trojice: "trojce",
+};
+
 const canEvaluateCombination =
   hasRolledDice;
 
 const currentCombination =
   hasRolledDice &&
   !isRolling
-    ? detectCombination(
-        playModeDice
-      )
+    ? (() => {
+        const combo = detectCombination(playModeDice);
+        if (!combo) return null;
+        
+        // Block combinations made ONLY from same low values (1s only, 2s only, 3s only)
+        // e.g., 1-1, 1-1-1, 2-2-2, 3-3-3-3-3-3 are blocked
+        // BUT allow: 1-2-3 mix, 2-2-3-4, etc. - anything with variety
+        const categoryId = playModeCategoryMap[combo.combination];
+        
+        // Check if all dice are the same AND that value is 1, 2, or 3
+        const firstDie = playModeDice[0];
+        const allDiceSame = playModeDice.every(die => die === firstDie);
+        const isLowSingleValue = firstDie <= 3;
+        const isBlockedSingleValueCombo = allDiceSame && isLowSingleValue;
+        
+        // Pre-calculate endgame state
+        const playerId = selectedPlayers[currentPlayPlayerIndex];
+        const availableCategories = getWritableCategoryIds(
+          scores[playerId] || {},
+          playModeAllowRewrite
+        );
+        const availableCategoryCount = availableCategories.length;
+        const isEndgameOrLastCategory = remainingRolls <= 0 || availableCategoryCount <= 1;
+        
+        // Block single-value combos from 1,2,3 EXCEPT in endgame or if it's Postavka
+        if (isBlockedSingleValueCombo && categoryId !== "postavka" && !isEndgameOrLastCategory) {
+          return null;
+        }
+        
+        return combo;
+      })()
     : null;
     
 const canStartPlayMode =
@@ -1681,19 +1722,6 @@ const playModeConfigInfoText = `${playModeRolls} hodů / Přepis: ${
     ? " / Hra proti počítači"
     : ""
 }`;
-
-const playModeCategoryMap: Record<
-  string,
-  string
-> = {
-  Generál: "general",
-  Pyramida: "pyramida",
-  Hrozen: "hrozen",
-  Postupka: "postupka",
-  "Čtyři-dvě": "ctyri_dva",
-  Dvojice: "dvojce",
-  Trojice: "trojce",
-};
 
 const shouldDebugAITurnController =
   process.env.NODE_ENV !== "production";
@@ -1753,7 +1781,10 @@ const deriveWorkingLocks = (
   );
 
 const getCurrentWritableSaveCandidate = (
-  playerId: string
+  playerId: string,
+  fixedLocks: boolean[] = [false, false, false, false, false, false],
+  remainingRolls: number = 0,
+  availableCategoryCount: number = 7
 ) => {
   if (!hasRolledDice) {
     return {
@@ -1765,6 +1796,7 @@ const getCurrentWritableSaveCandidate = (
     };
   }
 
+  // Detect combination from all dice (compatibility with fixedLocks is checked later)
   const latestCombination =
     hasRolledDice && !isRolling
       ? detectCombination(playModeDice)
@@ -1792,6 +1824,30 @@ const getCurrentWritableSaveCandidate = (
       latestCombination,
       categoryId: null as string | null,
       score: null as number | null,
+    };
+  }
+
+  // Block combinations made ONLY from same low values (1s only, 2s only, 3s only)
+  // e.g., 1-1, 1-1-1, 2-2-2, 3-3-3-3-3-3 are blocked
+  // BUT allow: 1-2-3 mix, 2-2-3-4, etc. - anything with variety
+  const firstDie = playModeDice[0];
+  const allDiceSame = playModeDice.every(die => die === firstDie);
+  const isLowSingleValue = firstDie <= 3;
+  const isBlockedSingleValueCombo = allDiceSame && isLowSingleValue;
+  const isEndgameOrLastCategory = remainingRolls <= 0 || availableCategoryCount <= 1;
+  
+  if (
+    isBlockedSingleValueCombo &&
+    categoryId !== "postupka" &&
+    !isEndgameOrLastCategory
+  ) {
+    console.log("❌ BLOCKING SINGLE-VALUE COMBO", {categoryId, score: latestCombination.score, playModeDice});
+    return {
+      canSave: false,
+      fallbackReason: "single-value-low-combo-blocked",
+      latestCombination,
+      categoryId,
+      score: latestCombination.score,
     };
   }
 
@@ -1860,7 +1916,15 @@ const getStrongSaveCandidateDecision = (
   remainingRolls: number,
   targetCategoryCompatibleWithFixedLocks: boolean
 ) => {
+  console.log("📊 getStrongSaveCandidateDecision INPUT", {
+    categoryId: saveCandidate.categoryId,
+    score: saveCandidate.score,
+    canSave: saveCandidate.canSave,
+    targetCategoryCompatibleWithFixedLocks,
+  });
+
   if (!saveCandidate.canSave) {
+    console.log("❌ Rejected: canSave=false");
     return {
       accepted: false,
       reason:
@@ -1892,10 +1956,17 @@ const getStrongSaveCandidateDecision = (
       saveCandidate.categoryId
     ] ?? null;
 
+  console.log("🎯 STRONG-SAVE CHECK", {
+    categoryId: saveCandidate.categoryId,
+    score: saveCandidate.score,
+    categoryMaxScore,
+  });
+
   if (
     saveCandidate.categoryId === "postupka" &&
     saveCandidate.score === 21
   ) {
+    console.log("✅ STRONG-SAVE: Postupka 21");
     return {
       accepted: true,
       reason: "max-postupka-always-save",
@@ -1906,6 +1977,7 @@ const getStrongSaveCandidateDecision = (
     categoryMaxScore !== null &&
     saveCandidate.score >= categoryMaxScore
   ) {
+    console.log("✅ STRONG-SAVE: Max score");
     return {
       accepted: true,
       reason: "max-category-score",
@@ -2017,10 +2089,20 @@ const getSaveTimingGuardDecision = (
       saveCandidate.categoryId
     ] ?? null;
 
+  console.log("🔍 MAX-SCORE CHECK", {
+    categoryId: saveCandidate.categoryId,
+    score: saveCandidate.score,
+    categoryMaxScore,
+    isMaxScore:
+      categoryMaxScore !== null &&
+      saveCandidate.score >= categoryMaxScore,
+  });
+
   if (
     categoryMaxScore !== null &&
     saveCandidate.score >= categoryMaxScore
   ) {
+    console.log("✅ MAX-SCORE ACCEPTED");
     return {
       accepted: true,
       reason: "save-now-because-max-score",
@@ -2817,6 +2899,15 @@ useEffect(() => {
 
 // 10. AI PLAYER - Decision Logic
 useEffect(() => {
+  console.log("🤖 AI EFFECT FIRED", {
+    playerId: selectedPlayers[currentPlayPlayerIndex],
+    isRolling,
+    hasRolledDice,
+    showPlayModeResult,
+    remainingRolls,
+    gameFinished,
+  });
+
   if (
     isOnlineGame ||
     !gameStarted ||
@@ -2824,6 +2915,7 @@ useEffect(() => {
     gameFinished ||
     selectedPlayers.length === 0
   ) {
+    console.log("🤖 AI EFFECT: Early return - game conditions not met");
     aiControllerTurnRef.current = null;
     aiControllerExecutionMarkerRef.current =
       null;
@@ -3046,15 +3138,20 @@ useEffect(() => {
           false,
         ];
 
+  // Pre-calculate available categories for low-score combination filter
+  const availableTargetCategories =
+    getWritableCategoryIds(
+      scores[playerId] || {},
+      playModeAllowRewrite
+    );
+  const availableCategoryCount = availableTargetCategories.length;
+
   const legalMoveContext = {
     currentCombination,
     writableSaveCandidate:
-      getCurrentWritableSaveCandidate(playerId),
+      getCurrentWritableSaveCandidate(playerId, fixedLocks, remainingRolls, availableCategoryCount),
     availableTargetCategories:
-      getWritableCategoryIds(
-        scores[playerId] || {},
-        playModeAllowRewrite
-      ),
+      availableTargetCategories,
     lockCompatibility: Object.fromEntries(
       Object.values(playModeCategoryMap).map(
         (categoryId) => [
@@ -3161,9 +3258,6 @@ useEffect(() => {
         ]
       : undefined;
 
-  const availableCategoryCount =
-    legalMoveContext.availableTargetCategories.length;
-
   const saveTimingDecision =
     getSaveTimingGuardDecision(
       saveCandidate,
@@ -3187,6 +3281,16 @@ useEffect(() => {
   const candidateNotWritableNow =
     !!saveCandidate.latestCombination &&
     !saveCandidate.canSave;
+
+  console.log("🔍 SAVE DECISIONS DEBUG", {
+    saveCandidate: {
+      categoryId: saveCandidate.categoryId,
+      score: saveCandidate.score,
+      canSave: saveCandidate.canSave,
+    },
+    strongSaveDecision,
+    saveTimingDecision,
+  });
 
   const shouldClearWorkingLocksBecauseCandidateNotWritable =
     candidateNotWritableNow &&
@@ -3547,6 +3651,16 @@ useEffect(() => {
   }
 
   if (strongSaveDecision.accepted || saveTimingDecision.accepted) {
+    console.log("🎯 SAVE-FIRST-GUARD TRIGGERED", {
+      strongSaveDecision,
+      saveTimingDecision,
+      saveCandidate: {
+        categoryId: saveCandidate.categoryId,
+        score: saveCandidate.score,
+        canSave: saveCandidate.canSave,
+      },
+    });
+
     aiControllerPreviousTargetCategoryRef.current =
       null;
 
@@ -3802,6 +3916,14 @@ useEffect(() => {
       legalMoveContext,
     }
   );
+
+  console.log("🤖 AI DECISION MADE", {
+    action: decision.action,
+    confidence: decision.confidence,
+    remainingRolls,
+    currentCombination,
+    hasLockedDice: fixedLocks.some((x) => x),
+  });
 
   if (afterRollNoCombinationWithRollsLeft) {
     decisionReachedAfterNoCombination = true;
@@ -4084,6 +4206,20 @@ useEffect(() => {
       // Reset previousTargetCategory to prevent deadlock when decision is invalid
       aiControllerPreviousTargetCategoryRef.current = null;
 
+      // Schedule AI to reroll with new lock state
+      if (remainingRolls > 0) {
+        setTimeout(() => {
+          console.log("🎲 REROLL after invalid candidate", {
+            rejectedBecauseInvalidCandidate,
+            fallbackWorkingOnlyMask,
+            playerId,
+            remainingRolls,
+          });
+          // Don't reset hasRolledDice - rollAllDice handles it
+          rollAllDice(fallbackWorkingOnlyMask);
+        }, 220);
+      }
+
       return;
     }
   }
@@ -4106,15 +4242,15 @@ useEffect(() => {
     dice: playModeDice,
     remainingRolls,
     legalMoveContextUsed: true,
-      noCombinationGuardPhase,
-      beforeFirstRollNoCombinationIgnored:
-        false,
-      noCombinationEndTurnBlockedBecauseRollsRemain:
-        false,
-      terminalNoCombinationEndTurnAllowed:
-        false,
-      forcedFirstRollBecauseNoCombinationAtTurnStart:
-        false,
+    noCombinationGuardPhase,
+    beforeFirstRollNoCombinationIgnored:
+      false,
+    noCombinationEndTurnBlockedBecauseRollsRemain:
+      false,
+    terminalNoCombinationEndTurnAllowed:
+      false,
+    forcedFirstRollBecauseNoCombinationAtTurnStart:
+      false,
     noCombinationGuardChecked: true,
     noCombinationDecisionAllowed,
     noCombinationImmediateRerollSkipped,
@@ -4530,6 +4666,12 @@ useEffect(() => {
         setLockedDice(selectedLockMask);
       }
 
+      console.log("🎲 AI CALLING rollAllDice", {
+        selectedLockMask,
+        remainingRolls,
+        playerId,
+      });
+
       setHasRolledDice(false);
       rollAllDice(selectedLockMask);
       return;
@@ -4710,8 +4852,10 @@ useEffect(() => {
   playModeRolls,
   playModeAllowRewrite,
   isComputerPlayerId,
-  endTurn,
-  rollAllDice,
+  // endTurn and rollAllDice intentionally excluded: they are plain functions recreated every render,
+  // including them causes useEffect cleanup to cancel the 450ms setTimeout on every state change
+  // (e.g. setIsRolling, setPlayModeDice), which prevents the AI from ever completing a roll action.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 ]);
 
 const activateBonus = () => {
