@@ -3617,10 +3617,19 @@ export function makeAIDecision(
     }
 
     // Pyramida/Hrozen: skip unless they are among last 2 remaining categories
+    // EXCEPT: if this is a max-score result, ALWAYS accept it
     // Exception: if last <=2 categories remain, allow only if writing this score would beat opponent
+    const currentScore = currentDice.reduce((s, v) => s + v, 0);
+    const pyramidaHrozenMaxScores: Record<string, number> = {
+      "Pyramida": 32,
+      "Hrozen": 28,
+    };
+    const isMaxScore = pyramidaHrozenMaxScores[combType] === currentScore;
+    
     if (
       (combType === "Pyramida" || combType === "Hrozen") &&
-      availableCategoryCount > 2
+      availableCategoryCount > 2 &&
+      !isMaxScore
     ) {
       candidateAudit.push({
         candidateOrder,
@@ -3720,7 +3729,7 @@ export function makeAIDecision(
             remainingRolls
           );
 
-    if (multiTargetLockedDiceIndices.length === 0) {
+    if (multiTargetLockedDiceIndices.length === 0 && !evaluated.isComplete) {
       const safeRejectedCombination =
         detectCombination(currentDice);
 
@@ -4246,6 +4255,7 @@ export function makeAIDecision(
     }
 
     const keepsStrategicDirection =
+      candidateWithSeedMetadata.isComplete ||
       hasStrategicDirection(
         currentDice,
         candidateWithSeedMetadata,
@@ -5092,7 +5102,7 @@ export function makeAIDecision(
       ? 18
       : (remainingRolls ?? 0) <= 1
       ? 24
-      : 42;
+      : 28;
 
   let currentPlanValue =
     previousPlanCandidate?.strategyScore ??

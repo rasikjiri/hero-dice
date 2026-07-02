@@ -967,8 +967,6 @@ type Player = {
 // EDIT COMPUTER PLAYERS HERE
 const ComputerPlayerNames = [
   "Computer Peppa",
-  "Computer Rocky",
-  "Computer Lucky",
 ];
 
 const computerPlayers = ComputerPlayerNames.map(
@@ -1643,11 +1641,12 @@ const currentCombination =
         // BUT allow: 1-2-3 mix, 2-2-3-4, etc. - anything with variety
         const categoryId = playModeCategoryMap[combo.combination];
         
-        // Check if all dice are the same AND that value is 1, 2, or 3
-        const firstDie = playModeDice[0];
-        const allDiceSame = playModeDice.every(die => die === firstDie);
-        const isLowSingleValue = firstDie <= 3;
-        const isBlockedSingleValueCombo = allDiceSame && isLowSingleValue;
+        // Block if any low value (1, 2, or 3) appears 3 or more times
+        // e.g., [2,2,2,4,4,5] → 2 appears 3× → blocked
+        // e.g., [4,4,4,5,5,5] → no low value appears 3× → allowed
+        const isBlockedSingleValueCombo = [1, 2, 3].some(
+          (lowVal) => playModeDice.filter((d) => d === lowVal).length >= 3
+        );
         
         // Pre-calculate endgame state
         const playerId = selectedPlayers[currentPlayPlayerIndex];
@@ -1656,10 +1655,10 @@ const currentCombination =
           playModeAllowRewrite
         );
         const availableCategoryCount = availableCategories.length;
-        const isEndgameOrLastCategory = remainingRolls <= 0 || availableCategoryCount <= 1;
+        const isEndgameOrLastCategory = remainingRolls <= 0 || availableCategoryCount <= 3;
         
-        // Block single-value combos from 1,2,3 EXCEPT in endgame or if it's Postavka
-        if (isBlockedSingleValueCombo && categoryId !== "postavka" && !isEndgameOrLastCategory) {
+        // Block single-value combos from 1,2,3 EXCEPT in endgame or if it's Postupka
+        if (isBlockedSingleValueCombo && categoryId !== "postupka" && !isEndgameOrLastCategory) {
           return null;
         }
         
@@ -1827,15 +1826,15 @@ const getCurrentWritableSaveCandidate = (
     };
   }
 
-  // Block combinations made ONLY from same low values (1s only, 2s only, 3s only)
-  // e.g., 1-1, 1-1-1, 2-2-2, 3-3-3-3-3-3 are blocked
-  // BUT allow: 1-2-3 mix, 2-2-3-4, etc. - anything with variety
-  const firstDie = playModeDice[0];
-  const allDiceSame = playModeDice.every(die => die === firstDie);
-  const isLowSingleValue = firstDie <= 3;
-  const isBlockedSingleValueCombo = allDiceSame && isLowSingleValue;
-  const isEndgameOrLastCategory = remainingRolls <= 0 || availableCategoryCount <= 1;
+  // Block if any low value (1, 2, or 3) appears 3 or more times
+  // e.g., [2,2,2,4,4,5] → 2 appears 3× → blocked
+  // e.g., [4,4,4,5,5,5] → no low value appears 3× → allowed
+  const isBlockedSingleValueCombo = [1, 2, 3].some(
+    (lowVal) => playModeDice.filter((d) => d === lowVal).length >= 3
+  );
+  const isEndgameOrLastCategory = remainingRolls <= 0 || availableCategoryCount <= 3;
   
+  // Block if any low value (1, 2, or 3) appears 3 or more times
   if (
     isBlockedSingleValueCombo &&
     categoryId !== "postupka" &&
@@ -1944,13 +1943,6 @@ const getStrongSaveCandidateDecision = (
     };
   }
 
-  if (!targetCategoryCompatibleWithFixedLocks) {
-    return {
-      accepted: false,
-      reason: "candidate-incompatible-with-fixed-locks",
-    };
-  }
-
   const categoryMaxScore =
     playModeCategoryMaxScore[
       saveCandidate.categoryId
@@ -1960,8 +1952,12 @@ const getStrongSaveCandidateDecision = (
     categoryId: saveCandidate.categoryId,
     score: saveCandidate.score,
     categoryMaxScore,
+    targetCategoryCompatibleWithFixedLocks,
   });
 
+  // Max-score checks come BEFORE fixed-lock compatibility:
+  // if the dice literally show the best possible combination, save it
+  // regardless of what locks were planned for a different strategy.
   if (
     saveCandidate.categoryId === "postupka" &&
     saveCandidate.score === 21
@@ -1977,10 +1973,17 @@ const getStrongSaveCandidateDecision = (
     categoryMaxScore !== null &&
     saveCandidate.score >= categoryMaxScore
   ) {
-    console.log("✅ STRONG-SAVE: Max score");
+    console.log("✅ STRONG-SAVE: Max score (overrides fixed-lock plan)");
     return {
       accepted: true,
       reason: "max-category-score",
+    };
+  }
+
+  if (!targetCategoryCompatibleWithFixedLocks) {
+    return {
+      accepted: false,
+      reason: "candidate-incompatible-with-fixed-locks",
     };
   }
 
@@ -2064,16 +2067,14 @@ const getSaveTimingGuardDecision = (
     };
   }
 
-  if (!targetCategoryCompatibleWithFixedLocks) {
-    return {
-      accepted: false,
-      reason: "candidate-incompatible-with-fixed-locks",
-    };
-  }
+  const categoryMaxScore =
+    playModeCategoryMaxScore[
+      saveCandidate.categoryId
+    ] ?? null;
 
-  // POSTUPKA SPECIAL CASE: Postupka is a complete sequence (1,2,3,4,5,6 = 21 pts)
-  // and cannot improve, so save it immediately whenever it's complete.
-  // This applies at any point in the game - early, mid, or endgame.
+  // Max-score and Postupka checks come BEFORE fixed-lock compatibility:
+  // if the dice show the best possible combination, save it regardless
+  // of what locks were planned for a different strategy.
   if (
     saveCandidate.categoryId === "postupka" &&
     saveCandidate.score === 21
@@ -2084,11 +2085,6 @@ const getSaveTimingGuardDecision = (
     };
   }
 
-  const categoryMaxScore =
-    playModeCategoryMaxScore[
-      saveCandidate.categoryId
-    ] ?? null;
-
   console.log("🔍 MAX-SCORE CHECK", {
     categoryId: saveCandidate.categoryId,
     score: saveCandidate.score,
@@ -2096,16 +2092,24 @@ const getSaveTimingGuardDecision = (
     isMaxScore:
       categoryMaxScore !== null &&
       saveCandidate.score >= categoryMaxScore,
+    targetCategoryCompatibleWithFixedLocks,
   });
 
   if (
     categoryMaxScore !== null &&
     saveCandidate.score >= categoryMaxScore
   ) {
-    console.log("✅ MAX-SCORE ACCEPTED");
+    console.log("✅ MAX-SCORE ACCEPTED (overrides fixed-lock plan)");
     return {
       accepted: true,
       reason: "save-now-because-max-score",
+    };
+  }
+
+  if (!targetCategoryCompatibleWithFixedLocks) {
+    return {
+      accepted: false,
+      reason: "candidate-incompatible-with-fixed-locks",
     };
   }
 
