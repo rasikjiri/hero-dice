@@ -31,6 +31,8 @@ import StatisticsModal from "./components/StatisticsModal";
 
 import FunGamesModal from "./components/FunGamesModal";
 
+import AdminModal from "./components/AdminModal";
+
 import HelpModal from "./components/HelpModal";
 
 import AppMenu from "./components/AppMenu";
@@ -727,22 +729,28 @@ export default function Home() {
     return new Set(players).size === players.length;
   };
 
+  async function refreshLeagueStatistics(
+    players: { id: string; name: string; active: boolean }[],
+  ) {
+    await syncGamesFromSupabase();
+
+    setTopWins(getTopPlayerByWins(players));
+
+    setTopAverage(getTopPlayerByAverage(players));
+
+    setTopPerfects(getTopPlayerByPerfects(players));
+
+    setTopAveragePerfects(getTopPlayerByAveragePerfects(players));
+
+    setTopScore(getTopPlayerByScore(players));
+
+    setTopGamesPlayed(getTopPlayerByGamesPlayed(players));
+  }
+
   useEffect(() => {
     // 13. STATISTICS
     const loadStatistics = async () => {
-      await syncGamesFromSupabase();
-
-      setTopWins(getTopPlayerByWins(playersState));
-
-      setTopAverage(getTopPlayerByAverage(playersState));
-
-      setTopPerfects(getTopPlayerByPerfects(playersState));
-
-      setTopAveragePerfects(getTopPlayerByAveragePerfects(playersState));
-
-      setTopScore(getTopPlayerByScore(playersState));
-
-      setTopGamesPlayed(getTopPlayerByGamesPlayed(playersState));
+      await refreshLeagueStatistics(playersState);
 
       setMounted(true);
     };
@@ -9174,138 +9182,20 @@ export default function Home() {
         </div>
       )}
 
-      {/* ADMIN */}
-      {showAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="w-full max-w-3xl rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-white shadow-2xl">
-            <div className="mb-8 flex items-center justify-between">
-              <h2 className="text-4xl font-black text-yellow-400">
-                Administrace hráčů
-              </h2>
-
-              <button
-                onClick={() => setShowAdmin(false)}
-                className="rounded-xl border border-zinc-600 bg-zinc-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-              >
-                Zavřít
-              </button>
-            </div>
-
-            <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-2">
-              {playersState.map((player) => (
-                <div
-                  key={player.id}
-                  className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/40 p-5"
-                >
-                  <div>
-                    <input
-                      type="text"
-                      value={player.name}
-                      onChange={(e) => {
-                        const updatedPlayers = playersState.map((p) =>
-                          p.id === player.id
-                            ? {
-                                ...p,
-                                name: e.target.value,
-                              }
-                            : p,
-                        );
-
-                        setPlayersState(updatedPlayers);
-                      }}
-                      className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-2xl font-black text-white outline-none transition focus:border-yellow-400"
-                    />
-
-                    <div className="mt-1 text-sm text-zinc-500">
-                      ID: {player.id}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        updatePlayerInSupabase(player.id, {
-                          name: player.name,
-                        });
-                      }}
-                      className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-                    >
-                      Uložit
-                    </button>
-
-                    <button
-                      onClick={() => setDeletePlayerId(player.id)}
-                      className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-                    >
-                      Smazat
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        const updatedPlayers = playersState.map((p) =>
-                          p.id === player.id
-                            ? {
-                                ...p,
-                                active: !p.active,
-                              }
-                            : p,
-                        );
-
-                        setPlayersState(updatedPlayers);
-
-                        updatePlayerInSupabase(player.id, {
-                          active: !player.active,
-                        });
-
-                        localStorage.setItem(
-                          "heroDicePlayers",
-                          JSON.stringify(updatedPlayers),
-                        );
-                      }}
-                      className={`rounded-xl px-4 py-2 font-bold transition hover:scale-[1.02] hover:brightness-110 ${
-                        player.active ? "bg-green-600" : "bg-red-600"
-                      }`}
-                    >
-                      {player.active ? "Aktivní" : "Neaktivní"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              <div className="mt-6 rounded-2xl border border-zinc-700 bg-black/40 p-5">
-                <div className="mb-4 text-xl font-black text-yellow-400">
-                  Přidat hráče
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <input
-                    type="text"
-                    placeholder="Player ID"
-                    value={newPlayerId}
-                    onChange={(e) => setNewPlayerId(e.target.value)}
-                    className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Jméno hráče"
-                    value={newPlayerName}
-                    onChange={(e) => setNewPlayerName(e.target.value)}
-                    className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
-                  />
-
-                  <button
-                    onClick={handleAddPlayer}
-                    className="rounded-xl bg-green-600 px-5 py-3 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
-                  >
-                    Přidat hráče
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AdminModal
+        isOpen={showAdmin}
+        onClose={() => setShowAdmin(false)}
+        players={playersState}
+        setPlayers={setPlayersState}
+        newPlayerId={newPlayerId}
+        setNewPlayerId={setNewPlayerId}
+        newPlayerName={newPlayerName}
+        setNewPlayerName={setNewPlayerName}
+        onAddPlayer={handleAddPlayer}
+        onSavePlayer={updatePlayerInSupabase}
+        onRequestDeletePlayer={setDeletePlayerId}
+        onLeagueGamesChanged={() => refreshLeagueStatistics(playersState)}
+      />
 
       {/* DELETE PLAYER CONFIRM */}
       {deletePlayerId && (

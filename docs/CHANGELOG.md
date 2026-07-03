@@ -630,3 +630,24 @@ Poznámky:
 - Hero 36 přehrává nový zvuk.
 - Standardní fanfára maximálního skóre se při Hero 36 již nepřehrává.
 - Ostatní maximální skóre nadále používají původní zvuk.
+
+---
+
+## [3.9] - Admin Tools
+
+### Added
+
+- Rozšířen Admin modal na záložkový Admin shell.
+- Přidány záložky **Fun Game** a **Liga Game** pro správu dokončených her.
+- Přidána možnost hard delete dokončených her z tabulek `fun_games` a `games`.
+- Přidán potvrzovací dialog s upozorněním na nevratnost a dopad na historii, statistiky a leaderboardy.
+
+### Changed
+
+- Původní správa hráčů byla přesunuta do záložky **Hráči** bez změny funkčnosti.
+- Po smazání ligové hry se obnoví statistická cache z databáze.
+
+### Validation
+
+- Ověřeno mazání Fun hry i Liga hry.
+- `npm run build` prošel úspěšně.
