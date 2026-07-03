@@ -7868,7 +7868,7 @@ export default function Home() {
             </div>
 
             <div className="mt-6 text-4xl font-black text-green-400">
-              {currentCombination.combination}
+              {getPlayModeCombinationLabel(currentCombination.combination)}
             </div>
 
             <div className="mt-3 text-xl font-bold text-zinc-300">
@@ -7980,7 +7980,9 @@ export default function Home() {
                       })() ? (
                         <>
                           <div className="text-2xl font-black text-green-400 md:text-3xl">
-                            {currentCombination.combination}
+                            {getPlayModeCombinationLabel(
+                              currentCombination.combination,
+                            )}
                           </div>
 
                           <div
