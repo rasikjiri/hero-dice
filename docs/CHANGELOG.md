@@ -582,3 +582,27 @@ Dopad:
 Poznámky:
 - Bez změn databázového schématu.
 - Bez změn výpočtu kombinací, AI rozhodování a online synchronizační logiky.
+
+---
+
+## [3.8] - AI Stabilization
+
+### Fixed
+
+- Opraven bug, kdy se AI hráč po převzetí tahu v některých případech nerozběhl automaticky a čekal na uživatelský klik do herní plochy.
+- Identifikována příčina v orchestration vrstvě AI controlleru (page.tsx), nikoliv ve Strategy Engine.
+- Opraven lifecycle problém, při kterém useEffect cleanup rušil naplánovaný AI roll timeout dříve, než mohl být vykonán.
+- Při cleanupu pending AI roll timeoutu se nyní správně resetuje execution marker, což umožňuje bezpečné znovunaplánování AI akce při dalším průchodu controlleru.
+- Beze změny zůstaly:
+	- AI Decision Engine,
+	- strategie AI,
+	- scoring,
+	- Save-First Guard,
+	- locking logika,
+	- herní pravidla.
+
+### Validation
+
+- Ověřeno na nové hře.
+- AI hráč po převzetí tahu pokračuje automaticky bez nutnosti uživatelského kliknutí.
+- Chování odpovídá očekávanému průběhu AI tahu a nebyly pozorovány regresní projevy.
