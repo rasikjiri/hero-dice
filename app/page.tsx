@@ -25,12 +25,7 @@
   ======================================================= */
 
 // 01. IMPORTS
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import StatisticsModal from "./components/StatisticsModal";
 
@@ -88,116 +83,80 @@ type ScoreMap = {
 
 export default function Home() {
   // 04. GLOBAL STATE
-  const [screen, setScreen] = useState<
-    "home" | "game" | "online-lobby"
-  >("home");
+  const [screen, setScreen] = useState<"home" | "game" | "online-lobby">(
+    "home",
+  );
 
-  const [mounted, setMounted] =
-    useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const [isUnlocked, setIsUnlocked] =
-  useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
-  const [authLoaded, setAuthLoaded] =
-  useState(false);
+  const [authLoaded, setAuthLoaded] = useState(false);
 
-  const [accessCode, setAccessCode] =
-  useState("");  
-  
-  const [showStatistics, setShowStatistics] =
-    useState(false);
+  const [accessCode, setAccessCode] = useState("");
 
-  const [showFunGames,
-  setShowFunGames] =
-  useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
 
-  const [showAdmin, setShowAdmin] =
-  useState(false);
+  const [showFunGames, setShowFunGames] = useState(false);
 
-  const [
-  deletePlayerId,
-  setDeletePlayerId,
-] = useState<string | null>(
-  null
-);
+  const [showAdmin, setShowAdmin] = useState(false);
 
-  const [newPlayerId, setNewPlayerId] =
-  useState("");
+  const [deletePlayerId, setDeletePlayerId] = useState<string | null>(null);
 
-  const [newPlayerName, setNewPlayerName] =
-  useState("");
+  const [newPlayerId, setNewPlayerId] = useState("");
 
-  const [, forceUpdate] =
-  useState(0);
+  const [newPlayerName, setNewPlayerName] = useState("");
 
-  const [showLeaveConfirm, setShowLeaveConfirm] =
-    useState(false);
+  const [, forceUpdate] = useState(0);
 
-  const [
-  leaveAction,
-  setLeaveAction,
-] = useState<
-  "home" | "new-game" | null
->(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
-  const [selectedHelpImage, setSelectedHelpImage] =
-    useState<string | null>(null);
+  const [leaveAction, setLeaveAction] = useState<"home" | "new-game" | null>(
+    null,
+  );
 
-  const [
-    selectedHelpImageSource,
-    setSelectedHelpImageSource,
-  ] = useState<
+  const [selectedHelpImage, setSelectedHelpImage] = useState<string | null>(
+    null,
+  );
+
+  const [selectedHelpImageSource, setSelectedHelpImageSource] = useState<
     "scoreboard" | "help-modal" | null
   >(null);
 
-  const [playerCount, setPlayerCount] =
-    useState<number | "">("");
+  const [playerCount, setPlayerCount] = useState<number | "">("");
 
-  const [selectedPlayers, setSelectedPlayers] =
-    useState<string[]>([]);
+  const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
 
-  const [gameStarted, setGameStarted] =
-    useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
 
-  const [gameFinished, setGameFinished] =
-    useState(false);
+  const [gameFinished, setGameFinished] = useState(false);
 
-  const [winner, setWinner] =
-    useState("");
+  const [winner, setWinner] = useState("");
 
-  const [winnerScore, setWinnerScore] =
-    useState(0);
+  const [winnerScore, setWinnerScore] = useState(0);
 
-const [gameId, setGameId] =
-  useState<string>("");
+  const [gameId, setGameId] = useState<string>("");
 
-const resolveGameId = (
-  candidate?: string | null
-) => {
-  if (
-    typeof candidate === "string" &&
-    candidate.trim().length > 0
-  ) {
-    return candidate;
-  }
+  const resolveGameId = (candidate?: string | null) => {
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate;
+    }
 
-  return crypto.randomUUID();
-};
+    return crypto.randomUUID();
+  };
 
-const closeSelectedHelpImage = () => {
-  const source =
-    selectedHelpImageSource;
+  const closeSelectedHelpImage = () => {
+    const source = selectedHelpImageSource;
 
-  setSelectedHelpImage(null);
-  setSelectedHelpImageSource(null);
+    setSelectedHelpImage(null);
+    setSelectedHelpImageSource(null);
 
-  if (source === "help-modal") {
-    setShowHelp(true);
-  }
-};
+    if (source === "help-modal") {
+      setShowHelp(true);
+    }
+  };
 
-  const [showFinishedGame, setShowFinishedGame] =
-    useState(false);
+  const [showFinishedGame, setShowFinishedGame] = useState(false);
 
   const [showDuplicateGameMessage, setShowDuplicateGameMessage] =
     useState(false);
@@ -209,20 +168,14 @@ const closeSelectedHelpImage = () => {
     "/sounds/win/wow3.mp3",
   ];
 
-  const celebrationAudioRef =
-    useRef<HTMLAudioElement | null>(
-      null
-    );
+  const celebrationAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const skipNextTurnEndSoundRef =
-    useRef(false);
+  const skipNextTurnEndSoundRef = useRef(false);
 
-  const celebrationTimeoutsRef =
-    useRef<number[]>([]);
+  const celebrationTimeoutsRef = useRef<number[]>([]);
 
   const cleanupCelebrationAudio = () => {
-    const audio =
-      celebrationAudioRef.current;
+    const audio = celebrationAudioRef.current;
 
     if (!audio) {
       return;
@@ -230,14 +183,11 @@ const closeSelectedHelpImage = () => {
 
     audio.pause();
     audio.currentTime = 0;
-    celebrationAudioRef.current =
-      null;
+    celebrationAudioRef.current = null;
   };
 
   const clearCelebrationTimeouts = () => {
-    celebrationTimeoutsRef.current.forEach(
-      clearTimeout
-    );
+    celebrationTimeoutsRef.current.forEach(clearTimeout);
 
     celebrationTimeoutsRef.current = [];
   };
@@ -248,593 +198,362 @@ const closeSelectedHelpImage = () => {
     setShowFinishedGame(false);
   };
 
-const [
-  showSettings,
-  setShowSettings,
-] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-const [
-  celebrationSoundEnabled,
-  setCelebrationSoundEnabled,
-] = useState(true);
+  const [celebrationSoundEnabled, setCelebrationSoundEnabled] = useState(true);
 
-const [
-  maxScoreSoundEnabled,
-  setMaxScoreSoundEnabled,
-] = useState(true);
+  const [maxScoreSoundEnabled, setMaxScoreSoundEnabled] = useState(true);
 
-const [
-  maxScoreSoundPlayed,
-  setMaxScoreSoundPlayed,
-] = useState(false);
+  const [maxScoreSoundPlayed, setMaxScoreSoundPlayed] = useState(false);
 
-const [
-  noCombinationSoundEnabled,
-  setNoCombinationSoundEnabled,
-] = useState(true);
+  const [noCombinationSoundEnabled, setNoCombinationSoundEnabled] =
+    useState(true);
 
-const [
-  turnEndSoundEnabled,
-  setTurnEndSoundEnabled,
-] = useState(true);
+  const [turnEndSoundEnabled, setTurnEndSoundEnabled] = useState(true);
 
-const [
-  noCombinationSoundPlayed,
-  setNoCombinationSoundPlayed,
-] = useState(false);
+  const [noCombinationSoundPlayed, setNoCombinationSoundPlayed] =
+    useState(false);
 
-const [
-  suppressNoCombinationSound,
-  setSuppressNoCombinationSound,
-] = useState(false);
+  const [suppressNoCombinationSound, setSuppressNoCombinationSound] =
+    useState(false);
 
-  const [scores, setScores] =
-    useState<ScoreMap>({});
+  const [scores, setScores] = useState<ScoreMap>({});
 
-const [
-  isOnlineGame,
-  setIsOnlineGame,
-] = useState(false);
+  const [isOnlineGame, setIsOnlineGame] = useState(false);
 
-const [
-  onlineSessionId,
-  setOnlineSessionId,
-] = useState<string | null>(
-  null
-);
+  const [onlineSessionId, setOnlineSessionId] = useState<string | null>(null);
 
-const onlineSessionIdRef =
-  useRef<string | null>(null);
+  const onlineSessionIdRef = useRef<string | null>(null);
 
-const isOnlineGameRef = useRef(false);
+  const isOnlineGameRef = useRef(false);
 
-const [
-  onlineChannel,
-  setOnlineChannel,
-] = useState<any>(null);
+  const [onlineChannel, setOnlineChannel] = useState<any>(null);
 
-const [
-  joinSessionId,
-  setJoinSessionId,
-] = useState("");
+  const [joinSessionId, setJoinSessionId] = useState("");
 
-const [
-  playerReadiness,
-  setPlayerReadiness,
-] = useState<{
-  [playerId: string]: boolean;
-}>({});
+  const [playerReadiness, setPlayerReadiness] = useState<{
+    [playerId: string]: boolean;
+  }>({});
 
-const [
-  localOnlinePlayerId,
-  setLocalOnlinePlayerId,
-] = useState<string | null>(null);
+  const [localOnlinePlayerId, setLocalOnlinePlayerId] = useState<string | null>(
+    null,
+  );
 
-const [
-  onlineChatMessages,
-  setOnlineChatMessages,
-] = useState<GameMessage[]>([]);
+  const [onlineChatMessages, setOnlineChatMessages] = useState<GameMessage[]>(
+    [],
+  );
 
-const [
-  onlineChatInput,
-  setOnlineChatInput,
-] = useState("");
+  const [onlineChatInput, setOnlineChatInput] = useState("");
 
-const [
-  isOnlineChatCollapsed,
-  setIsOnlineChatCollapsed,
-] = useState(false);
+  const [isOnlineChatCollapsed, setIsOnlineChatCollapsed] = useState(false);
 
-const [
-  isMobileChatOpen,
-  setIsMobileChatOpen,
-] = useState(false);
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
 
-const [
-  isOnlineChatLoading,
-  setIsOnlineChatLoading,
-] = useState(false);
+  const [isOnlineChatLoading, setIsOnlineChatLoading] = useState(false);
 
-const [
-  onlineChatError,
-  setOnlineChatError,
-] = useState<string | null>(null);
+  const [onlineChatError, setOnlineChatError] = useState<string | null>(null);
 
-const onlineChatBottomRef =
-  useRef<HTMLDivElement | null>(null);
+  const onlineChatBottomRef = useRef<HTMLDivElement | null>(null);
 
-const localRuntimeRevisionRef =
-  useRef(0);
+  const localRuntimeRevisionRef = useRef(0);
 
-const bumpLocalRuntimeRevision =
-  () => {
+  const bumpLocalRuntimeRevision = () => {
     localRuntimeRevisionRef.current += 1;
 
     return localRuntimeRevisionRef.current;
   };
 
-const localTurnVersionRef =
-  useRef(0);
+  const localTurnVersionRef = useRef(0);
 
-const hasAutoOpenedOnlinePlayModeRef =
-  useRef(false);
+  const hasAutoOpenedOnlinePlayModeRef = useRef(false);
 
-const forceOnlineLobbyUntilHostStartRef =
-  useRef(false);
+  const forceOnlineLobbyUntilHostStartRef = useRef(false);
 
-const aiControllerTurnRef =
-  useRef<string | null>(null);
+  const aiControllerTurnRef = useRef<string | null>(null);
 
-const aiControllerExecutionMarkerRef =
-  useRef<string | null>(null);
+  const aiControllerExecutionMarkerRef = useRef<string | null>(null);
 
-const aiControllerLastObservedStateRef =
-  useRef<string | null>(null);
+  const aiControllerLastObservedStateRef = useRef<string | null>(null);
 
-const aiControllerStepRef =
-  useRef(0);
+  const aiControllerStepRef = useRef(0);
 
-const aiControllerNoProgressRef =
-  useRef(0);
+  const aiControllerNoProgressRef = useRef(0);
 
-const aiControllerPreviousTargetCategoryRef =
-  useRef<string | null>(null);
+  const aiControllerPreviousTargetCategoryRef = useRef<string | null>(null);
 
-const aiRollTimeoutSequenceRef =
-  useRef(0);
+  const aiRollTimeoutSequenceRef = useRef(0);
 
-const aiActiveRollTimeoutIdRef =
-  useRef<number | null>(null);
+  const aiActiveRollTimeoutIdRef = useRef<number | null>(null);
 
-const lastStateChangeSourceRef =
-  useRef<
+  const lastStateChangeSourceRef = useRef<
     "local-action" | "remote-sync" | null
   >(null);
 
-const bumpLocalTurnVersion =
-  () => {
+  const bumpLocalTurnVersion = () => {
     localTurnVersionRef.current += 1;
 
     return localTurnVersionRef.current;
   };
 
-  const [
-  showRestoreGame,
-  setShowRestoreGame,
-] = useState(false);
+  const [showRestoreGame, setShowRestoreGame] = useState(false);
 
-  const [
-showHomeRestoreModal,
-setShowHomeRestoreModal,
-] = useState(false);
+  const [showHomeRestoreModal, setShowHomeRestoreModal] = useState(false);
 
-const [
-savedGames,
-setSavedGames,
-] = useState<any[]>([]);
+  const [savedGames, setSavedGames] = useState<any[]>([]);
 
-const [
-showLoadGames,
-setShowLoadGames,
-] = useState(false);
+  const [showLoadGames, setShowLoadGames] = useState(false);
 
-const [
-  showHomeMenu,
-  setShowHomeMenu,
-] = useState(false);
+  const [showHomeMenu, setShowHomeMenu] = useState(false);
 
-const [
-  showSetupMenu,
-  setShowSetupMenu,
-] = useState(false);
+  const [showSetupMenu, setShowSetupMenu] = useState(false);
 
-const [
-  showJoinSessionModal,
-  setShowJoinSessionModal,
-] = useState(false);
+  const [showJoinSessionModal, setShowJoinSessionModal] = useState(false);
 
-const [
-  showGameMenu,
-  setShowGameMenu,
-] = useState(false);
+  const [showGameMenu, setShowGameMenu] = useState(false);
 
-useEffect(() => {
-  onlineSessionIdRef.current =
-    onlineSessionId;
-}, [onlineSessionId]);
+  useEffect(() => {
+    onlineSessionIdRef.current = onlineSessionId;
+  }, [onlineSessionId]);
 
-useEffect(() => {
-  isOnlineGameRef.current =
-    isOnlineGame;
-}, [isOnlineGame]);
+  useEffect(() => {
+    isOnlineGameRef.current = isOnlineGame;
+  }, [isOnlineGame]);
 
-useEffect(() => {
-  const handleClickOutside = () => {
-    setShowGameMenu(false);
-    setShowHomeMenu(false);
-    setShowSetupMenu(false);
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowGameMenu(false);
+      setShowHomeMenu(false);
+      setShowSetupMenu(false);
+    };
+
+    if (showGameMenu || showHomeMenu || showSetupMenu) {
+      document.addEventListener("click", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [showGameMenu, showHomeMenu, showSetupMenu]);
+
+  useEffect(() => {
+    const celebration = localStorage.getItem("heroDiceCelebrationSound");
+
+    const maxScore = localStorage.getItem("heroDiceMaxScoreSound");
+
+    const noCombination = localStorage.getItem("heroDiceNoCombinationSound");
+
+    const turnEnd = localStorage.getItem("heroDiceTurnEndSound");
+
+    if (celebration !== null) {
+      setCelebrationSoundEnabled(celebration === "true");
+    }
+
+    if (maxScore !== null) {
+      setMaxScoreSoundEnabled(maxScore === "true");
+    }
+
+    if (noCombination !== null) {
+      setNoCombinationSoundEnabled(noCombination === "true");
+    }
+
+    if (turnEnd !== null) {
+      setTurnEndSoundEnabled(turnEnd === "true");
+    }
+  }, []);
+
+  // Preload audio files after first user interaction
+  useEffect(() => {
+    const preloadAudio = () => {
+      // Preload no-combination sound
+      const noCombAudio = new Audio("/sounds/playmode/nocombination.wav");
+      noCombAudio.preload = "auto";
+
+      // Preload max-score fanfare
+      const fanfareAudio = new Audio("/sounds/win/fanfare.mp3");
+      fanfareAudio.preload = "auto";
+
+      // Preload turn-end sound
+      const turnEndAudio = new Audio("/sounds/playmode/turnend.mp3");
+      turnEndAudio.preload = "auto";
+
+      // Preload win sounds
+      const winSoundUrls = [
+        "/sounds/win/wow.mp3",
+        "/sounds/win/wow_1.mp3",
+        "/sounds/win/wow_2.mp3",
+      ];
+
+      winSoundUrls.forEach((url) => {
+        const audio = new Audio(url);
+        audio.preload = "auto";
+      });
+
+      // Remove listener after preload
+      document.removeEventListener("click", preloadAudio);
+      document.removeEventListener("touchstart", preloadAudio);
+    };
+
+    // Listen for first user interaction
+    document.addEventListener("click", preloadAudio, { once: true });
+    document.addEventListener("touchstart", preloadAudio, { once: true });
+
+    return () => {
+      document.removeEventListener("click", preloadAudio);
+      document.removeEventListener("touchstart", preloadAudio);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cleanupCelebrationAudio();
+      clearCelebrationTimeouts();
+    };
+  }, []);
+
+  const saveSettings = (
+    celebration: boolean,
+    maxScore: boolean,
+    noCombination: boolean,
+    turnEnd: boolean,
+  ) => {
+    localStorage.setItem("heroDiceCelebrationSound", String(celebration));
+
+    localStorage.setItem("heroDiceMaxScoreSound", String(maxScore));
+
+    localStorage.setItem("heroDiceNoCombinationSound", String(noCombination));
+
+    localStorage.setItem("heroDiceTurnEndSound", String(turnEnd));
   };
 
-  if (
-    showGameMenu ||
-    showHomeMenu ||
-    showSetupMenu
-  ) {
-    document.addEventListener(
-      "click",
-      handleClickOutside
-    );
-  }
+  const [showSaveGameConfirm, setShowSaveGameConfirm] = useState(false);
 
-  return () => {
-    document.removeEventListener(
-      "click",
-      handleClickOutside
-    );
-  };
-}, [
-  showGameMenu,
-  showHomeMenu,
-  showSetupMenu,
-]);
+  const [showGameSavedModal, setShowGameSavedModal] = useState(false);
 
-useEffect(() => {
-  const celebration =
-    localStorage.getItem(
-      "heroDiceCelebrationSound"
-    );
+  const [showGameVersionModal, setShowGameVersionModal] = useState(false);
 
-  const maxScore =
-    localStorage.getItem(
-      "heroDiceMaxScoreSound"
-    );
-
-  const noCombination =
-    localStorage.getItem(
-      "heroDiceNoCombinationSound"
-    );
-
-  const turnEnd =
-    localStorage.getItem(
-      "heroDiceTurnEndSound"
-    );
-
-  if (celebration !== null) {
-    setCelebrationSoundEnabled(
-      celebration === "true"
-    );
-  }
-
-  if (maxScore !== null) {
-    setMaxScoreSoundEnabled(
-      maxScore === "true"
-    );
-  }
-
-  if (noCombination !== null) {
-    setNoCombinationSoundEnabled(
-      noCombination === "true"
-    );
-  }
-
-  if (turnEnd !== null) {
-    setTurnEndSoundEnabled(
-      turnEnd === "true"
-    );
-  }
-}, []);
-
-// Preload audio files after first user interaction
-useEffect(() => {
-  const preloadAudio = () => {
-    // Preload no-combination sound
-    const noCombAudio = new Audio('/sounds/playmode/nocombination.wav');
-    noCombAudio.preload = 'auto';
-
-    // Preload max-score fanfare
-    const fanfareAudio = new Audio('/sounds/win/fanfare.mp3');
-    fanfareAudio.preload = 'auto';
-
-    // Preload turn-end sound
-    const turnEndAudio = new Audio('/sounds/playmode/turnend.mp3');
-    turnEndAudio.preload = 'auto';
-
-    // Preload win sounds
-    const winSoundUrls = [
-      '/sounds/win/wow.mp3',
-      '/sounds/win/wow_1.mp3',
-      '/sounds/win/wow_2.mp3',
-    ];
-
-    winSoundUrls.forEach((url) => {
-      const audio = new Audio(url);
-      audio.preload = 'auto';
-    });
-
-    // Remove listener after preload
-    document.removeEventListener('click', preloadAudio);
-    document.removeEventListener('touchstart', preloadAudio);
+  type SavedGameMetadata = {
+    gameMode: "offline" | "online";
+    onlineSessionId: string | null;
+    localOnlinePlayerId: string | null;
   };
 
-  // Listen for first user interaction
-  document.addEventListener('click', preloadAudio, { once: true });
-  document.addEventListener('touchstart', preloadAudio, { once: true });
-
-  return () => {
-    document.removeEventListener('click', preloadAudio);
-    document.removeEventListener('touchstart', preloadAudio);
+  type SavedGamesMetadataColumnSupport = {
+    game_mode: boolean;
+    online_session_id: boolean;
+    local_online_player_id: boolean;
+    current_play_player_index: boolean;
+    play_mode_dice: boolean;
+    locked_dice: boolean;
+    confirmed_locked_dice: boolean;
+    remaining_rolls: boolean;
+    bonus_used: boolean;
+    selected_general_value: boolean;
+    has_rolled_dice: boolean;
+    has_started_play_mode: boolean;
   };
-}, []);
 
-useEffect(() => {
-  return () => {
-    cleanupCelebrationAudio();
-    clearCelebrationTimeouts();
-  };
-}, []);
+  const [pendingSaveMetadata, setPendingSaveMetadata] =
+    useState<SavedGameMetadata | null>(null);
 
-const saveSettings = (
-  celebration: boolean,
-  maxScore: boolean,
-  noCombination: boolean,
-  turnEnd: boolean
-) => {
-  localStorage.setItem(
-    "heroDiceCelebrationSound",
-    String(celebration)
+  const savedGamesMetadataColumnSupportRef =
+    useRef<SavedGamesMetadataColumnSupport | null>(null);
+
+  const [showFinishGameConfirm, setShowFinishGameConfirm] = useState(false);
+
+  const [pendingFinishedGame, setPendingFinishedGame] = useState<any>(null);
+
+  const [deleteSavedGameId, setDeleteSavedGameId] = useState<string | null>(
+    null,
   );
 
-  localStorage.setItem(
-    "heroDiceMaxScoreSound",
-    String(maxScore)
-  );
+  const [showPlayModeSetup, setShowPlayModeSetup] = useState(false);
 
-  localStorage.setItem(
-    "heroDiceNoCombinationSound",
-    String(noCombination)
-  );
+  const [selectedGameMode, setSelectedGameMode] = useState<
+    "offline" | "online"
+  >("offline");
 
-  localStorage.setItem(
-    "heroDiceTurnEndSound",
-    String(turnEnd)
-  );
-};
-
-const [
-  showSaveGameConfirm,
-  setShowSaveGameConfirm,
-] = useState(false);
-
-const [
-  showGameSavedModal,
-  setShowGameSavedModal,
-] = useState(false);
-
-const [
-  showGameVersionModal,
-  setShowGameVersionModal,
-] = useState(false);
-
-type SavedGameMetadata = {
-  gameMode: "offline" | "online";
-  onlineSessionId: string | null;
-  localOnlinePlayerId: string | null;
-};
-
-type SavedGamesMetadataColumnSupport = {
-  game_mode: boolean;
-  online_session_id: boolean;
-  local_online_player_id: boolean;
-  current_play_player_index: boolean;
-  play_mode_dice: boolean;
-  locked_dice: boolean;
-  confirmed_locked_dice: boolean;
-  remaining_rolls: boolean;
-  bonus_used: boolean;
-  selected_general_value: boolean;
-  has_rolled_dice: boolean;
-  has_started_play_mode: boolean;
-};
-
-const [
-  pendingSaveMetadata,
-  setPendingSaveMetadata,
-] = useState<SavedGameMetadata | null>(
-  null
-);
-
-const savedGamesMetadataColumnSupportRef =
-  useRef<SavedGamesMetadataColumnSupport | null>(
-    null
-  );
-
-const [
-  showFinishGameConfirm,
-  setShowFinishGameConfirm,
-] = useState(false);
-
-const [
-  pendingFinishedGame,
-  setPendingFinishedGame,
-] = useState<any>(null);
-
-
-const [
-  deleteSavedGameId,
-  setDeleteSavedGameId,
-] = useState<string | null>(
-  null
-);
-
-const [
-  showPlayModeSetup,
-  setShowPlayModeSetup,
-] = useState(false);
-
-const [
-  selectedGameMode,
-  setSelectedGameMode,
-] = useState<"offline" | "online">(
-  "offline"
-);
-
-const [
-  gameMode,
-  setGameMode,
-] = useState<"offline" | "online">(
-  "offline"
-);
+  const [gameMode, setGameMode] = useState<"offline" | "online">("offline");
 
   // 09. PLAY MODE
 
-const [
-  showPlayModeHelp,
-  setShowPlayModeHelp,
-] = useState(false);
+  const [showPlayModeHelp, setShowPlayModeHelp] = useState(false);
 
-const [
-  showHelp,
-  setShowHelp,
-] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
-const [
-  playModeRolls,
-  setPlayModeRolls,
-] = useState(4);
+  const [playModeRolls, setPlayModeRolls] = useState(4);
 
-const [
-  playModeAllowRewrite,
-  setPlayModeAllowRewrite,
-] = useState(false);
+  const [playModeAllowRewrite, setPlayModeAllowRewrite] = useState(false);
 
-const [
-  playModeBonusMode,
-  setPlayModeBonusMode,
-] = useState<
-  "general-only" | "all"
->("general-only");
+  const [playModeBonusMode, setPlayModeBonusMode] = useState<
+    "general-only" | "all"
+  >("general-only");
 
-const [
-  playModeBonusRolls,
-  setPlayModeBonusRolls,
-] = useState(2);
+  const [playModeBonusRolls, setPlayModeBonusRolls] = useState(2);
 
-const [
-  isPlayModeActive,
-  setIsPlayModeActive,
-] = useState(false);
+  const [isPlayModeActive, setIsPlayModeActive] = useState(false);
 
-const [
-  hasStartedPlayMode,
-  setHasStartedPlayMode,
-] = useState(false);
+  const [hasStartedPlayMode, setHasStartedPlayMode] = useState(false);
 
-const screenSetter = setScreen;
-const gameStartedSetter = setGameStarted;
-const isPlayModeActiveSetter = setIsPlayModeActive;
-const hasStartedPlayModeSetter = setHasStartedPlayMode;
+  const screenSetter = setScreen;
+  const gameStartedSetter = setGameStarted;
+  const isPlayModeActiveSetter = setIsPlayModeActive;
+  const hasStartedPlayModeSetter = setHasStartedPlayMode;
 
-const debugSetScreen = (
-  value: "home" | "game" | "online-lobby",
-  source = "unknown"
-) => {
-  console.log(
-    `[${source}] setScreen(${value})`,
-    new Date().toISOString()
-  );
-  screenSetter(value);
-};
+  const debugSetScreen = (
+    value: "home" | "game" | "online-lobby",
+    source = "unknown",
+  ) => {
+    console.log(`[${source}] setScreen(${value})`, new Date().toISOString());
+    screenSetter(value);
+  };
 
-const debugSetGameStarted = (
-  value: boolean,
-  source = "unknown"
-) => {
-  console.log(
-    `[${source}] setGameStarted(${value})`,
-    new Date().toISOString()
-  );
-  gameStartedSetter(value);
-};
+  const debugSetGameStarted = (value: boolean, source = "unknown") => {
+    console.log(
+      `[${source}] setGameStarted(${value})`,
+      new Date().toISOString(),
+    );
+    gameStartedSetter(value);
+  };
 
-const debugSetIsPlayModeActive = (
-  value: boolean,
-  source = "unknown"
-) => {
-  console.log(
-    `[${source}] setIsPlayModeActive(${value})`,
-    new Date().toISOString()
-  );
-  isPlayModeActiveSetter(value);
-};
+  const debugSetIsPlayModeActive = (value: boolean, source = "unknown") => {
+    console.log(
+      `[${source}] setIsPlayModeActive(${value})`,
+      new Date().toISOString(),
+    );
+    isPlayModeActiveSetter(value);
+  };
 
-const debugSetHasStartedPlayMode = (
-  value: boolean,
-  source = "unknown"
-) => {
-  console.log(
-    `[${source}] setHasStartedPlayMode(${value})`,
-    new Date().toISOString()
-  );
-  hasStartedPlayModeSetter(value);
-};
+  const debugSetHasStartedPlayMode = (value: boolean, source = "unknown") => {
+    console.log(
+      `[${source}] setHasStartedPlayMode(${value})`,
+      new Date().toISOString(),
+    );
+    hasStartedPlayModeSetter(value);
+  };
 
-const [
-  showPlayModeResult,
-  setShowPlayModeResult,
-] = useState(false);
+  const [showPlayModeResult, setShowPlayModeResult] = useState(false);
 
-type PlayModeTurnSummary = {
-  playerId: string;
-  nextPlayerId: string;
-  savedScore: boolean;
-  combination: string | null;
-  score: number | null;
-  categoryId: string | null;
-  reason: string;
-};
+  type PlayModeTurnSummary = {
+    playerId: string;
+    nextPlayerId: string;
+    savedScore: boolean;
+    combination: string | null;
+    score: number | null;
+    categoryId: string | null;
+    reason: string;
+  };
 
-const [
-  playModeTurnSummary,
-  setPlayModeTurnSummary,
-] = useState<PlayModeTurnSummary | null>(null);
+  const [playModeTurnSummary, setPlayModeTurnSummary] =
+    useState<PlayModeTurnSummary | null>(null);
 
-const [
-  currentPlayPlayerIndex,
-  setCurrentPlayPlayerIndex,
-] = useState(0);
+  const [currentPlayPlayerIndex, setCurrentPlayPlayerIndex] = useState(0);
 
-const [
-  playModeDice,
-  setPlayModeDice,
-] = useState<number[]>(
-  [1, 1, 1, 1, 1, 1]
-);
+  const [playModeDice, setPlayModeDice] = useState<number[]>([
+    1, 1, 1, 1, 1, 1,
+  ]);
 
   // 07. DICE ENGINE
-  const diceImages: Record<
-    number,
-    string
-  > = {
+  const diceImages: Record<number, string> = {
     1: "/dice/1.png",
     2: "/dice/2.png",
     3: "/dice/3.png",
@@ -844,460 +563,289 @@ const [
   };
 
   // 09. PLAY MODE (state)
-  const [
-    hasRolledDice,
-    setHasRolledDice,
-  ] = useState(false);
+  const [hasRolledDice, setHasRolledDice] = useState(false);
 
-  const [
-    isRolling,
-    setIsRolling,
-  ] = useState(false);
+  const [isRolling, setIsRolling] = useState(false);
 
-const [
-  lockedDice,
-  setLockedDice,
-] = useState<boolean[]>(
-  [
+  const [lockedDice, setLockedDice] = useState<boolean[]>([
     false,
     false,
     false,
     false,
     false,
     false,
-  ]
-);
+  ]);
 
-const [
-  confirmedLockedDice,
-  setConfirmedLockedDice,
-] = useState<boolean[]>(
-  [
+  const [confirmedLockedDice, setConfirmedLockedDice] = useState<boolean[]>([
     false,
     false,
     false,
     false,
     false,
     false,
-  ]
-);
+  ]);
 
-const [
-  remainingRolls,
-  setRemainingRolls,
-] = useState<number>(0);  
+  const [remainingRolls, setRemainingRolls] = useState<number>(0);
 
-const [
-  bonusUsed,
-  setBonusUsed,
-] = useState(false);
+  const [bonusUsed, setBonusUsed] = useState(false);
 
-const [
-  bonusActivatedThisTurn,
-  setBonusActivatedThisTurn,
-] = useState(false);
+  const [bonusActivatedThisTurn, setBonusActivatedThisTurn] = useState(false);
 
-const [
-  selectedGeneralValue,
-  setSelectedGeneralValue,
-] = useState<
-  number | null
->(null);
+  const [selectedGeneralValue, setSelectedGeneralValue] = useState<
+    number | null
+  >(null);
 
-const [scoreModal, setScoreModal] =
-    useState<{
-      playerId: string;
-      categoryId: string;
-      min: number;
-      max: number;
-    } | null>(null);
+  const [scoreModal, setScoreModal] = useState<{
+    playerId: string;
+    categoryId: string;
+    min: number;
+    max: number;
+  } | null>(null);
 
-  const [
-  showEditConfirm,
-  setShowEditConfirm,
-] = useState(false);
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
 
-  const [scoreInput, setScoreInput] =
-    useState("");
+  const [scoreInput, setScoreInput] = useState("");
 
-  const [topWins, setTopWins] =
-    useState({
-      name: "-",
-      value: 0,
-    });
+  const [topWins, setTopWins] = useState({
+    name: "-",
+    value: 0,
+  });
 
-  const [topAverage, setTopAverage] =
-    useState({
-      name: "-",
-      value: 0,
-    });
+  const [topAverage, setTopAverage] = useState({
+    name: "-",
+    value: 0,
+  });
 
-  const [topPerfects, setTopPerfects] =
-    useState({
-      name: "-",
-      value: 0,
-    });
-const [
-  topAveragePerfects,
-  setTopAveragePerfects,
-] = useState({
-  name: "-",
-  value: 0,
-});
-  const [topScore, setTopScore] =
-    useState({
-      name: "-",
-      value: 0,
-    });
+  const [topPerfects, setTopPerfects] = useState({
+    name: "-",
+    value: 0,
+  });
+  const [topAveragePerfects, setTopAveragePerfects] = useState({
+    name: "-",
+    value: 0,
+  });
+  const [topScore, setTopScore] = useState({
+    name: "-",
+    value: 0,
+  });
 
-const [
-  topGamesPlayed,
-  setTopGamesPlayed,
-] = useState({
-  name: "-",
-  value: 0,
-});
-   
-type Player = {
-  id: string;
-  name: string;
-  active: boolean;
-};
+  const [topGamesPlayed, setTopGamesPlayed] = useState({
+    name: "-",
+    value: 0,
+  });
 
-// EDIT COMPUTER PLAYERS HERE
-const ComputerPlayerNames = [
-  "Computer Peppa",
-];
+  type Player = {
+    id: string;
+    name: string;
+    active: boolean;
+  };
 
-const computerPlayers = ComputerPlayerNames.map(
-  (name, index) => ({
+  // EDIT COMPUTER PLAYERS HERE
+  const ComputerPlayerNames = ["Computer Peppa"];
+
+  const computerPlayers = ComputerPlayerNames.map((name, index) => ({
     id: `computer_${index + 1}`,
     name,
-  })
-);
+  }));
 
-type PlayerSelectionType = "human" | "computer";
+  type PlayerSelectionType = "human" | "computer";
 
-const [playersState, setPlayersState] =
-  useState<Player[]>([]);
+  const [playersState, setPlayersState] = useState<Player[]>([]);
 
-const [
-  selectedPlayerTypes,
-  setSelectedPlayerTypes,
-] = useState<PlayerSelectionType[]>([]);
+  const [selectedPlayerTypes, setSelectedPlayerTypes] = useState<
+    PlayerSelectionType[]
+  >([]);
 
-const isComputerPlayerId = (
-  playerId: string
-) =>
-  computerPlayers.some(
-    (computerPlayer) =>
-      computerPlayer.id === playerId
-  );
+  const isComputerPlayerId = (playerId: string) =>
+    computerPlayers.some((computerPlayer) => computerPlayer.id === playerId);
 
-const getPlayerDisplayName = (
-  playerId: string
-) => {
-  const humanPlayer = playersState.find(
-    (player) => player.id === playerId
-  );
+  const getPlayerDisplayName = (playerId: string) => {
+    const humanPlayer = playersState.find((player) => player.id === playerId);
 
-  if (humanPlayer) {
-    return humanPlayer.name;
-  }
+    if (humanPlayer) {
+      return humanPlayer.name;
+    }
 
-  return (
-    computerPlayers.find(
-      (computerPlayer) =>
-        computerPlayer.id === playerId
-    )?.name ?? playerId
-  );
-};
-
-const selectablePlayers =
-  playersState
-    .filter(
-      (player) =>
-        player.active
-    )
-    .sort((a, b) =>
-      a.name.localeCompare(
-        b.name,
-        "cs"
-      )
+    return (
+      computerPlayers.find((computerPlayer) => computerPlayer.id === playerId)
+        ?.name ?? playerId
     );
+  };
 
-const maxPlayers =
-  selectablePlayers.length +
-  computerPlayers.length;
+  const selectablePlayers = playersState
+    .filter((player) => player.active)
+    .sort((a, b) => a.name.localeCompare(b.name, "cs"));
 
-const hasComputerPlayer =
-  selectedPlayers.some((playerId) =>
-    isComputerPlayerId(playerId)
+  const maxPlayers = selectablePlayers.length + computerPlayers.length;
+
+  const hasComputerPlayer = selectedPlayers.some((playerId) =>
+    isComputerPlayerId(playerId),
   );
 
-useEffect(() => {
-  if (hasComputerPlayer && showPlayModeSetup) {
-    setPlayModeRolls(6);
-    setPlayModeBonusRolls(0);
-    setPlayModeBonusMode("general-only");
-    setSelectedGameMode("offline");
-  }
-}, [hasComputerPlayer, showPlayModeSetup]);
+  useEffect(() => {
+    if (hasComputerPlayer && showPlayModeSetup) {
+      setPlayModeRolls(6);
+      setPlayModeBonusRolls(0);
+      setPlayModeBonusMode("general-only");
+      setSelectedGameMode("offline");
+    }
+  }, [hasComputerPlayer, showPlayModeSetup]);
 
-const isValidSelectedPlayersForCount = (
-  players: string[],
-  count: number | ""
-) => {
-  if (
-    typeof count !== "number" ||
-    count <= 0
-  ) {
-    return false;
-  }
+  const isValidSelectedPlayersForCount = (
+    players: string[],
+    count: number | "",
+  ) => {
+    if (typeof count !== "number" || count <= 0) {
+      return false;
+    }
 
-  if (players.length !== count) {
-    return false;
-  }
+    if (players.length !== count) {
+      return false;
+    }
 
-  if (
-    players.some(
-      (playerId) => playerId === ""
-    )
-  ) {
-    return false;
-  }
+    if (players.some((playerId) => playerId === "")) {
+      return false;
+    }
 
-  return new Set(players).size === players.length;
-};
+    return new Set(players).size === players.length;
+  };
 
-useEffect(() => {
-  // 13. STATISTICS
-  const loadStatistics =
-    async () => {
+  useEffect(() => {
+    // 13. STATISTICS
+    const loadStatistics = async () => {
       await syncGamesFromSupabase();
 
-      setTopWins(
-        getTopPlayerByWins(
-          playersState
-        )
-      );
+      setTopWins(getTopPlayerByWins(playersState));
 
-      setTopAverage(
-        getTopPlayerByAverage(
-          playersState
-        )
-      );
+      setTopAverage(getTopPlayerByAverage(playersState));
 
-      setTopPerfects(
-        getTopPlayerByPerfects(
-          playersState
-        )
-      );
+      setTopPerfects(getTopPlayerByPerfects(playersState));
 
-      setTopAveragePerfects(
-        getTopPlayerByAveragePerfects(
-          playersState
-        )
-      );
+      setTopAveragePerfects(getTopPlayerByAveragePerfects(playersState));
 
-      setTopScore(
-        getTopPlayerByScore(
-          playersState
-        )
-      );
+      setTopScore(getTopPlayerByScore(playersState));
 
-      setTopGamesPlayed(
-        getTopPlayerByGamesPlayed(
-          playersState
-        )
-      );
+      setTopGamesPlayed(getTopPlayerByGamesPlayed(playersState));
 
       setMounted(true);
     };
 
-  if (
-    playersState.length > 0
-  ) {
-    loadStatistics();
-  }
-}, [playersState]);
+    if (playersState.length > 0) {
+      loadStatistics();
+    }
+  }, [playersState]);
 
-const handleDeletePlayer = (
-  playerId: string
-) => {
-  const updatedPlayers =
-    playersState.filter(
-      (player) =>
-        player.id !== playerId
+  const handleDeletePlayer = (playerId: string) => {
+    const updatedPlayers = playersState.filter(
+      (player) => player.id !== playerId,
     );
 
-  setPlayersState(
-    updatedPlayers
-  );
-deletePlayerFromSupabase(
-  playerId
-);
-  localStorage.setItem(
-    "heroDicePlayers",
-    JSON.stringify(
-      updatedPlayers
-    )
-  );
-};
+    setPlayersState(updatedPlayers);
+    deletePlayerFromSupabase(playerId);
+    localStorage.setItem("heroDicePlayers", JSON.stringify(updatedPlayers));
+  };
 
-const handleAddPlayer = () => {
-  
-  const trimmedId =
-    newPlayerId.trim();
+  const handleAddPlayer = () => {
+    const trimmedId = newPlayerId.trim();
 
-  const trimmedName =
-    newPlayerName.trim();
+    const trimmedName = newPlayerName.trim();
 
-  if (
-    !trimmedId ||
-    !trimmedName
-  ) {
-    alert(
-      "Vyplň ID i jméno hráče."
+    if (!trimmedId || !trimmedName) {
+      alert("Vyplň ID i jméno hráče.");
+
+      return;
+    }
+
+    const exists = playersState.some(
+      (player) => player.id.toLowerCase() === trimmedId.toLowerCase(),
     );
 
-    return;
-  }
+    if (exists) {
+      alert("Player ID už existuje.");
 
-  const exists =
-    playersState.some(
-      (player) =>
-        player.id.toLowerCase() ===
-        trimmedId.toLowerCase()
+      return;
+    }
+
+    const newPlayer = {
+      id: trimmedId,
+      name: trimmedName,
+      active: true,
+    };
+
+    const updatedPlayers = [...playersState, newPlayer];
+
+    setPlayersState(updatedPlayers);
+
+    addPlayerToSupabase(newPlayer);
+
+    localStorage.setItem("heroDicePlayers", JSON.stringify(updatedPlayers));
+
+    setNewPlayerId("");
+    setNewPlayerName("");
+  };
+
+  useEffect(() => {
+    loadPlayersFromSupabase();
+  }, []);
+
+  const handlePlayerCountChange = (count: number | "") => {
+    setPlayerCount(count);
+
+    // Invalidate all previous selections whenever player count changes.
+    setSelectedPlayers([]);
+    setSelectedPlayerTypes(
+      typeof count === "number"
+        ? Array.from({ length: count }, () => "human" as PlayerSelectionType)
+        : [],
     );
+  };
 
-  if (exists) {
-    alert(
-      "Player ID už existuje."
-    );
-
-    return;
-  }
-
-  const newPlayer = {
-  id: trimmedId,
-  name: trimmedName,
-  active: true,
-};
-
-const updatedPlayers = [
-  ...playersState,
-  newPlayer,
-];
-
-setPlayersState(
-  updatedPlayers
-);
-
-addPlayerToSupabase(
-  newPlayer
-);
-
-localStorage.setItem(
-  "heroDicePlayers",
-  JSON.stringify(
-    updatedPlayers
-  )
-);
-
-  setNewPlayerId("");
-  setNewPlayerName("");
-};
-
-useEffect(() => {
-  loadPlayersFromSupabase();
-}, []);
-
-const handlePlayerCountChange = (
-  count: number | ""
-) => {
-  setPlayerCount(count);
-
-  // Invalidate all previous selections whenever player count changes.
-  setSelectedPlayers([]);
-  setSelectedPlayerTypes(
-    typeof count === "number"
-      ? Array.from(
-          { length: count },
-          () => "human" as PlayerSelectionType
-        )
-      : []
-  );
-};
-
-const handlePlayerTypeChange = (
-  index: number,
-  value: PlayerSelectionType
-) => {
-  if (
-    typeof playerCount !== "number" ||
-    playerCount <= 0
-  ) {
-    return;
-  }
-
-  const updatedTypes = Array.from(
-    { length: playerCount },
-    (_, playerIndex) =>
-      selectedPlayerTypes[
-        playerIndex
-      ] || "human"
-  );
-
-  updatedTypes[index] = value;
-
-  const updatedPlayers = Array.from(
-    { length: playerCount },
-    (_, playerIndex) =>
-      selectedPlayers[playerIndex] || ""
-  );
-
-  updatedPlayers[index] = "";
-
-  setSelectedPlayerTypes(updatedTypes);
-  setSelectedPlayers(updatedPlayers);
-};
-
-  const handlePlayerChange = (
+  const handlePlayerTypeChange = (
     index: number,
-    value: string
+    value: PlayerSelectionType,
   ) => {
-    if (
-      typeof playerCount !== "number" ||
-      playerCount <= 0
-    ) {
+    if (typeof playerCount !== "number" || playerCount <= 0) {
+      return;
+    }
+
+    const updatedTypes = Array.from(
+      { length: playerCount },
+      (_, playerIndex) => selectedPlayerTypes[playerIndex] || "human",
+    );
+
+    updatedTypes[index] = value;
+
+    const updatedPlayers = Array.from(
+      { length: playerCount },
+      (_, playerIndex) => selectedPlayers[playerIndex] || "",
+    );
+
+    updatedPlayers[index] = "";
+
+    setSelectedPlayerTypes(updatedTypes);
+    setSelectedPlayers(updatedPlayers);
+  };
+
+  const handlePlayerChange = (index: number, value: string) => {
+    if (typeof playerCount !== "number" || playerCount <= 0) {
       return;
     }
 
     if (
       value !== "" &&
       selectedPlayers.some(
-        (
-          selectedPlayer,
-          selectedIndex
-        ) =>
-          selectedPlayer === value &&
-          selectedIndex !== index
+        (selectedPlayer, selectedIndex) =>
+          selectedPlayer === value && selectedIndex !== index,
       )
     ) {
-      alert(
-        "Tento hráč už je vybraný."
-      );
+      alert("Tento hráč už je vybraný.");
 
       return;
     }
 
     const updated = Array.from(
       { length: playerCount },
-      (_, playerIndex) =>
-        selectedPlayers[
-          playerIndex
-        ] || ""
+      (_, playerIndex) => selectedPlayers[playerIndex] || "",
     );
 
     updated[index] = value;
@@ -1309,36 +857,30 @@ const handlePlayerTypeChange = (
     playerId: string,
     categoryId: string,
     min: number,
-    max: number
+    max: number,
   ) => {
-    if (
-      isOnlineGame ||
-      hasComputerPlayer
-    ) {
+    if (isOnlineGame || hasComputerPlayer) {
       return;
     }
 
     if (gameFinished) return;
 
-    const existingScore =
-      scores[playerId]?.[categoryId];
+    const existingScore = scores[playerId]?.[categoryId];
 
     if (existingScore !== undefined) {
-  setScoreInput(
-    String(existingScore)
-  );
+      setScoreInput(String(existingScore));
 
-  setScoreModal({
-    playerId,
-    categoryId,
-    min,
-    max,
-  });
+      setScoreModal({
+        playerId,
+        categoryId,
+        min,
+        max,
+      });
 
-  setShowEditConfirm(true);
+      setShowEditConfirm(true);
 
-  return;
-}
+      return;
+    }
 
     setScoreInput(String(max));
 
@@ -1365,13 +907,8 @@ const handlePlayerTypeChange = (
       return;
     }
 
-    if (
-      parsed < scoreModal.min ||
-      parsed > scoreModal.max
-    ) {
-      alert(
-        `Skóre musí být mezi ${scoreModal.min} a ${scoreModal.max}.`
-      );
+    if (parsed < scoreModal.min || parsed > scoreModal.max) {
+      alert(`Skóre musí být mezi ${scoreModal.min} a ${scoreModal.max}.`);
 
       return;
     }
@@ -1382,107 +919,70 @@ const handlePlayerTypeChange = (
       [scoreModal.playerId]: {
         ...scores[scoreModal.playerId],
 
-        [scoreModal.categoryId]:
-          parsed,
+        [scoreModal.categoryId]: parsed,
       },
     };
 
     setScores(updatedScores);
 
-    const category =
-  gameCategories.find(
-    (c) =>
-      c.id ===
-      scoreModal.categoryId
-  );
+    const category = gameCategories.find((c) => c.id === scoreModal.categoryId);
 
-const playerScoresAfterSave = {
-  ...scores[scoreModal.playerId],
-  [scoreModal.categoryId]:
-    parsed,
-};
+    const playerScoresAfterSave = {
+      ...scores[scoreModal.playerId],
+      [scoreModal.categoryId]: parsed,
+    };
 
-const finishesPlayer =
-  Object.keys(
-    playerScoresAfterSave
-  ).length ===
-  gameCategories.length;
+    const finishesPlayer =
+      Object.keys(playerScoresAfterSave).length === gameCategories.length;
 
-  const completedScores =
-  Object.values(
-    updatedScores
-  ).reduce(
-    (sum, playerScores) =>
-      sum +
-      Object.keys(
-        playerScores
-      ).length,
-    0
-  );
-
-const totalScoresNeeded =
-  selectedPlayers.length *
-  gameCategories.length;
-
-const finishesGame =
-  completedScores ===
-  totalScoresNeeded;
-
-if (
-  maxScoreSoundEnabled &&
-  category &&
-  parsed === category.max &&
-  !finishesPlayer
-) {
-  skipNextTurnEndSoundRef.current =
-    true;
-
-  const audio =
-    new Audio(
-      `/sounds/win/fanfare.mp3`
+    const completedScores = Object.values(updatedScores).reduce(
+      (sum, playerScores) => sum + Object.keys(playerScores).length,
+      0,
     );
 
-  audio.volume = 0.9;
+    const totalScoresNeeded = selectedPlayers.length * gameCategories.length;
 
-  audio.play().catch(() => {});
-}
+    const finishesGame = completedScores === totalScoresNeeded;
 
-setScoreModal(null);
+    if (
+      maxScoreSoundEnabled &&
+      category &&
+      parsed === category.max &&
+      !finishesPlayer
+    ) {
+      skipNextTurnEndSoundRef.current = true;
 
-setScoreInput("");
+      const audio = new Audio(`/sounds/win/fanfare.mp3`);
 
-window.scrollTo({
-  top: 0,
-  left: 0,
-  behavior: "instant" as ScrollBehavior,
-});
+      audio.volume = 0.9;
+
+      audio.play().catch(() => {});
+    }
+
+    setScoreModal(null);
+
+    setScoreInput("");
+
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "instant" as ScrollBehavior,
+    });
   };
 
   const submitAccessCode = () => {
-    const enteredCode =
-      accessCode.trim();
+    const enteredCode = accessCode.trim();
 
-    const expectedCode = (
-      process.env.NEXT_PUBLIC_APP_CODE ??
-      ""
-    ).trim();
+    const expectedCode = (process.env.NEXT_PUBLIC_APP_CODE ?? "").trim();
 
     if (!expectedCode) {
-      alert(
-        "Chybí konfigurace NEXT_PUBLIC_APP_CODE."
-      );
+      alert("Chybí konfigurace NEXT_PUBLIC_APP_CODE.");
 
       return;
     }
 
-    if (
-      enteredCode ===
-      expectedCode
-    ) {
-      localStorage.setItem(
-        "heroDiceUnlocked",
-        "true"
-      );
+    if (enteredCode === expectedCode) {
+      localStorage.setItem("heroDiceUnlocked", "true");
 
       setIsUnlocked(true);
     } else {
@@ -1490,900 +990,799 @@ window.scrollTo({
     }
   };
 
-    const getPlayerTotal = (
-    playerId: string
-  ) => {
-    return Object.values(
-      scores[playerId] || {}
-    ).reduce(
+  const getPlayerTotal = (playerId: string) => {
+    return Object.values(scores[playerId] || {}).reduce(
       (sum, value) => sum + value,
-      0
+      0,
     );
   };
 
-      // 09. PLAY MODE
-      const toggleDiceLock = (
-  index: number
-) => {
-  if (
-    isOnlineGame &&
-    !isCurrentPlayer
-  ) {
-    return;
-  }
-
-  if (
-  !hasRolledDice ||
-  isRolling
-) {
-  return;
-}
-
-  if (
-    confirmedLockedDice[
-      index
-    ]
-  ) {
-    return;
-  }
-
-  if (
-    bonusUsed &&
-    playModeBonusMode ===
-      "general-only"
-  ) {
-    const clickedValue =
-      playModeDice[index];
-
-    if (
-      selectedGeneralValue !==
-        null &&
-      clickedValue !==
-        selectedGeneralValue
-    ) {
+  // 09. PLAY MODE
+  const toggleDiceLock = (index: number) => {
+    if (isOnlineGame && !isCurrentPlayer) {
       return;
     }
 
-    if (
-      selectedGeneralValue ===
-      null
-    ) {
-      setSelectedGeneralValue(
-        clickedValue
-      );
-    }
-  }
-
-  lastStateChangeSourceRef.current =
-    "local-action";
-
-  bumpLocalRuntimeRevision();
-
-  setLockedDice((prev) => {
-    const updated = [...prev];
-
-    updated[index] =
-      !updated[index];
-
-    const anyLocked =
-      updated.some(
-        (dice) => dice
-      );
-
-    if (
-      !anyLocked &&
-      !(
-        bonusUsed &&
-        playModeBonusMode ===
-          "general-only"
-      )
-    ) {
-      setSelectedGeneralValue(
-        null
-      );
+    if (!hasRolledDice || isRolling) {
+      return;
     }
 
-    return updated;
-  });
-};
-
-const bonusDifference =
-  playModeBonusRolls;
-
-const allDiceLocked =
-  lockedDice.every(
-    (dice) => dice
-  );
-
-const generalBonusBlocked =
-  playModeBonusMode ===
-    "general-only" &&
-  (() => {
-    const lockedValues =
-      playModeDice.filter(
-        (_, index) =>
-          lockedDice[index]
-      );
-
-    const uniqueValues =
-      [...new Set(lockedValues)];
-
-    return (
-      uniqueValues.length > 1
-    );
-  })();
-
-const playModeCategoryMap: Record<
-  string,
-  string
-> = {
-  Generál: "general",
-  Pyramida: "pyramida",
-  Hrozen: "hrozen",
-  Postupka: "postupka",
-  "Čtyři-dvě": "ctyri_dva",
-  Dvojice: "dvojce",
-  Trojice: "trojce",
-};
-
-const canEvaluateCombination =
-  hasRolledDice;
-
-const currentCombination =
-  hasRolledDice &&
-  !isRolling
-    ? (() => {
-        const combo = detectCombination(playModeDice);
-        if (!combo) return null;
-        
-        // Block combinations made ONLY from same low values (1s only, 2s only, 3s only)
-        // e.g., 1-1, 1-1-1, 2-2-2, 3-3-3-3-3-3 are blocked
-        // BUT allow: 1-2-3 mix, 2-2-3-4, etc. - anything with variety
-        const categoryId = playModeCategoryMap[combo.combination];
-        
-        // Block if any low value (1, 2, or 3) appears 3 or more times
-        // e.g., [2,2,2,4,4,5] → 2 appears 3× → blocked
-        // e.g., [4,4,4,5,5,5] → no low value appears 3× → allowed
-        const isBlockedSingleValueCombo = [1, 2, 3].some(
-          (lowVal) => playModeDice.filter((d) => d === lowVal).length >= 3
-        );
-        
-        // Pre-calculate endgame state
-        const playerId = selectedPlayers[currentPlayPlayerIndex];
-        const availableCategories = getWritableCategoryIds(
-          scores[playerId] || {},
-          playModeAllowRewrite
-        );
-        const availableCategoryCount = availableCategories.length;
-        const isEndgameOrLastCategory = remainingRolls <= 0 || availableCategoryCount <= 3;
-        
-        // Block single-value combos from 1,2,3 EXCEPT in endgame or if it's Postupka
-        if (isBlockedSingleValueCombo && categoryId !== "postupka" && !isEndgameOrLastCategory) {
-          return null;
-        }
-        
-        return combo;
-      })()
-    : null;
-    
-const canStartPlayMode =
-  !selectedPlayers.some(
-    (playerId) => {
-      const playerScores =
-        scores[playerId] || {};
-
-      return (
-        Object.keys(playerScores)
-          .length ===
-        gameCategories.length
-      );
+    if (confirmedLockedDice[index]) {
+      return;
     }
-  );
 
-const isLeaguePlayMode =
-  !hasComputerPlayer &&
-  playModeRolls === 4 &&
-  !playModeAllowRewrite &&
-  playModeBonusMode ===
-    "general-only" &&
-  playModeBonusRolls === 2;
+    if (bonusUsed && playModeBonusMode === "general-only") {
+      const clickedValue = playModeDice[index];
 
-const gameTypeInfoText =
-  gameMode === "online"
-    ? "Online hra"
-    : "Offline hra";
+      if (
+        selectedGeneralValue !== null &&
+        clickedValue !== selectedGeneralValue
+      ) {
+        return;
+      }
 
-const gameTypeTagText =
-  gameMode === "online"
-    ? "ONLINE"
-    : "OFFLINE";
+      if (selectedGeneralValue === null) {
+        setSelectedGeneralValue(clickedValue);
+      }
+    }
 
-const bonusModeInfoText =
-  playModeBonusMode === "all"
-    ? "všechny kombinace"
-    : "pouze Hero";
+    lastStateChangeSourceRef.current = "local-action";
 
-const bonusRollsInfoText =
-  `+${playModeBonusRolls} ${
-    playModeBonusRolls === 1
-      ? "hod"
-      : playModeBonusRolls <= 4
-      ? "hody"
-      : "hodů"
-  }`;
+    bumpLocalRuntimeRevision();
 
-const playModeConfigInfoText = `${playModeRolls} hodů / Přepis: ${
-  playModeAllowRewrite
-    ? "Ano"
-    : "Ne"
-} / Bonus: ${bonusModeInfoText} ${bonusRollsInfoText} / ${gameTypeInfoText}${
-  hasComputerPlayer
-    ? " / Hra proti počítači"
-    : ""
-}`;
+    setLockedDice((prev) => {
+      const updated = [...prev];
 
-const shouldDebugAITurnController =
-  process.env.NODE_ENV !== "production";
+      updated[index] = !updated[index];
 
-const areLockMasksEqual = (
-  left: boolean[],
-  right: boolean[]
-) => {
-  if (left.length !== right.length) {
-    return false;
-  }
+      const anyLocked = updated.some((dice) => dice);
 
-  return left.every(
-    (value, index) => value === right[index]
-  );
-};
+      if (!anyLocked && !(bonusUsed && playModeBonusMode === "general-only")) {
+        setSelectedGeneralValue(null);
+      }
 
-const logAITurnAudit = (
-  payload: Record<string, unknown>
-) => {
-  if (!shouldDebugAITurnController) {
-    return;
-  }
+      return updated;
+    });
+  };
 
-  console.debug("[AI Turn Controller]", payload);
-};
+  const bonusDifference = playModeBonusRolls;
 
-const mergeWithFixedLocks = (
-  fixedLocks: boolean[],
-  lockMask: boolean[]
-) => {
-  const normalizedMask =
-    lockMask.length === 6
-      ? lockMask
-      : [
-          false,
-          false,
-          false,
-          false,
-          false,
-          false,
-        ];
+  const allDiceLocked = lockedDice.every((dice) => dice);
 
-  return fixedLocks.map(
-    (isFixed, index) =>
-      isFixed || normalizedMask[index]
-  );
-};
+  const generalBonusBlocked =
+    playModeBonusMode === "general-only" &&
+    (() => {
+      const lockedValues = playModeDice.filter((_, index) => lockedDice[index]);
 
-const deriveWorkingLocks = (
-  lockMask: boolean[],
-  fixedLocks: boolean[]
-) =>
-  lockMask.map(
-    (isLocked, index) =>
-      !fixedLocks[index] && isLocked
-  );
+      const uniqueValues = [...new Set(lockedValues)];
 
-const getCurrentWritableSaveCandidate = (
-  playerId: string,
-  fixedLocks: boolean[] = [false, false, false, false, false, false],
-  remainingRolls: number = 0,
-  availableCategoryCount: number = 7
-) => {
-  if (!hasRolledDice) {
-    return {
-      canSave: false,
-      fallbackReason: "first-roll-not-completed",
-      latestCombination: null,
-      categoryId: null as string | null,
-      score: null as number | null,
-    };
-  }
+      return uniqueValues.length > 1;
+    })();
 
-  // Detect combination from all dice (compatibility with fixedLocks is checked later)
-  const latestCombination =
+  const playModeCategoryMap: Record<string, string> = {
+    Generál: "general",
+    Pyramida: "pyramida",
+    Hrozen: "hrozen",
+    Postupka: "postupka",
+    "Čtyři-dvě": "ctyri_dva",
+    Dvojice: "dvojce",
+    Trojice: "trojce",
+  };
+
+  const canEvaluateCombination = hasRolledDice;
+
+  const currentCombination =
     hasRolledDice && !isRolling
-      ? detectCombination(playModeDice)
+      ? (() => {
+          const combo = detectCombination(playModeDice);
+          if (!combo) return null;
+
+          // Block combinations made ONLY from same low values (1s only, 2s only, 3s only)
+          // e.g., 1-1, 1-1-1, 2-2-2, 3-3-3-3-3-3 are blocked
+          // BUT allow: 1-2-3 mix, 2-2-3-4, etc. - anything with variety
+          const categoryId = playModeCategoryMap[combo.combination];
+
+          // Block if any low value (1, 2, or 3) appears 3 or more times
+          // e.g., [2,2,2,4,4,5] → 2 appears 3× → blocked
+          // e.g., [4,4,4,5,5,5] → no low value appears 3× → allowed
+          const isBlockedSingleValueCombo = [1, 2, 3].some(
+            (lowVal) => playModeDice.filter((d) => d === lowVal).length >= 3,
+          );
+
+          // Pre-calculate endgame state
+          const playerId = selectedPlayers[currentPlayPlayerIndex];
+          const availableCategories = getWritableCategoryIds(
+            scores[playerId] || {},
+            playModeAllowRewrite,
+          );
+          const availableCategoryCount = availableCategories.length;
+          const isEndgameOrLastCategory =
+            remainingRolls <= 0 || availableCategoryCount <= 3;
+
+          // Block single-value combos from 1,2,3 EXCEPT in endgame or if it's Postupka
+          if (
+            isBlockedSingleValueCombo &&
+            categoryId !== "postupka" &&
+            !isEndgameOrLastCategory
+          ) {
+            return null;
+          }
+
+          return combo;
+        })()
       : null;
 
-  if (!latestCombination) {
-    return {
-      canSave: false,
-      fallbackReason: "no-combination",
-      latestCombination,
-      categoryId: null as string | null,
-      score: null as number | null,
-    };
-  }
+  const canStartPlayMode = !selectedPlayers.some((playerId) => {
+    const playerScores = scores[playerId] || {};
 
-  const categoryId =
-    playModeCategoryMap[
-      latestCombination.combination
-    ] ?? null;
-
-  if (!categoryId) {
-    return {
-      canSave: false,
-      fallbackReason: "unknown-category",
-      latestCombination,
-      categoryId: null as string | null,
-      score: null as number | null,
-    };
-  }
-
-  // Block if any low value (1, 2, or 3) appears 3 or more times
-  // e.g., [2,2,2,4,4,5] → 2 appears 3× → blocked
-  // e.g., [4,4,4,5,5,5] → no low value appears 3× → allowed
-  const isBlockedSingleValueCombo = [1, 2, 3].some(
-    (lowVal) => playModeDice.filter((d) => d === lowVal).length >= 3
-  );
-  const isEndgameOrLastCategory = remainingRolls <= 0 || availableCategoryCount <= 3;
-  
-  // Block if any low value (1, 2, or 3) appears 3 or more times
-  if (
-    isBlockedSingleValueCombo &&
-    categoryId !== "postupka" &&
-    !isEndgameOrLastCategory
-  ) {
-    console.log("❌ BLOCKING SINGLE-VALUE COMBO", {categoryId, score: latestCombination.score, playModeDice});
-    return {
-      canSave: false,
-      fallbackReason: "single-value-low-combo-blocked",
-      latestCombination,
-      categoryId,
-      score: latestCombination.score,
-    };
-  }
-
-  const existingScore =
-    scores[playerId]?.[categoryId];
-
-  if (
-    existingScore !== undefined &&
-    !playModeAllowRewrite
-  ) {
-    return {
-      canSave: false,
-      fallbackReason: "rewrite-disabled",
-      latestCombination,
-      categoryId,
-      score: latestCombination.score,
-    };
-  }
-
-  if (
-    existingScore !== undefined &&
-    playModeAllowRewrite &&
-    existingScore >= latestCombination.score
-  ) {
-    return {
-      canSave: false,
-      fallbackReason: "not-better-than-existing",
-      latestCombination,
-      categoryId,
-      score: latestCombination.score,
-    };
-  }
-
-  return {
-    canSave: true,
-    fallbackReason: null as string | null,
-    latestCombination,
-    categoryId,
-    score: latestCombination.score,
-  };
-};
-
-const playModeCategoryMaxScore: Record<string, number> = {
-  general: 36,
-  pyramida: 32,
-  hrozen: 28,
-  postupka: 21,
-  ctyri_dva: 34,
-  trojce: 33,
-  dvojce: 30,
-};
-
-const getStrongSaveCandidateDecision = (
-  saveCandidate: {
-    canSave: boolean;
-    fallbackReason: string | null;
-    latestCombination: {
-      combination: string;
-      score: number;
-    } | null;
-    categoryId: string | null;
-    score: number | null;
-  },
-  existingScore: number | undefined,
-  rewriteAllowed: boolean,
-  remainingRolls: number,
-  targetCategoryCompatibleWithFixedLocks: boolean
-) => {
-  console.log("📊 getStrongSaveCandidateDecision INPUT", {
-    categoryId: saveCandidate.categoryId,
-    score: saveCandidate.score,
-    canSave: saveCandidate.canSave,
-    targetCategoryCompatibleWithFixedLocks,
+    return Object.keys(playerScores).length === gameCategories.length;
   });
 
-  if (!saveCandidate.canSave) {
-    console.log("❌ Rejected: canSave=false");
-    return {
-      accepted: false,
-      reason:
-        saveCandidate.fallbackReason ??
-        "candidate-not-writable",
-    };
-  }
+  const isLeaguePlayMode =
+    !hasComputerPlayer &&
+    playModeRolls === 4 &&
+    !playModeAllowRewrite &&
+    playModeBonusMode === "general-only" &&
+    playModeBonusRolls === 2;
 
-  if (
-    !saveCandidate.latestCombination ||
-    !saveCandidate.categoryId ||
-    saveCandidate.score === null
-  ) {
-    return {
-      accepted: false,
-      reason: "candidate-missing-data",
-    };
-  }
+  const gameTypeInfoText = gameMode === "online" ? "Online hra" : "Offline hra";
 
-  const categoryMaxScore =
-    playModeCategoryMaxScore[
-      saveCandidate.categoryId
-    ] ?? null;
+  const gameTypeTagText = gameMode === "online" ? "ONLINE" : "OFFLINE";
 
-  console.log("🎯 STRONG-SAVE CHECK", {
-    categoryId: saveCandidate.categoryId,
-    score: saveCandidate.score,
-    categoryMaxScore,
-    targetCategoryCompatibleWithFixedLocks,
-  });
+  const bonusModeInfoText =
+    playModeBonusMode === "all" ? "všechny kombinace" : "pouze Hero";
 
-  // Max-score checks come BEFORE fixed-lock compatibility:
-  // if the dice literally show the best possible combination, save it
-  // regardless of what locks were planned for a different strategy.
-  if (
-    saveCandidate.categoryId === "postupka" &&
-    saveCandidate.score === 21
-  ) {
-    console.log("✅ STRONG-SAVE: Postupka 21");
-    return {
-      accepted: true,
-      reason: "max-postupka-always-save",
-    };
-  }
+  const bonusRollsInfoText = `+${playModeBonusRolls} ${
+    playModeBonusRolls === 1 ? "hod" : playModeBonusRolls <= 4 ? "hody" : "hodů"
+  }`;
 
-  if (
-    categoryMaxScore !== null &&
-    saveCandidate.score >= categoryMaxScore
-  ) {
-    console.log("✅ STRONG-SAVE: Max score (overrides fixed-lock plan)");
-    return {
-      accepted: true,
-      reason: "max-category-score",
-    };
-  }
+  const playModeConfigInfoText = `${playModeRolls} hodů / Přepis: ${
+    playModeAllowRewrite ? "Ano" : "Ne"
+  } / Bonus: ${bonusModeInfoText} ${bonusRollsInfoText} / ${gameTypeInfoText}${
+    hasComputerPlayer ? " / Hra proti počítači" : ""
+  }`;
 
-  if (!targetCategoryCompatibleWithFixedLocks) {
-    return {
-      accepted: false,
-      reason: "candidate-incompatible-with-fixed-locks",
-    };
-  }
+  const shouldDebugAITurnController = process.env.NODE_ENV !== "production";
+  const tempAITurnAuditStorageKey = "heroDiceTempAiTurnAudit";
+  const tempAITurnAuditMaxEntries = 80;
+  const tempAITurnAuditTtlMs = 1000 * 60 * 60 * 6;
 
-  if (
-    rewriteAllowed &&
-    existingScore !== undefined &&
-    saveCandidate.score > existingScore
-  ) {
-    return {
-      accepted: true,
-      reason: "rewrite-improves-existing-score",
-    };
-  }
+  const areLockMasksEqual = (left: boolean[], right: boolean[]) => {
+    if (left.length !== right.length) {
+      return false;
+    }
 
-  if (remainingRolls <= 0) {
-    return {
-      accepted: true,
-      reason: "no-rolls-left",
-    };
-  }
-
-  if (
-    categoryMaxScore !== null &&
-    saveCandidate.score >=
-      Math.floor(categoryMaxScore * 0.85)
-  ) {
-    return {
-      accepted: true,
-      reason: "very-high-category-score",
-    };
-  }
-
-  if (saveCandidate.score >= 26) {
-    return {
-      accepted: true,
-      reason: "high-absolute-score",
-    };
-  }
-
-  return {
-    accepted: false,
-    reason: "candidate-not-strong-enough",
+    return left.every((value, index) => value === right[index]);
   };
-};
 
-const getSaveTimingGuardDecision = (
-  saveCandidate: {
-    canSave: boolean;
-    fallbackReason: string | null;
-    latestCombination: {
-      combination: string;
-      score: number;
-    } | null;
-    categoryId: string | null;
-    score: number | null;
-  },
-  existingScore: number | undefined,
-  rewriteAllowed: boolean,
-  remainingRolls: number,
-  targetCategoryCompatibleWithFixedLocks: boolean,
-  writableCategoryIds: string[],
-  availableCategoryCount: number
-) => {
-  if (!saveCandidate.canSave) {
+  const normalizeAuditLockMask = (mask: unknown): boolean[] | null => {
+    if (!Array.isArray(mask) || mask.length !== 6) {
+      return null;
+    }
+
+    return mask.map((value) => Boolean(value));
+  };
+
+  const lockMaskToBinary = (mask: boolean[] | null): string | null => {
+    if (!mask) {
+      return null;
+    }
+
+    return mask.map((isLocked) => (isLocked ? "1" : "0")).join("");
+  };
+
+  const lockMaskToIndices = (mask: boolean[] | null): number[] | null => {
+    if (!mask) {
+      return null;
+    }
+
+    return mask
+      .map((isLocked, index) => (isLocked ? index : -1))
+      .filter((index) => index >= 0);
+  };
+
+  const appendTempAITurnAudit = (entry: Record<string, unknown>) => {
+    if (!shouldDebugAITurnController || typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const now = Date.now();
+      const existingRaw = window.localStorage.getItem(
+        tempAITurnAuditStorageKey,
+      );
+      const existing = existingRaw
+        ? (JSON.parse(existingRaw) as unknown[])
+        : [];
+
+      const filtered = existing.filter((item) => {
+        if (!item || typeof item !== "object") {
+          return false;
+        }
+
+        const timestamp = (item as { timestampMs?: unknown }).timestampMs;
+        return (
+          typeof timestamp === "number" &&
+          now - timestamp <= tempAITurnAuditTtlMs
+        );
+      });
+
+      const next = [...filtered, entry].slice(-tempAITurnAuditMaxEntries);
+      window.localStorage.setItem(
+        tempAITurnAuditStorageKey,
+        JSON.stringify(next),
+      );
+    } catch {
+      // Best-effort temp diagnostics only.
+    }
+  };
+
+  const logAITurnAudit = (payload: Record<string, unknown>) => {
+    if (!shouldDebugAITurnController) {
+      return;
+    }
+
+    console.debug("[AI Turn Controller]", payload);
+
+    const selectedLockMask = normalizeAuditLockMask(
+      payload.lockMaskBeforeRoll ?? payload.lockMaskApplied,
+    );
+    const plannedLockMask = normalizeAuditLockMask(payload.lockMaskPlanned);
+    const fixedLocks = normalizeAuditLockMask(payload.fixedLocks);
+    const workingLocks = normalizeAuditLockMask(payload.workingLocks);
+
+    const resolvedFullLockMask =
+      normalizeAuditLockMask(payload.lockMaskApplied) ??
+      normalizeAuditLockMask(payload.lockMaskBeforeRoll) ??
+      (fixedLocks && workingLocks
+        ? fixedLocks.map((isFixed, index) => isFixed || workingLocks[index])
+        : selectedLockMask);
+
+    appendTempAITurnAudit({
+      timestamp: new Date().toISOString(),
+      timestampMs: Date.now(),
+      event:
+        typeof payload.event === "string"
+          ? payload.event
+          : "ai-turn-controller",
+      playerId: payload.playerId ?? null,
+      action: payload.action ?? null,
+      reason: payload.reason ?? null,
+      fallbackReason: payload.fallbackReason ?? null,
+      targetCategory: payload.targetCategory ?? null,
+      candidateTargetCategory: payload.candidateTargetCategory ?? null,
+      selectedLockMask,
+      selectedLockMaskBinary: lockMaskToBinary(selectedLockMask),
+      selectedLockIndices: lockMaskToIndices(selectedLockMask),
+      plannedLockMask,
+      plannedLockMaskBinary: lockMaskToBinary(plannedLockMask),
+      workingLocks,
+      workingLocksBinary: lockMaskToBinary(workingLocks),
+      fixedLocks,
+      fixedLocksBinary: lockMaskToBinary(fixedLocks),
+      resolvedFullLockMask,
+      resolvedFullLockMaskBinary: lockMaskToBinary(resolvedFullLockMask),
+      resolvedFullLockIndices: lockMaskToIndices(resolvedFullLockMask),
+      remainingRolls: payload.remainingRolls ?? null,
+      pivotReason: payload.pivotReason ?? null,
+      confidence: payload.confidence ?? null,
+      riskLevel: payload.riskLevel ?? null,
+      selectedCandidateType: payload.selectedCandidateType ?? null,
+      selectedTargetPattern: payload.selectedTargetPattern ?? null,
+      summary: payload,
+    });
+  };
+
+  const mergeWithFixedLocks = (fixedLocks: boolean[], lockMask: boolean[]) => {
+    const normalizedMask =
+      lockMask.length === 6
+        ? lockMask
+        : [false, false, false, false, false, false];
+
+    return fixedLocks.map((isFixed, index) => isFixed || normalizedMask[index]);
+  };
+
+  const deriveWorkingLocks = (lockMask: boolean[], fixedLocks: boolean[]) =>
+    lockMask.map((isLocked, index) => !fixedLocks[index] && isLocked);
+
+  const getCurrentWritableSaveCandidate = (
+    playerId: string,
+    fixedLocks: boolean[] = [false, false, false, false, false, false],
+    remainingRolls: number = 0,
+    availableCategoryCount: number = 7,
+  ) => {
+    if (!hasRolledDice) {
+      return {
+        canSave: false,
+        fallbackReason: "first-roll-not-completed",
+        latestCombination: null,
+        categoryId: null as string | null,
+        score: null as number | null,
+      };
+    }
+
+    // Detect combination from all dice (compatibility with fixedLocks is checked later)
+    const latestCombination =
+      hasRolledDice && !isRolling ? detectCombination(playModeDice) : null;
+
+    if (!latestCombination) {
+      return {
+        canSave: false,
+        fallbackReason: "no-combination",
+        latestCombination,
+        categoryId: null as string | null,
+        score: null as number | null,
+      };
+    }
+
+    const categoryId =
+      playModeCategoryMap[latestCombination.combination] ?? null;
+
+    if (!categoryId) {
+      return {
+        canSave: false,
+        fallbackReason: "unknown-category",
+        latestCombination,
+        categoryId: null as string | null,
+        score: null as number | null,
+      };
+    }
+
+    // Block if any low value (1, 2, or 3) appears 3 or more times
+    // e.g., [2,2,2,4,4,5] → 2 appears 3× → blocked
+    // e.g., [4,4,4,5,5,5] → no low value appears 3× → allowed
+    const isBlockedSingleValueCombo = [1, 2, 3].some(
+      (lowVal) => playModeDice.filter((d) => d === lowVal).length >= 3,
+    );
+    const isEndgameOrLastCategory =
+      remainingRolls <= 0 || availableCategoryCount <= 3;
+
+    // Block if any low value (1, 2, or 3) appears 3 or more times
+    if (
+      isBlockedSingleValueCombo &&
+      categoryId !== "postupka" &&
+      !isEndgameOrLastCategory
+    ) {
+      console.log("❌ BLOCKING SINGLE-VALUE COMBO", {
+        categoryId,
+        score: latestCombination.score,
+        playModeDice,
+      });
+      return {
+        canSave: false,
+        fallbackReason: "single-value-low-combo-blocked",
+        latestCombination,
+        categoryId,
+        score: latestCombination.score,
+      };
+    }
+
+    const existingScore = scores[playerId]?.[categoryId];
+
+    if (existingScore !== undefined && !playModeAllowRewrite) {
+      return {
+        canSave: false,
+        fallbackReason: "rewrite-disabled",
+        latestCombination,
+        categoryId,
+        score: latestCombination.score,
+      };
+    }
+
+    if (
+      existingScore !== undefined &&
+      playModeAllowRewrite &&
+      existingScore >= latestCombination.score
+    ) {
+      return {
+        canSave: false,
+        fallbackReason: "not-better-than-existing",
+        latestCombination,
+        categoryId,
+        score: latestCombination.score,
+      };
+    }
+
     return {
-      accepted: false,
-      reason:
-        saveCandidate.fallbackReason ??
-        "candidate-not-writable",
+      canSave: true,
+      fallbackReason: null as string | null,
+      latestCombination,
+      categoryId,
+      score: latestCombination.score,
     };
-  }
+  };
 
-  if (
-    !saveCandidate.latestCombination ||
-    !saveCandidate.categoryId ||
-    saveCandidate.score === null
-  ) {
-    return {
-      accepted: false,
-      reason: "candidate-missing-data",
-    };
-  }
+  const playModeCategoryMaxScore: Record<string, number> = {
+    general: 36,
+    pyramida: 32,
+    hrozen: 28,
+    postupka: 21,
+    ctyri_dva: 34,
+    trojce: 33,
+    dvojce: 30,
+  };
 
-  const categoryMaxScore =
-    playModeCategoryMaxScore[
-      saveCandidate.categoryId
-    ] ?? null;
+  const getPlayModeScoreClass = (
+    categoryId: string | null,
+    score: number | null | undefined,
+  ) => {
+    if (categoryId === null || score == null) {
+      return "text-white";
+    }
 
-  // Max-score and Postupka checks come BEFORE fixed-lock compatibility:
-  // if the dice show the best possible combination, save it regardless
-  // of what locks were planned for a different strategy.
-  if (
-    saveCandidate.categoryId === "postupka" &&
-    saveCandidate.score === 21
-  ) {
-    return {
-      accepted: true,
-      reason: "save-now-because-postupka-complete",
-    };
-  }
+    const categoryMaxScore = playModeCategoryMaxScore[categoryId];
 
-  console.log("🔍 MAX-SCORE CHECK", {
-    categoryId: saveCandidate.categoryId,
-    score: saveCandidate.score,
-    categoryMaxScore,
-    isMaxScore:
+    return categoryMaxScore !== undefined && score === categoryMaxScore
+      ? "text-red-500"
+      : "text-white";
+  };
+
+  const getPlayModeCombinationLabel = (
+    combination: string | null | undefined,
+  ) =>
+    combination === "Generál" ? "Hero" : (combination ?? "Žádná kombinace");
+
+  const getStrongSaveCandidateDecision = (
+    saveCandidate: {
+      canSave: boolean;
+      fallbackReason: string | null;
+      latestCombination: {
+        combination: string;
+        score: number;
+      } | null;
+      categoryId: string | null;
+      score: number | null;
+    },
+    existingScore: number | undefined,
+    rewriteAllowed: boolean,
+    remainingRolls: number,
+    targetCategoryCompatibleWithFixedLocks: boolean,
+  ) => {
+    console.log("📊 getStrongSaveCandidateDecision INPUT", {
+      categoryId: saveCandidate.categoryId,
+      score: saveCandidate.score,
+      canSave: saveCandidate.canSave,
+      targetCategoryCompatibleWithFixedLocks,
+    });
+
+    if (!saveCandidate.canSave) {
+      console.log("❌ Rejected: canSave=false");
+      return {
+        accepted: false,
+        reason: saveCandidate.fallbackReason ?? "candidate-not-writable",
+      };
+    }
+
+    if (
+      !saveCandidate.latestCombination ||
+      !saveCandidate.categoryId ||
+      saveCandidate.score === null
+    ) {
+      return {
+        accepted: false,
+        reason: "candidate-missing-data",
+      };
+    }
+
+    const categoryMaxScore =
+      playModeCategoryMaxScore[saveCandidate.categoryId] ?? null;
+
+    console.log("🎯 STRONG-SAVE CHECK", {
+      categoryId: saveCandidate.categoryId,
+      score: saveCandidate.score,
+      categoryMaxScore,
+      targetCategoryCompatibleWithFixedLocks,
+    });
+
+    // Max-score checks come BEFORE fixed-lock compatibility:
+    // if the dice literally show the best possible combination, save it
+    // regardless of what locks were planned for a different strategy.
+    if (saveCandidate.categoryId === "postupka" && saveCandidate.score === 21) {
+      console.log("✅ STRONG-SAVE: Postupka 21");
+      return {
+        accepted: true,
+        reason: "max-postupka-always-save",
+      };
+    }
+
+    if (categoryMaxScore !== null && saveCandidate.score >= categoryMaxScore) {
+      console.log("✅ STRONG-SAVE: Max score (overrides fixed-lock plan)");
+      return {
+        accepted: true,
+        reason: "max-category-score",
+      };
+    }
+
+    if (!targetCategoryCompatibleWithFixedLocks) {
+      return {
+        accepted: false,
+        reason: "candidate-incompatible-with-fixed-locks",
+      };
+    }
+
+    if (
+      rewriteAllowed &&
+      existingScore !== undefined &&
+      saveCandidate.score > existingScore
+    ) {
+      return {
+        accepted: true,
+        reason: "rewrite-improves-existing-score",
+      };
+    }
+
+    if (remainingRolls <= 0) {
+      return {
+        accepted: true,
+        reason: "no-rolls-left",
+      };
+    }
+
+    if (
       categoryMaxScore !== null &&
-      saveCandidate.score >= categoryMaxScore,
-    targetCategoryCompatibleWithFixedLocks,
-  });
+      saveCandidate.score >= Math.floor(categoryMaxScore * 0.85)
+    ) {
+      return {
+        accepted: true,
+        reason: "very-high-category-score",
+      };
+    }
 
-  if (
-    categoryMaxScore !== null &&
-    saveCandidate.score >= categoryMaxScore
-  ) {
-    console.log("✅ MAX-SCORE ACCEPTED (overrides fixed-lock plan)");
-    return {
-      accepted: true,
-      reason: "save-now-because-max-score",
-    };
-  }
+    if (saveCandidate.score >= 26) {
+      return {
+        accepted: true,
+        reason: "high-absolute-score",
+      };
+    }
 
-  if (!targetCategoryCompatibleWithFixedLocks) {
     return {
       accepted: false,
-      reason: "candidate-incompatible-with-fixed-locks",
+      reason: "candidate-not-strong-enough",
     };
-  }
-
-  if (
-    rewriteAllowed &&
-    existingScore !== undefined &&
-    saveCandidate.score > existingScore
-  ) {
-    return {
-      accepted: true,
-      reason: "save-now-because-rewrite-improves-existing",
-    };
-  }
-
-  if (remainingRolls <= 1) {
-    return {
-      accepted: true,
-      reason: "save-now-because-remaining-rolls-low",
-    };
-  }
-
-  const bestWritableCategoryMaxScore =
-    writableCategoryIds.length > 0
-      ? Math.max(
-          ...writableCategoryIds.map(
-            (categoryId) =>
-              playModeCategoryMaxScore[categoryId] ?? 0
-          )
-        )
-      : 0;
-
-  if (
-    saveCandidate.score >= bestWritableCategoryMaxScore
-  ) {
-    return {
-      accepted: true,
-      reason:
-        "save-now-because-no-better-legal-improvement",
-    };
-  }
-
-  if (remainingRolls <= 0) {
-    return {
-      accepted: true,
-      reason: "save-now-because-no-rolls-left",
-    };
-  }
-
-  return {
-    accepted: false,
-    reason: "save-delayed-because-better-legal-option-remains",
   };
-};
 
-const isTargetAlreadyScoredWhenRewriteDisabled = (
-  targetCategory: string | null,
-  playerScores: Record<string, number>,
-  rewriteAllowed: boolean
-) =>
-  !!targetCategory &&
-  !rewriteAllowed &&
-  playerScores[targetCategory] !== undefined;
+  const getSaveTimingGuardDecision = (
+    saveCandidate: {
+      canSave: boolean;
+      fallbackReason: string | null;
+      latestCombination: {
+        combination: string;
+        score: number;
+      } | null;
+      categoryId: string | null;
+      score: number | null;
+    },
+    existingScore: number | undefined,
+    rewriteAllowed: boolean,
+    remainingRolls: number,
+    targetCategoryCompatibleWithFixedLocks: boolean,
+    writableCategoryIds: string[],
+    availableCategoryCount: number,
+  ) => {
+    if (!saveCandidate.canSave) {
+      return {
+        accepted: false,
+        reason: saveCandidate.fallbackReason ?? "candidate-not-writable",
+      };
+    }
 
-const sanitizeComputerLockMask = (
-  _dice: number[],
-  lockMask: boolean[]
-): boolean[] => {
-  const normalized =
-    lockMask.length === 6
-      ? [...lockMask]
-      : [false, false, false, false, false, false];
+    if (
+      !saveCandidate.latestCombination ||
+      !saveCandidate.categoryId ||
+      saveCandidate.score === null
+    ) {
+      return {
+        accepted: false,
+        reason: "candidate-missing-data",
+      };
+    }
 
-  // Controller sanitization only normalizes shape; strategic lock choices
-  // are validated later against fixed locks and writable targets.
-  return normalized.map((isLocked) => !!isLocked);
-};
+    const categoryMaxScore =
+      playModeCategoryMaxScore[saveCandidate.categoryId] ?? null;
 
-const currentPlayModeScore =
-  currentCombination
-    ? scores[
-        selectedPlayers[
-          currentPlayPlayerIndex
-        ]
-      ]?.[
-        playModeCategoryMap[
-          currentCombination
-            .combination
-        ]
+    // Max-score and Postupka checks come BEFORE fixed-lock compatibility:
+    // if the dice show the best possible combination, save it regardless
+    // of what locks were planned for a different strategy.
+    if (saveCandidate.categoryId === "postupka" && saveCandidate.score === 21) {
+      return {
+        accepted: true,
+        reason: "save-now-because-postupka-complete",
+      };
+    }
+
+    console.log("🔍 MAX-SCORE CHECK", {
+      categoryId: saveCandidate.categoryId,
+      score: saveCandidate.score,
+      categoryMaxScore,
+      isMaxScore:
+        categoryMaxScore !== null && saveCandidate.score >= categoryMaxScore,
+      targetCategoryCompatibleWithFixedLocks,
+    });
+
+    if (categoryMaxScore !== null && saveCandidate.score >= categoryMaxScore) {
+      console.log("✅ MAX-SCORE ACCEPTED (overrides fixed-lock plan)");
+      return {
+        accepted: true,
+        reason: "save-now-because-max-score",
+      };
+    }
+
+    if (!targetCategoryCompatibleWithFixedLocks) {
+      return {
+        accepted: false,
+        reason: "candidate-incompatible-with-fixed-locks",
+      };
+    }
+
+    if (
+      rewriteAllowed &&
+      existingScore !== undefined &&
+      saveCandidate.score > existingScore
+    ) {
+      return {
+        accepted: true,
+        reason: "save-now-because-rewrite-improves-existing",
+      };
+    }
+
+    if (remainingRolls <= 1) {
+      return {
+        accepted: true,
+        reason: "save-now-because-remaining-rolls-low",
+      };
+    }
+
+    const bestWritableCategoryMaxScore =
+      writableCategoryIds.length > 0
+        ? Math.max(
+            ...writableCategoryIds.map(
+              (categoryId) => playModeCategoryMaxScore[categoryId] ?? 0,
+            ),
+          )
+        : 0;
+
+    if (saveCandidate.score >= bestWritableCategoryMaxScore) {
+      return {
+        accepted: true,
+        reason: "save-now-because-no-better-legal-improvement",
+      };
+    }
+
+    if (remainingRolls <= 0) {
+      return {
+        accepted: true,
+        reason: "save-now-because-no-rolls-left",
+      };
+    }
+
+    return {
+      accepted: false,
+      reason: "save-delayed-because-better-legal-option-remains",
+    };
+  };
+
+  const isTargetAlreadyScoredWhenRewriteDisabled = (
+    targetCategory: string | null,
+    playerScores: Record<string, number>,
+    rewriteAllowed: boolean,
+  ) =>
+    !!targetCategory &&
+    !rewriteAllowed &&
+    playerScores[targetCategory] !== undefined;
+
+  const sanitizeComputerLockMask = (
+    _dice: number[],
+    lockMask: boolean[],
+  ): boolean[] => {
+    const normalized =
+      lockMask.length === 6
+        ? [...lockMask]
+        : [false, false, false, false, false, false];
+
+    // Controller sanitization only normalizes shape; strategic lock choices
+    // are validated later against fixed locks and writable targets.
+    return normalized.map((isLocked) => !!isLocked);
+  };
+
+  const currentPlayModeScore = currentCombination
+    ? scores[selectedPlayers[currentPlayPlayerIndex]]?.[
+        playModeCategoryMap[currentCombination.combination]
       ]
     : undefined;
 
-const currentGeneralScore =
-  scores[
-    selectedPlayers[
-      currentPlayPlayerIndex
-    ]
-  ]?.general;
+  const currentGeneralScore =
+    scores[selectedPlayers[currentPlayPlayerIndex]]?.general;
 
-const canUseGeneralBonus =
-  (() => {
-    if (
-      playModeBonusMode !==
-      "general-only"
-    ) {
+  const canUseGeneralBonus = (() => {
+    if (playModeBonusMode !== "general-only") {
       return true;
     }
 
-    if (
-      currentGeneralScore ===
-      undefined
-    ) {
+    if (currentGeneralScore === undefined) {
       return true;
     }
 
-    if (
-      isLeaguePlayMode
-    ) {
+    if (isLeaguePlayMode) {
       return false;
     }
 
-    if (
-      !playModeAllowRewrite
-    ) {
+    if (!playModeAllowRewrite) {
       return false;
     }
 
-    const lockedValues =
-      playModeDice.filter(
-        (_, index) =>
-          lockedDice[index]
-      );
+    const lockedValues = playModeDice.filter((_, index) => lockedDice[index]);
 
-    const sourceValues =
-      lockedValues.length > 0
-        ? lockedValues
-        : playModeDice;
+    const sourceValues = lockedValues.length > 0 ? lockedValues : playModeDice;
 
-    const highestValue =
-      Math.max(
-        ...sourceValues
-      );
+    const highestValue = Math.max(...sourceValues);
 
-    const potentialGeneralScore =
-      highestValue * 6;
+    const potentialGeneralScore = highestValue * 6;
 
-    return (
-      potentialGeneralScore >
-      currentGeneralScore
-    );
+    return potentialGeneralScore > currentGeneralScore;
   })();
 
-const hasLockedDice =
-  lockedDice.some(
-    (dice) => dice
-  );
+  const hasLockedDice = lockedDice.some((dice) => dice);
 
-const hasUsefulFutureMove =
-  useMemo(() => {
+  const hasUsefulFutureMove = useMemo(() => {
     if (!hasLockedDice) {
       return null;
     }
 
-    const playerId =
-      selectedPlayers[
-        currentPlayPlayerIndex
-      ];
+    const playerId = selectedPlayers[currentPlayPlayerIndex];
 
-    const unlockedIndexes =
-      lockedDice
-        .map(
-          (locked, index) =>
-            locked
-              ? -1
-              : index
-        )
-        .filter(
-          (index) =>
-            index !== -1
-        );
+    const unlockedIndexes = lockedDice
+      .map((locked, index) => (locked ? -1 : index))
+      .filter((index) => index !== -1);
 
-    const testDice = [
-      ...playModeDice,
-    ];
+    const testDice = [...playModeDice];
 
-    let foundUsefulMove =
-      false;
+    let foundUsefulMove = false;
 
-    const checkCombination =
-      (
-        position: number
-      ) => {
-        if (
-          foundUsefulMove
-        ) {
+    const checkCombination = (position: number) => {
+      if (foundUsefulMove) {
+        return;
+      }
+
+      if (position === unlockedIndexes.length) {
+        const result = detectCombination(testDice);
+
+        if (!result) {
           return;
         }
 
-        if (
-          position ===
-          unlockedIndexes.length
-        ) {
-          const result =
-            detectCombination(
-              testDice
-            );
+        const categoryId = playModeCategoryMap[result.combination];
 
-          if (!result) {
-            return;
-          }
+        if (!categoryId) {
+          return;
+        }
 
-          const categoryId =
-            playModeCategoryMap[
-              result
-                .combination
-            ];
+        const existingScore = scores[playerId]?.[categoryId];
 
-          if (
-            !categoryId
-          ) {
-            return;
-          }
-
-          const existingScore =
-            scores[playerId]?.[
-              categoryId
-            ];
-
-          if (
-            existingScore ===
-            undefined
-          ) {
-            foundUsefulMove =
-              true;
-
-            return;
-          }
-
-          if (
-            playModeAllowRewrite &&
-            result.score >
-              existingScore
-          ) {
-            foundUsefulMove =
-              true;
-          }
+        if (existingScore === undefined) {
+          foundUsefulMove = true;
 
           return;
         }
 
-        const diceIndex =
-          unlockedIndexes[
-            position
-          ];
-
-        for (
-          let value = 1;
-          value <= 6;
-          value++
-        ) {
-          testDice[
-            diceIndex
-          ] = value;
-
-          checkCombination(
-            position + 1
-          );
-
-          if (
-            foundUsefulMove
-          ) {
-            return;
-          }
+        if (playModeAllowRewrite && result.score > existingScore) {
+          foundUsefulMove = true;
         }
-      };
+
+        return;
+      }
+
+      const diceIndex = unlockedIndexes[position];
+
+      for (let value = 1; value <= 6; value++) {
+        testDice[diceIndex] = value;
+
+        checkCombination(position + 1);
+
+        if (foundUsefulMove) {
+          return;
+        }
+      }
+    };
 
     checkCombination(0);
 
@@ -2397,323 +1796,203 @@ const hasUsefulFutureMove =
     scores,
     playModeAllowRewrite,
   ]);
-    
-const canSavePlayModeScore =
-  !currentCombination ||
-  !playModeAllowRewrite
-    ? true
-    : currentPlayModeScore ===
-        undefined ||
-      currentCombination.score >
-        currentPlayModeScore;
 
-useEffect(() => {
-  const activePlayerIdForAudio =
-    selectedPlayers[
-      currentPlayPlayerIndex
-    ] ?? null;
+  const canSavePlayModeScore =
+    !currentCombination || !playModeAllowRewrite
+      ? true
+      : currentPlayModeScore === undefined ||
+        currentCombination.score > currentPlayModeScore;
 
-  const isLocalCurrentPlayerForAudio =
-    !isOnlineGame ||
-    (
-      localOnlinePlayerId !== null &&
-      localOnlinePlayerId ===
-        activePlayerIdForAudio
-    );
+  useEffect(() => {
+    const activePlayerIdForAudio =
+      selectedPlayers[currentPlayPlayerIndex] ?? null;
 
-  const shouldBlockMaxScoreAudio =
-    lastStateChangeSourceRef.current ===
-      "remote-sync" ||
-    (
-      isOnlineGame &&
-      !isLocalCurrentPlayerForAudio
-    );
+    const isLocalCurrentPlayerForAudio =
+      !isOnlineGame ||
+      (localOnlinePlayerId !== null &&
+        localOnlinePlayerId === activePlayerIdForAudio);
 
-  if (shouldBlockMaxScoreAudio) {
-    setMaxScoreSoundPlayed(
-      false
-    );
+    const shouldBlockMaxScoreAudio =
+      lastStateChangeSourceRef.current === "remote-sync" ||
+      (isOnlineGame && !isLocalCurrentPlayerForAudio);
 
-    return;
-  }
+    if (shouldBlockMaxScoreAudio) {
+      setMaxScoreSoundPlayed(false);
 
-  if (
-    !currentCombination ||
-    !maxScoreSoundEnabled
-  ) {
-    setMaxScoreSoundPlayed(
-      false
-    );
+      return;
+    }
 
-    return;
-  }
+    if (!currentCombination || !maxScoreSoundEnabled) {
+      setMaxScoreSoundPlayed(false);
 
-  const categoryId =
-    playModeCategoryMap[
-      currentCombination
-        .combination
-    ];
+      return;
+    }
 
-  if (!categoryId) {
-    setMaxScoreSoundPlayed(
-      false
-    );
+    const categoryId = playModeCategoryMap[currentCombination.combination];
 
-    return;
-  }
+    if (!categoryId) {
+      setMaxScoreSoundPlayed(false);
 
-  const category =
-    gameCategories.find(
-      (c) =>
-        c.id === categoryId
-    );
+      return;
+    }
 
-  if (!category) {
-    setMaxScoreSoundPlayed(
-      false
-    );
+    const category = gameCategories.find((c) => c.id === categoryId);
 
-    return;
-  }
+    if (!category) {
+      setMaxScoreSoundPlayed(false);
 
-  const playerId =
-    selectedPlayers[
-      currentPlayPlayerIndex
-    ];
+      return;
+    }
 
-  const existingScore =
-    scores[playerId]?.[
-      categoryId
-    ];
+    const playerId = selectedPlayers[currentPlayPlayerIndex];
 
-  const canWrite =
-    existingScore ===
-      undefined ||
-    (
-      playModeAllowRewrite &&
-      currentCombination.score >
-        existingScore
-    );
+    const existingScore = scores[playerId]?.[categoryId];
 
-  const isMaxScore =
-    currentCombination.score ===
-    category.max;
+    const canWrite =
+      existingScore === undefined ||
+      (playModeAllowRewrite && currentCombination.score > existingScore);
 
-  if (
-    isMaxScore &&
-    canWrite &&
-    !maxScoreSoundPlayed
-  ) {
-    const audio =
-      new Audio(
-        `/sounds/win/fanfare.mp3`
-      );
+    const isMaxScore = currentCombination.score === category.max;
 
-    audio.volume = 0.9;
+    if (isMaxScore && canWrite && !maxScoreSoundPlayed) {
+      const audio = new Audio(`/sounds/win/fanfare.mp3`);
 
-    audio.play().catch(
-      () => {}
-    );
+      audio.volume = 0.9;
 
-    setMaxScoreSoundPlayed(
-      true
-    );
-  }
+      audio.play().catch(() => {});
 
-  if (
-    !isMaxScore ||
-    !canWrite
-  ) {
-    setMaxScoreSoundPlayed(
-      false
-    );
-  }
-}, [
-  currentCombination,
-  currentPlayPlayerIndex,
-  selectedPlayers,
-  scores,
-  playModeAllowRewrite,
-  maxScoreSoundEnabled,
-  maxScoreSoundPlayed,
-  isOnlineGame,
-  localOnlinePlayerId,
-]);
+      setMaxScoreSoundPlayed(true);
+    }
 
-useEffect(() => {
-  const activePlayerIdForAudio =
-    selectedPlayers[
-      currentPlayPlayerIndex
-    ] ?? null;
+    if (!isMaxScore || !canWrite) {
+      setMaxScoreSoundPlayed(false);
+    }
+  }, [
+    currentCombination,
+    currentPlayPlayerIndex,
+    selectedPlayers,
+    scores,
+    playModeAllowRewrite,
+    maxScoreSoundEnabled,
+    maxScoreSoundPlayed,
+    isOnlineGame,
+    localOnlinePlayerId,
+  ]);
 
-  const audioCategoryId =
-    currentCombination
-      ? playModeCategoryMap[
-          currentCombination.combination
-        ]
+  useEffect(() => {
+    const activePlayerIdForAudio =
+      selectedPlayers[currentPlayPlayerIndex] ?? null;
+
+    const audioCategoryId = currentCombination
+      ? playModeCategoryMap[currentCombination.combination]
       : null;
 
-  const existingAudioScore =
-    activePlayerIdForAudio &&
-    audioCategoryId
-      ? scores[
-          activePlayerIdForAudio
-        ]?.[audioCategoryId]
-      : undefined;
+    const existingAudioScore =
+      activePlayerIdForAudio && audioCategoryId
+        ? scores[activePlayerIdForAudio]?.[audioCategoryId]
+        : undefined;
 
-  const hasWritableCombinationForAudio =
-    !!currentCombination &&
-    !!audioCategoryId &&
-    (existingAudioScore ===
-      undefined ||
-      (playModeAllowRewrite &&
-        currentCombination.score >
-          existingAudioScore));
+    const hasWritableCombinationForAudio =
+      !!currentCombination &&
+      !!audioCategoryId &&
+      (existingAudioScore === undefined ||
+        (playModeAllowRewrite &&
+          currentCombination.score > existingAudioScore));
 
-  const isLocalCurrentPlayerForAudio =
-    !isOnlineGame ||
-    (
-      localOnlinePlayerId !== null &&
-      localOnlinePlayerId ===
-        activePlayerIdForAudio
-    );
+    const isLocalCurrentPlayerForAudio =
+      !isOnlineGame ||
+      (localOnlinePlayerId !== null &&
+        localOnlinePlayerId === activePlayerIdForAudio);
 
-  const shouldBlockNoCombinationAudio =
-    lastStateChangeSourceRef.current ===
-      "remote-sync" ||
-    (
-      isOnlineGame &&
-      !isLocalCurrentPlayerForAudio
-    ) ||
-    !hasRolledDice ||
-    isRolling ||
-    showPlayModeResult ||
-    hasWritableCombinationForAudio;
+    const shouldBlockNoCombinationAudio =
+      lastStateChangeSourceRef.current === "remote-sync" ||
+      (isOnlineGame && !isLocalCurrentPlayerForAudio) ||
+      !hasRolledDice ||
+      isRolling ||
+      showPlayModeResult ||
+      hasWritableCombinationForAudio;
 
-  if (shouldBlockNoCombinationAudio) {
-    setNoCombinationSoundPlayed(
-      false
-    );
+    if (shouldBlockNoCombinationAudio) {
+      setNoCombinationSoundPlayed(false);
 
-    return;
-  }
+      return;
+    }
 
-  if (
-  hasUsefulFutureMove === false &&
-  !noCombinationSoundPlayed &&
-  noCombinationSoundEnabled &&
-  !suppressNoCombinationSound
-) {
-    const audio =
-      new Audio(
-        `/sounds/playmode/nocombination.wav`
-      );
-
-    audio.volume = 0.1;
-
-    audio.play().catch(
-      () => {}
-    );
-
-    setNoCombinationSoundPlayed(
-      true
-    );
-  }
-
-  if (
-  hasUsefulFutureMove !== false
-) {
-  setNoCombinationSoundPlayed(
-    false
-  );
-
-  setSuppressNoCombinationSound(
-    false
-  );
-}
-}, [
-  currentCombination,
-  scores,
-  playModeAllowRewrite,
-  hasRolledDice,
-  isRolling,
-  showPlayModeResult,
-  hasUsefulFutureMove,
-  noCombinationSoundPlayed,
-  noCombinationSoundEnabled,
-  suppressNoCombinationSound,
-  isOnlineGame,
-  localOnlinePlayerId,
-  selectedPlayers,
-  currentPlayPlayerIndex,
-]);
-
-        const savePlayModeScore =
-  () => {
     if (
-      isOnlineGame &&
-      !isCurrentPlayer
+      hasUsefulFutureMove === false &&
+      !noCombinationSoundPlayed &&
+      noCombinationSoundEnabled &&
+      !suppressNoCombinationSound
     ) {
+      const audio = new Audio(`/sounds/playmode/nocombination.wav`);
+
+      audio.volume = 0.1;
+
+      audio.play().catch(() => {});
+
+      setNoCombinationSoundPlayed(true);
+    }
+
+    if (hasUsefulFutureMove !== false) {
+      setNoCombinationSoundPlayed(false);
+
+      setSuppressNoCombinationSound(false);
+    }
+  }, [
+    currentCombination,
+    scores,
+    playModeAllowRewrite,
+    hasRolledDice,
+    isRolling,
+    showPlayModeResult,
+    hasUsefulFutureMove,
+    noCombinationSoundPlayed,
+    noCombinationSoundEnabled,
+    suppressNoCombinationSound,
+    isOnlineGame,
+    localOnlinePlayerId,
+    selectedPlayers,
+    currentPlayPlayerIndex,
+  ]);
+
+  const savePlayModeScore = () => {
+    if (isOnlineGame && !isCurrentPlayer) {
       return false;
     }
 
-    if 
-    (!currentCombination)
-      
-    return true;
+    if (!currentCombination) return true;
 
-    const playerId =
-      selectedPlayers[
-        currentPlayPlayerIndex
-      ];
+    const playerId = selectedPlayers[currentPlayPlayerIndex];
 
-    const categoryId =
-      playModeCategoryMap[
-        currentCombination
-          .combination
-      ];
+    const categoryId = playModeCategoryMap[currentCombination.combination];
 
-    if (!categoryId)
+    if (!categoryId) return true;
+
+    const existingScore = scores[playerId]?.[categoryId];
+
+    if (
+      existingScore !== undefined &&
+      playModeAllowRewrite &&
+      existingScore >= currentCombination.score
+    ) {
       return true;
+    }
 
-    const existingScore =
-      scores[playerId]?.[
-        categoryId
-      ];
-
-if (
-  existingScore !== undefined &&
-  playModeAllowRewrite &&
-  existingScore >=
-    currentCombination.score
-) {
-  return true;
-}
-
-    if (
-      existingScore !==
-        undefined &&
-      !playModeAllowRewrite
-    ) {
+    if (existingScore !== undefined && !playModeAllowRewrite) {
       alert(
-        "Tato kombinace je již zapsána a Play Mode neumožňuje přepis skóre."
+        "Tato kombinace je již zapsána a Play Mode neumožňuje přepis skóre.",
       );
 
       return false;
     }
 
-setSuppressNoCombinationSound(
-  true
-);
+    setSuppressNoCombinationSound(true);
 
-    lastStateChangeSourceRef.current =
-      "local-action";
+    lastStateChangeSourceRef.current = "local-action";
 
-    const savedTurnVersion =
-      bumpLocalTurnVersion();
+    const savedTurnVersion = bumpLocalTurnVersion();
 
-    localTurnVersionRef.current =
-      savedTurnVersion;
+    localTurnVersionRef.current = savedTurnVersion;
 
     bumpLocalRuntimeRevision();
 
@@ -2723,112 +2002,66 @@ setSuppressNoCombinationSound(
       [playerId]: {
         ...prev[playerId],
 
-        [categoryId]:
-          currentCombination.score,
+        [categoryId]: currentCombination.score,
       },
     }));
 
     return true;
   };
 
-const endTurn = async (
-  turnSummary?: Omit<
-    PlayModeTurnSummary,
-    "nextPlayerId"
-  > | null
-) => {
-  // Reset sound flag for new player
-  setNoCombinationSoundPlayed(false);
+  const endTurn = async (
+    turnSummary?: Omit<PlayModeTurnSummary, "nextPlayerId"> | null,
+  ) => {
+    // Reset sound flag for new player
+    setNoCombinationSoundPlayed(false);
 
-  if (
-    isOnlineGame &&
-    !isCurrentPlayer
-  ) {
-    return;
-  }
-
-  if (turnEndSoundEnabled) {
-    if (
-      skipNextTurnEndSoundRef.current
-    ) {
-      skipNextTurnEndSoundRef.current =
-        false;
-    } else {
-      const audio = new Audio(
-        '/sounds/playmode/turnend.mp3'
-      );
-      audio.volume = 0.35;
-      audio.play().catch(() => {});
+    if (isOnlineGame && !isCurrentPlayer) {
+      return;
     }
-  }
 
-  const nextPlayer =
-    currentPlayPlayerIndex +
-    1 >=
-    selectedPlayers.length
-      ? 0
-      : currentPlayPlayerIndex +
-        1;
+    if (turnEndSoundEnabled) {
+      if (skipNextTurnEndSoundRef.current) {
+        skipNextTurnEndSoundRef.current = false;
+      } else {
+        const audio = new Audio("/sounds/playmode/turnend.mp3");
+        audio.volume = 0.35;
+        audio.play().catch(() => {});
+      }
+    }
 
-  const nextPlayModeDice = [
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-  ];
+    const nextPlayer =
+      currentPlayPlayerIndex + 1 >= selectedPlayers.length
+        ? 0
+        : currentPlayPlayerIndex + 1;
 
-  const nextLockedDice = [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ];
+    const nextPlayModeDice = [1, 1, 1, 1, 1, 1];
 
-  const nextConfirmedLockedDice = [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ];
+    const nextLockedDice = [false, false, false, false, false, false];
 
-  const handoffTurnVersion =
-    bumpLocalTurnVersion();
+    const nextConfirmedLockedDice = [false, false, false, false, false, false];
 
-  const handoffRuntimeRevision =
-    bumpLocalRuntimeRevision();
+    const handoffTurnVersion = bumpLocalTurnVersion();
 
-  if (
-    isOnlineGame &&
-    onlineSessionId &&
-    gameStarted &&
-    hasStartedPlayMode &&
-    screen === "game" &&
-    isCurrentPlayer
-  ) {
-    try {
-      await updateOnlineState(
-        onlineSessionId,
-        {
+    const handoffRuntimeRevision = bumpLocalRuntimeRevision();
+
+    if (
+      isOnlineGame &&
+      onlineSessionId &&
+      gameStarted &&
+      hasStartedPlayMode &&
+      screen === "game" &&
+      isCurrentPlayer
+    ) {
+      try {
+        await updateOnlineState(onlineSessionId, {
           scores,
-          currentPlayPlayerIndex:
-            nextPlayer,
-          playModeDice:
-            nextPlayModeDice,
-          lockedDice:
-            nextLockedDice,
-          confirmedLockedDice:
-            nextConfirmedLockedDice,
-          remainingRolls:
-            playModeRolls,
+          currentPlayPlayerIndex: nextPlayer,
+          playModeDice: nextPlayModeDice,
+          lockedDice: nextLockedDice,
+          confirmedLockedDice: nextConfirmedLockedDice,
+          remainingRolls: playModeRolls,
           bonusUsed: false,
-          selectedGeneralValue:
-            null,
+          selectedGeneralValue: null,
           hasRolledDice: false,
           selectedPlayers,
           playerCount,
@@ -2839,706 +2072,502 @@ const endTurn = async (
           playerReadiness,
           gameStarted,
           hasStartedPlayMode,
-          turnVersion:
-            handoffTurnVersion,
-          updatedByPlayerId:
-            localOnlinePlayerId,
+          turnVersion: handoffTurnVersion,
+          updatedByPlayerId: localOnlinePlayerId,
           updatedAt: Date.now(),
-          runtimeRevision:
-            handoffRuntimeRevision,
-        }
-      );
-    } catch (error) {
-      console.error(
-        "END TURN SYNC ERROR:",
-        error
-      );
+          runtimeRevision: handoffRuntimeRevision,
+        });
+      } catch (error) {
+        console.error("END TURN SYNC ERROR:", error);
+      }
     }
-  }
 
-  // CRITICAL FIX: Reset locks BEFORE changing player so AI sees clean state
-  setLockedDice(nextLockedDice);
+    // CRITICAL FIX: Reset locks BEFORE changing player so AI sees clean state
+    setLockedDice(nextLockedDice);
 
-  setConfirmedLockedDice(
-    nextConfirmedLockedDice
-  );
+    setConfirmedLockedDice(nextConfirmedLockedDice);
 
-  setPlayModeDice(nextPlayModeDice);
+    setPlayModeDice(nextPlayModeDice);
 
-  setCurrentPlayPlayerIndex(
-    nextPlayer
-  );
+    setCurrentPlayPlayerIndex(nextPlayer);
 
-  setRemainingRolls(
-    playModeRolls
-  );
-  
-  setBonusUsed(false);
-  setHasRolledDice(false);
-setSelectedGeneralValue(
-  null
-);
-  setBonusUsed(false);
+    setRemainingRolls(playModeRolls);
 
-  if (turnSummary) {
-    setPlayModeTurnSummary({
-      ...turnSummary,
-      nextPlayerId:
-        selectedPlayers[nextPlayer] ?? "",
-    });
-    setShowPlayModeResult(true);
-  } else {
-    setPlayModeTurnSummary(null);
-    setShowPlayModeResult(false);
-  }
-};
+    setBonusUsed(false);
+    setHasRolledDice(false);
+    setSelectedGeneralValue(null);
+    setBonusUsed(false);
 
-// BUGFIX #2: Reset AI execution marker when result is dismissed to allow fresh turn detection
-useEffect(() => {
-  if (!showPlayModeResult && aiControllerExecutionMarkerRef.current !== null) {
-    // Result was dismissed, reset marker so AI turn detection runs fresh
-    aiControllerExecutionMarkerRef.current = null;
-  }
-}, [showPlayModeResult]);
-
-// 10. AI PLAYER - Decision Logic
-useEffect(() => {
-  console.log("🤖 AI EFFECT FIRED", {
-    playerId: selectedPlayers[currentPlayPlayerIndex],
-    isRolling,
-    hasRolledDice,
-    showPlayModeResult,
-    remainingRolls,
-    gameFinished,
-  });
-
-  if (
-    isOnlineGame ||
-    !gameStarted ||
-    !hasStartedPlayMode ||
-    gameFinished ||
-    selectedPlayers.length === 0
-  ) {
-    console.log("🤖 AI EFFECT: Early return - game conditions not met");
-    aiControllerTurnRef.current = null;
-    aiControllerExecutionMarkerRef.current =
-      null;
-    aiControllerLastObservedStateRef.current =
-      null;
-    aiControllerStepRef.current = 0;
-    aiControllerNoProgressRef.current = 0;
-    aiControllerPreviousTargetCategoryRef.current =
-      null;
-    return;
-  }
-
-  const playerId =
-    selectedPlayers[
-      currentPlayPlayerIndex
-    ];
-
-  if (!playerId || !isComputerPlayerId(playerId)) {
-    aiControllerTurnRef.current = null;
-    aiControllerExecutionMarkerRef.current =
-      null;
-    aiControllerLastObservedStateRef.current =
-      null;
-    aiControllerStepRef.current = 0;
-    aiControllerNoProgressRef.current = 0;
-    aiControllerPreviousTargetCategoryRef.current =
-      null;
-    return;
-  }
-
-  const playerScores = scores[playerId] || {};
-  const turnMarker = `${playerId}:${Object.keys(playerScores).length}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}`;
-
-  if (aiControllerTurnRef.current !== turnMarker) {
-    aiControllerTurnRef.current = turnMarker;
-    aiControllerExecutionMarkerRef.current =
-      null;
-    aiControllerLastObservedStateRef.current =
-      null;
-    aiControllerStepRef.current = 0;
-    aiControllerNoProgressRef.current = 0;
-    aiControllerPreviousTargetCategoryRef.current =
-      null;
-  }
-
-  if (showPlayModeResult || isRolling) {
-    if (isRolling) {
-      logAITurnAudit({
-        event: "aiControllerSkippedBecauseIsRolling",
-        playerId,
-        remainingRolls,
-        hasRolledThisTurn: hasRolledDice,
-        showPlayModeResult,
-        activeRollTimeoutId:
-          aiActiveRollTimeoutIdRef.current,
-        lockedDice,
-        confirmedLockedDice,
-        dice: playModeDice,
+    if (turnSummary) {
+      setPlayModeTurnSummary({
+        ...turnSummary,
+        nextPlayerId: selectedPlayers[nextPlayer] ?? "",
       });
+      setShowPlayModeResult(true);
+    } else {
+      setPlayModeTurnSummary(null);
+      setShowPlayModeResult(false);
     }
+  };
 
-    return;
-  }
+  // BUGFIX #2: Reset AI execution marker when result is dismissed to allow fresh turn detection
+  useEffect(() => {
+    if (
+      !showPlayModeResult &&
+      aiControllerExecutionMarkerRef.current !== null
+    ) {
+      // Result was dismissed, reset marker so AI turn detection runs fresh
+      aiControllerExecutionMarkerRef.current = null;
+    }
+  }, [showPlayModeResult]);
 
-  const observedState = `${turnMarker}:${remainingRolls}:${hasRolledDice ? 1 : 0}:${playModeDice.join(",")}:${lockedDice
-    .map((isLocked) =>
-      isLocked ? "1" : "0"
-    )
-    .join("")}:${confirmedLockedDice
-    .map((isLocked) =>
-      isLocked ? "1" : "0"
-    )
-    .join("")}`;
-
-  if (
-    aiControllerExecutionMarkerRef.current ===
-    observedState
-  ) {
-    return;
-  }
-
-  aiControllerExecutionMarkerRef.current =
-    observedState;
-
-  if (
-    aiControllerLastObservedStateRef.current ===
-    observedState
-  ) {
-    aiControllerNoProgressRef.current += 1;
-  } else {
-    aiControllerNoProgressRef.current = 0;
-    aiControllerLastObservedStateRef.current =
-      observedState;
-  }
-
-  aiControllerStepRef.current += 1;
-
-  if (
-    aiControllerStepRef.current > 24 ||
-    aiControllerNoProgressRef.current >= 3
-  ) {
-    logAITurnAudit({
-      event: "forced-safe-exit",
-      playerId,
+  // 10. AI PLAYER - Decision Logic
+  useEffect(() => {
+    console.log("🤖 AI EFFECT FIRED", {
+      playerId: selectedPlayers[currentPlayPlayerIndex],
+      isRolling,
+      hasRolledDice,
+      showPlayModeResult,
       remainingRolls,
-      step: aiControllerStepRef.current,
-      reason:
-        aiControllerStepRef.current > 24
-          ? "max-steps-exceeded"
-          : "repeated-no-progress",
+      gameFinished,
     });
-    endTurn({
-      playerId,
-      savedScore: false,
-      combination: null,
-      score: null,
-      categoryId: null,
-      reason:
-        aiControllerStepRef.current > 24
-          ? "forced-safe-exit-max-steps"
-          : "forced-safe-exit-repeated-no-progress",
-    });
-    return;
-  }
-
-  if (!hasRolledDice) {
-    const emptyLockMask = [
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-    ];
-
-    if (!areLockMasksEqual(lockedDice, emptyLockMask)) {
-      setLockedDice(emptyLockMask);
-    }
 
     if (
-      !areLockMasksEqual(
-        confirmedLockedDice,
-        emptyLockMask
-      )
+      isOnlineGame ||
+      !gameStarted ||
+      !hasStartedPlayMode ||
+      gameFinished ||
+      selectedPlayers.length === 0
     ) {
-      setConfirmedLockedDice(emptyLockMask);
+      console.log("🤖 AI EFFECT: Early return - game conditions not met");
+      aiControllerTurnRef.current = null;
+      aiControllerExecutionMarkerRef.current = null;
+      aiControllerLastObservedStateRef.current = null;
+      aiControllerStepRef.current = 0;
+      aiControllerNoProgressRef.current = 0;
+      aiControllerPreviousTargetCategoryRef.current = null;
+      return;
     }
 
-    logAITurnAudit({
-      event: "first-roll-guard",
-      playerId,
-      hasRolledThisTurn: hasRolledDice,
-      noCombinationGuardPhase:
-        "beforeFirstRoll",
-      beforeFirstRollNoCombinationIgnored:
-        currentCombination === null,
-      noCombinationEndTurnBlockedBecauseRollsRemain:
-        false,
-      terminalNoCombinationEndTurnAllowed:
-        false,
-      forcedFirstRollBecauseNoCombinationAtTurnStart:
-        currentCombination === null,
-      blockedPlanningBeforeFirstRoll: true,
-      aiAutoStartGuardTriggered: true,
-      firstActionForcedRoll: remainingRolls > 0,
-      remainingRolls,
-      lockMaskApplied: emptyLockMask,
-    });
+    const playerId = selectedPlayers[currentPlayPlayerIndex];
 
-    aiControllerPreviousTargetCategoryRef.current =
-      null;
+    if (!playerId || !isComputerPlayerId(playerId)) {
+      aiControllerTurnRef.current = null;
+      aiControllerExecutionMarkerRef.current = null;
+      aiControllerLastObservedStateRef.current = null;
+      aiControllerStepRef.current = 0;
+      aiControllerNoProgressRef.current = 0;
+      aiControllerPreviousTargetCategoryRef.current = null;
+      return;
+    }
 
-    if (remainingRolls <= 0) {
-      setRemainingRolls((prev) =>
-        prev > 0
-          ? prev
-          : Math.max(1, playModeRolls)
-      );
+    const playerScores = scores[playerId] || {};
+    const turnMarker = `${playerId}:${Object.keys(playerScores).length}:${currentPlayPlayerIndex}:${localTurnVersionRef.current}`;
+
+    if (aiControllerTurnRef.current !== turnMarker) {
+      aiControllerTurnRef.current = turnMarker;
+      aiControllerExecutionMarkerRef.current = null;
+      aiControllerLastObservedStateRef.current = null;
+      aiControllerStepRef.current = 0;
+      aiControllerNoProgressRef.current = 0;
+      aiControllerPreviousTargetCategoryRef.current = null;
+    }
+
+    if (showPlayModeResult || isRolling) {
+      if (isRolling) {
+        logAITurnAudit({
+          event: "aiControllerSkippedBecauseIsRolling",
+          playerId,
+          remainingRolls,
+          hasRolledThisTurn: hasRolledDice,
+          showPlayModeResult,
+          activeRollTimeoutId: aiActiveRollTimeoutIdRef.current,
+          lockedDice,
+          confirmedLockedDice,
+          dice: playModeDice,
+        });
+      }
+
+      return;
+    }
+
+    const observedState = `${turnMarker}:${remainingRolls}:${hasRolledDice ? 1 : 0}:${playModeDice.join(",")}:${lockedDice
+      .map((isLocked) => (isLocked ? "1" : "0"))
+      .join("")}:${confirmedLockedDice
+      .map((isLocked) => (isLocked ? "1" : "0"))
+      .join("")}`;
+
+    if (aiControllerExecutionMarkerRef.current === observedState) {
+      return;
+    }
+
+    aiControllerExecutionMarkerRef.current = observedState;
+
+    if (aiControllerLastObservedStateRef.current === observedState) {
+      aiControllerNoProgressRef.current += 1;
+    } else {
+      aiControllerNoProgressRef.current = 0;
+      aiControllerLastObservedStateRef.current = observedState;
+    }
+
+    aiControllerStepRef.current += 1;
+
+    if (
+      aiControllerStepRef.current > 24 ||
+      aiControllerNoProgressRef.current >= 3
+    ) {
+      logAITurnAudit({
+        event: "forced-safe-exit",
+        playerId,
+        remainingRolls,
+        step: aiControllerStepRef.current,
+        reason:
+          aiControllerStepRef.current > 24
+            ? "max-steps-exceeded"
+            : "repeated-no-progress",
+      });
+      endTurn({
+        playerId,
+        savedScore: false,
+        combination: null,
+        score: null,
+        categoryId: null,
+        reason:
+          aiControllerStepRef.current > 24
+            ? "forced-safe-exit-max-steps"
+            : "forced-safe-exit-repeated-no-progress",
+      });
+      return;
+    }
+
+    if (!hasRolledDice) {
+      const emptyLockMask = [false, false, false, false, false, false];
+
+      if (!areLockMasksEqual(lockedDice, emptyLockMask)) {
+        setLockedDice(emptyLockMask);
+      }
+
+      if (!areLockMasksEqual(confirmedLockedDice, emptyLockMask)) {
+        setConfirmedLockedDice(emptyLockMask);
+      }
 
       logAITurnAudit({
         event: "first-roll-guard",
         playerId,
         hasRolledThisTurn: hasRolledDice,
-        noCombinationGuardPhase:
-          "beforeFirstRoll",
-        beforeFirstRollNoCombinationIgnored:
-          true,
-        noCombinationEndTurnBlockedBecauseRollsRemain:
-          true,
-        terminalNoCombinationEndTurnAllowed:
-          false,
+        noCombinationGuardPhase: "beforeFirstRoll",
+        beforeFirstRollNoCombinationIgnored: currentCombination === null,
+        noCombinationEndTurnBlockedBecauseRollsRemain: false,
+        terminalNoCombinationEndTurnAllowed: false,
         forcedFirstRollBecauseNoCombinationAtTurnStart:
-          true,
+          currentCombination === null,
         blockedPlanningBeforeFirstRoll: true,
         aiAutoStartGuardTriggered: true,
-        firstActionForcedRoll: true,
-        remainingRollsRecoveredTo:
-          Math.max(1, playModeRolls),
-        fallbackReason:
-          "before-first-roll-no-combination-recovery",
+        firstActionForcedRoll: remainingRolls > 0,
+        remainingRolls,
+        lockMaskApplied: emptyLockMask,
       });
 
+      aiControllerPreviousTargetCategoryRef.current = null;
+
+      if (remainingRolls <= 0) {
+        setRemainingRolls((prev) =>
+          prev > 0 ? prev : Math.max(1, playModeRolls),
+        );
+
+        logAITurnAudit({
+          event: "first-roll-guard",
+          playerId,
+          hasRolledThisTurn: hasRolledDice,
+          noCombinationGuardPhase: "beforeFirstRoll",
+          beforeFirstRollNoCombinationIgnored: true,
+          noCombinationEndTurnBlockedBecauseRollsRemain: true,
+          terminalNoCombinationEndTurnAllowed: false,
+          forcedFirstRollBecauseNoCombinationAtTurnStart: true,
+          blockedPlanningBeforeFirstRoll: true,
+          aiAutoStartGuardTriggered: true,
+          firstActionForcedRoll: true,
+          remainingRollsRecoveredTo: Math.max(1, playModeRolls),
+          fallbackReason: "before-first-roll-no-combination-recovery",
+        });
+
+        return;
+      }
+
+      setHasRolledDice(false);
+      rollAllDice(emptyLockMask);
       return;
     }
 
-    setHasRolledDice(false);
-    rollAllDice(emptyLockMask);
-    return;
-  }
+    const fixedLocks =
+      confirmedLockedDice.length === 6
+        ? [...confirmedLockedDice]
+        : [false, false, false, false, false, false];
 
-  const fixedLocks =
-    confirmedLockedDice.length === 6
-      ? [...confirmedLockedDice]
-      : [
-          false,
-          false,
-          false,
-          false,
-          false,
-          false,
-        ];
-
-  // Pre-calculate available categories for low-score combination filter
-  const availableTargetCategories =
-    getWritableCategoryIds(
+    // Pre-calculate available categories for low-score combination filter
+    const availableTargetCategories = getWritableCategoryIds(
       scores[playerId] || {},
-      playModeAllowRewrite
+      playModeAllowRewrite,
     );
-  const availableCategoryCount = availableTargetCategories.length;
+    const availableCategoryCount = availableTargetCategories.length;
 
-  const legalMoveContext = {
-    currentCombination,
-    writableSaveCandidate:
-      getCurrentWritableSaveCandidate(playerId, fixedLocks, remainingRolls, availableCategoryCount),
-    availableTargetCategories:
-      availableTargetCategories,
-    lockCompatibility: Object.fromEntries(
-      Object.values(playModeCategoryMap).map(
-        (categoryId) => [
+    const legalMoveContext = {
+      currentCombination,
+      writableSaveCandidate: getCurrentWritableSaveCandidate(
+        playerId,
+        fixedLocks,
+        remainingRolls,
+        availableCategoryCount,
+      ),
+      availableTargetCategories: availableTargetCategories,
+      lockCompatibility: Object.fromEntries(
+        Object.values(playModeCategoryMap).map((categoryId) => [
           categoryId,
           canTargetCategoryWorkWithFixedLocks(
             categoryId,
             playModeDice,
-            fixedLocks
+            fixedLocks,
           ),
-        ]
-      )
-    ),
-    rewriteAllowed: playModeAllowRewrite,
-    fixedLocks,
-    remainingRolls,
-  };
-
-  // DEBUG: Log available categories for AI
-  if (playerId === 'computer-rocky') {
-    console.log('🔍 AVAILABLE CATEGORIES FOR AI:', {
-      playerId,
-      playerScores: scores[playerId],
-      availableCategories: legalMoveContext.availableTargetCategories,
+        ]),
+      ),
       rewriteAllowed: playModeAllowRewrite,
-    });
-  }
+      fixedLocks,
+      remainingRolls,
+    };
 
-  const availableTargetCategoriesAtDecisionStart = [
-    ...legalMoveContext.availableTargetCategories,
-  ];
+    // DEBUG: Log available categories for AI
+    if (playerId === "computer-rocky") {
+      console.log("🔍 AVAILABLE CATEGORIES FOR AI:", {
+        playerId,
+        playerScores: scores[playerId],
+        availableCategories: legalMoveContext.availableTargetCategories,
+        rewriteAllowed: playModeAllowRewrite,
+      });
+    }
 
-  const scoredCategories = Object.values(
-    playModeCategoryMap
-  ).filter(
-    (categoryId) =>
-      scores[playerId]?.[categoryId] !== undefined
-  );
+    const availableTargetCategoriesAtDecisionStart = [
+      ...legalMoveContext.availableTargetCategories,
+    ];
 
-  const writableCategorySet = new Set<string>(
-    availableTargetCategoriesAtDecisionStart
-  );
-
-  const scoredCategoriesFilteredOut =
-    scoredCategories.filter(
-      (categoryId) =>
-        !writableCategorySet.has(categoryId)
+    const scoredCategories = Object.values(playModeCategoryMap).filter(
+      (categoryId) => scores[playerId]?.[categoryId] !== undefined,
     );
 
-  const detectedCombinationCategoryAtDecisionStart =
-    currentCombination
-      ? playModeCategoryMap[
-          currentCombination.combination
-        ] ?? null
+    const writableCategorySet = new Set<string>(
+      availableTargetCategoriesAtDecisionStart,
+    );
+
+    const scoredCategoriesFilteredOut = scoredCategories.filter(
+      (categoryId) => !writableCategorySet.has(categoryId),
+    );
+
+    const detectedCombinationCategoryAtDecisionStart = currentCombination
+      ? (playModeCategoryMap[currentCombination.combination] ?? null)
       : null;
 
-  const detectedCombinationIgnoredBecauseAlreadyScored =
-    isTargetAlreadyScoredWhenRewriteDisabled(
-      detectedCombinationCategoryAtDecisionStart,
-      scores[playerId] || {},
-      playModeAllowRewrite
-    );
+    const detectedCombinationIgnoredBecauseAlreadyScored =
+      isTargetAlreadyScoredWhenRewriteDisabled(
+        detectedCombinationCategoryAtDecisionStart,
+        scores[playerId] || {},
+        playModeAllowRewrite,
+      );
 
-  const saveCandidate =
-    legalMoveContext.writableSaveCandidate;
+    const saveCandidate = legalMoveContext.writableSaveCandidate;
 
-  const noCombinationAtDecisionStart =
-    currentCombination === null &&
-    !saveCandidate.canSave;
+    const noCombinationAtDecisionStart =
+      currentCombination === null && !saveCandidate.canSave;
 
-  const noCombinationGuardPhase =
-    !hasRolledDice
+    const noCombinationGuardPhase = !hasRolledDice
       ? "beforeFirstRoll"
-      : noCombinationAtDecisionStart &&
-          remainingRolls <= 0
+      : noCombinationAtDecisionStart && remainingRolls <= 0
         ? "terminalNoCombination"
         : noCombinationAtDecisionStart
           ? "afterRollNoCombination"
           : "not-applicable";
 
-  const fallbackWorkingOnlyMask =
-    mergeWithFixedLocks(
-      fixedLocks,
-      [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ]
-    );
+    const fallbackWorkingOnlyMask = mergeWithFixedLocks(fixedLocks, [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
 
-  const saveCandidateFixedLockCompatible =
-    canTargetCategoryWorkWithFixedLocks(
-      saveCandidate.categoryId,
-      playModeDice,
-      fixedLocks
-    );
+    const saveCandidateFixedLockCompatible =
+      canTargetCategoryWorkWithFixedLocks(
+        saveCandidate.categoryId,
+        playModeDice,
+        fixedLocks,
+      );
 
-  const saveCandidateExistingScore =
-    saveCandidate.categoryId
-      ? scores[playerId]?.[
-          saveCandidate.categoryId
-        ]
+    const saveCandidateExistingScore = saveCandidate.categoryId
+      ? scores[playerId]?.[saveCandidate.categoryId]
       : undefined;
 
-  const saveTimingDecision =
-    getSaveTimingGuardDecision(
+    const saveTimingDecision = getSaveTimingGuardDecision(
       saveCandidate,
       saveCandidateExistingScore,
       playModeAllowRewrite,
       remainingRolls,
       saveCandidateFixedLockCompatible,
       legalMoveContext.availableTargetCategories,
-      availableCategoryCount
+      availableCategoryCount,
     );
 
-  const strongSaveDecision =
-    getStrongSaveCandidateDecision(
+    const strongSaveDecision = getStrongSaveCandidateDecision(
       saveCandidate,
       saveCandidateExistingScore,
       playModeAllowRewrite,
       remainingRolls,
-      saveCandidateFixedLockCompatible
+      saveCandidateFixedLockCompatible,
     );
 
-  const candidateNotWritableNow =
-    !!saveCandidate.latestCombination &&
-    !saveCandidate.canSave;
+    const candidateNotWritableNow =
+      !!saveCandidate.latestCombination && !saveCandidate.canSave;
 
-  console.log("🔍 SAVE DECISIONS DEBUG", {
-    saveCandidate: {
-      categoryId: saveCandidate.categoryId,
-      score: saveCandidate.score,
-      canSave: saveCandidate.canSave,
-    },
-    strongSaveDecision,
-    saveTimingDecision,
-  });
-
-  const shouldClearWorkingLocksBecauseCandidateNotWritable =
-    candidateNotWritableNow &&
-    remainingRolls > 0 &&
-    !areLockMasksEqual(
-      lockedDice,
-      fallbackWorkingOnlyMask
-    );
-
-  const previousTargetCategoryBeforeClear =
-    aiControllerPreviousTargetCategoryRef.current;
-
-  const previousTargetRejectedBecauseAlreadyScored =
-    isTargetAlreadyScoredWhenRewriteDisabled(
-      previousTargetCategoryBeforeClear,
-      scores[playerId] || {},
-      playModeAllowRewrite
-    );
-
-  const previousTargetNotWritable =
-    previousTargetCategoryBeforeClear !== null &&
-    !writableCategorySet.has(
-      previousTargetCategoryBeforeClear
-    );
-
-  const currentWorkingLocksBeforeDecision =
-    deriveWorkingLocks(
-      lockedDice,
-      fixedLocks
-    );
-  const lockStateHasWorkingLocks =
-    currentWorkingLocksBeforeDecision.some(Boolean);
-  const lockStateCurrentCombinationWritable =
-    !!saveCandidate.canSave &&
-    !!saveCandidate.categoryId &&
-    writableCategorySet.has(
-      saveCandidate.categoryId
-    );
-  const lockStatePreviousTargetWritable =
-    previousTargetCategoryBeforeClear !== null &&
-    writableCategorySet.has(
-      previousTargetCategoryBeforeClear
-    );
-  const lockStateHasWritableTarget =
-    legalMoveContext.availableTargetCategories
-      .length > 0 &&
-    (
-      lockStateCurrentCombinationWritable ||
-      lockStatePreviousTargetWritable
-    );
-  const lockStateRejectedBecauseNoWritableTarget =
-    lockStateHasWorkingLocks &&
-    remainingRolls > 0 &&
-    !lockStateHasWritableTarget;
-
-  const afterRollNoCombinationWithRollsLeft =
-    hasRolledDice &&
-    currentCombination === null &&
-    !saveCandidate.canSave &&
-    remainingRolls > 0;
-
-  const noCombinationWithWorkingLocksDetected =
-    afterRollNoCombinationWithRollsLeft &&
-    lockStateHasWorkingLocks;
-
-  const noWorkingLocksAfterRollHandled =
-    afterRollNoCombinationWithRollsLeft &&
-    !lockStateHasWorkingLocks;
-
-  const previousTargetClearedBecauseNoCombination =
-    previousTargetCategoryBeforeClear !== null &&
-    !lockStatePreviousTargetWritable;
-
-  let noCombinationDecisionAllowed = false;
-  let noCombinationImmediateRerollSkipped = false;
-  let decisionReachedAfterNoCombination = false;
-  let clearLockProgressEnsured = false;
-  let clearLockEarlyReturnPrevented = false;
-  let rerollAfterClearLockIfNeeded = false;
-
-  if (afterRollNoCombinationWithRollsLeft) {
-    if (previousTargetClearedBecauseNoCombination) {
-      aiControllerPreviousTargetCategoryRef.current =
-        null;
-    }
-
-    if (
-      !areLockMasksEqual(
-        lockedDice,
-        fallbackWorkingOnlyMask
-      )
-    ) {
-      setLockedDice(fallbackWorkingOnlyMask);
-    }
-
-    noCombinationDecisionAllowed = true;
-    noCombinationImmediateRerollSkipped = true;
-
-    logAITurnAudit({
-      event: "working-replan-before-roll",
-      playerId,
-      legalMoveContextUsed: true,
-      noCombinationGuardPhase,
-      beforeFirstRollNoCombinationIgnored:
-        false,
-      noCombinationEndTurnBlockedBecauseRollsRemain:
-        true,
-      terminalNoCombinationEndTurnAllowed:
-        false,
-      forcedFirstRollBecauseNoCombinationAtTurnStart:
-        false,
-      afterRollNoCombinationWithRollsLeft: true,
-      noScoreSummaryBlockedBecauseRollsRemain:
-        true,
-      rerollBecauseNoCombinationAndRollsRemain:
-        false,
-      terminalNoCombinationSummaryAllowed:
-        false,
-      noCombinationDecisionAllowed,
-      noCombinationImmediateRerollSkipped,
-      noWorkingLocksAfterRollHandled,
-      noCombinationGuardChecked: true,
-      noCombinationWithWorkingLocksDetected,
-      workingLocksClearedBecauseNoCombination:
-        noCombinationWithWorkingLocksDetected,
-      fixedLocksPreservedAfterWorkingClear:
-        fixedLocks.every(
-          (isFixed, index) =>
-            !isFixed || fallbackWorkingOnlyMask[index]
-        ),
-      previousTargetClearedBecauseNoCombination,
-      rerollAfterNoCombinationGuard:
-        remainingRolls > 0,
-      stallPreventedByNoCombinationGuard: true,
-      availableTargetCategoriesAtDecisionStart,
-      scoredCategoriesFilteredOut,
-      lockStateLegalityChecked: true,
-      lockStateHasWritableTarget,
-      lockStateRejectedBecauseNoWritableTarget: false,
-      workingLocksClearedBecauseNoWritableTarget: false,
-      previousTargetClearedBecauseNoWritableTarget: false,
-      rerollAllowedAfterLockStateGuard: true,
-      endTurnBecauseNoLegalContinuation: false,
-      currentCombinationExists: false,
-      currentCombinationWritable: false,
-      saveButtonDisabled: true,
-      lockMaskApplied: fallbackWorkingOnlyMask,
-      fallbackReason:
-        "no-combination-decision-window-opened",
-    });
-  }
-
-  if (
-    lockStateRejectedBecauseNoWritableTarget &&
-    !afterRollNoCombinationWithRollsLeft
-  ) {
-    aiControllerPreviousTargetCategoryRef.current =
-      null;
-
-    if (
-      !areLockMasksEqual(
-        lockedDice,
-        fallbackWorkingOnlyMask
-      )
-    ) {
-      setLockedDice(fallbackWorkingOnlyMask);
-    }
-
-    logAITurnAudit({
-      event: "working-replan-before-roll",
-      playerId,
-      legalMoveContextUsed: true,
-      noCombinationGuardChecked: true,
-      noCombinationWithWorkingLocksDetected: false,
-      workingLocksClearedBecauseNoCombination: false,
-      fixedLocksPreservedAfterWorkingClear: true,
-      previousTargetClearedBecauseNoCombination: false,
-      rerollAfterNoCombinationGuard: false,
-      stallPreventedByNoCombinationGuard: false,
-      availableTargetCategoriesAtDecisionStart,
-      scoredCategoriesFilteredOut,
-      lockStateLegalityChecked: true,
-      lockStateHasWritableTarget,
-      lockStateRejectedBecauseNoWritableTarget: true,
-      workingLocksClearedBecauseNoWritableTarget: true,
-      previousTargetClearedBecauseNoWritableTarget:
-        previousTargetCategoryBeforeClear !== null,
-      rerollAllowedAfterLockStateGuard:
-        remainingRolls > 0,
-      endTurnBecauseNoLegalContinuation: false,
-      currentCombinationExists:
-        !!currentCombination,
-      currentCombinationWritable:
-        lockStateCurrentCombinationWritable,
-      saveButtonDisabled:
-        !saveCandidate.canSave,
-      previousTargetClearedBecauseNotWritable:
-        previousTargetNotWritable,
-      previousTargetClearedBecauseAlreadyScored:
-        previousTargetRejectedBecauseAlreadyScored,
-      targetRejectedBeforeLockBecauseAlreadyScored:
-        previousTargetRejectedBecauseAlreadyScored,
-      targetRejectedBecauseAlreadyScored:
-        previousTargetRejectedBecauseAlreadyScored,
-      detectedCombinationIgnoredBecauseAlreadyScored,
-      fallbackBlockedBecauseTargetNotWritable: true,
-      lockMaskApplied: fallbackWorkingOnlyMask,
-      fallbackReason:
-        "lock-state-without-writable-target",
+    console.log("🔍 SAVE DECISIONS DEBUG", {
+      saveCandidate: {
+        categoryId: saveCandidate.categoryId,
+        score: saveCandidate.score,
+        canSave: saveCandidate.canSave,
+      },
+      strongSaveDecision,
+      saveTimingDecision,
     });
 
-    return;
-  }
-
-  if (
-    previousTargetNotWritable &&
-    !afterRollNoCombinationWithRollsLeft
-  ) {
-    aiControllerPreviousTargetCategoryRef.current =
-      null;
-
-    const shouldClearWorkingLocksBecauseIllegalTarget =
+    const shouldClearWorkingLocksBecauseCandidateNotWritable =
+      candidateNotWritableNow &&
       remainingRolls > 0 &&
-      !areLockMasksEqual(
-        lockedDice,
-        fallbackWorkingOnlyMask
+      !areLockMasksEqual(lockedDice, fallbackWorkingOnlyMask);
+
+    const previousTargetCategoryBeforeClear =
+      aiControllerPreviousTargetCategoryRef.current;
+
+    const previousTargetRejectedBecauseAlreadyScored =
+      isTargetAlreadyScoredWhenRewriteDisabled(
+        previousTargetCategoryBeforeClear,
+        scores[playerId] || {},
+        playModeAllowRewrite,
       );
 
-    if (shouldClearWorkingLocksBecauseIllegalTarget) {
-      setLockedDice(fallbackWorkingOnlyMask);
+    const previousTargetNotWritable =
+      previousTargetCategoryBeforeClear !== null &&
+      !writableCategorySet.has(previousTargetCategoryBeforeClear);
+
+    const currentWorkingLocksBeforeDecision = deriveWorkingLocks(
+      lockedDice,
+      fixedLocks,
+    );
+    const lockStateHasWorkingLocks =
+      currentWorkingLocksBeforeDecision.some(Boolean);
+    const lockStateCurrentCombinationWritable =
+      !!saveCandidate.canSave &&
+      !!saveCandidate.categoryId &&
+      writableCategorySet.has(saveCandidate.categoryId);
+    const lockStatePreviousTargetWritable =
+      previousTargetCategoryBeforeClear !== null &&
+      writableCategorySet.has(previousTargetCategoryBeforeClear);
+    const lockStateHasWritableTarget =
+      legalMoveContext.availableTargetCategories.length > 0 &&
+      (lockStateCurrentCombinationWritable || lockStatePreviousTargetWritable);
+    const lockStateRejectedBecauseNoWritableTarget =
+      lockStateHasWorkingLocks &&
+      remainingRolls > 0 &&
+      !lockStateHasWritableTarget;
+
+    const afterRollNoCombinationWithRollsLeft =
+      hasRolledDice &&
+      currentCombination === null &&
+      !saveCandidate.canSave &&
+      remainingRolls > 0;
+
+    const noCombinationWithWorkingLocksDetected =
+      afterRollNoCombinationWithRollsLeft && lockStateHasWorkingLocks;
+
+    const noWorkingLocksAfterRollHandled =
+      afterRollNoCombinationWithRollsLeft && !lockStateHasWorkingLocks;
+
+    const previousTargetClearedBecauseNoCombination =
+      previousTargetCategoryBeforeClear !== null &&
+      !lockStatePreviousTargetWritable;
+
+    let noCombinationDecisionAllowed = false;
+    let noCombinationImmediateRerollSkipped = false;
+    let decisionReachedAfterNoCombination = false;
+    let clearLockProgressEnsured = false;
+    let clearLockEarlyReturnPrevented = false;
+    let rerollAfterClearLockIfNeeded = false;
+
+    if (afterRollNoCombinationWithRollsLeft) {
+      if (previousTargetClearedBecauseNoCombination) {
+        aiControllerPreviousTargetCategoryRef.current = null;
+      }
+
+      if (!areLockMasksEqual(lockedDice, fallbackWorkingOnlyMask)) {
+        setLockedDice(fallbackWorkingOnlyMask);
+      }
+
+      noCombinationDecisionAllowed = true;
+      noCombinationImmediateRerollSkipped = true;
 
       logAITurnAudit({
         event: "working-replan-before-roll",
         playerId,
         legalMoveContextUsed: true,
         noCombinationGuardPhase,
-        beforeFirstRollNoCombinationIgnored:
-          false,
-        noCombinationEndTurnBlockedBecauseRollsRemain:
-          false,
-        terminalNoCombinationEndTurnAllowed:
-          false,
-        forcedFirstRollBecauseNoCombinationAtTurnStart:
-          false,
+        beforeFirstRollNoCombinationIgnored: false,
+        noCombinationEndTurnBlockedBecauseRollsRemain: true,
+        terminalNoCombinationEndTurnAllowed: false,
+        forcedFirstRollBecauseNoCombinationAtTurnStart: false,
+        afterRollNoCombinationWithRollsLeft: true,
+        noScoreSummaryBlockedBecauseRollsRemain: true,
+        rerollBecauseNoCombinationAndRollsRemain: false,
+        terminalNoCombinationSummaryAllowed: false,
+        noCombinationDecisionAllowed,
+        noCombinationImmediateRerollSkipped,
+        noWorkingLocksAfterRollHandled,
+        noCombinationGuardChecked: true,
+        noCombinationWithWorkingLocksDetected,
+        workingLocksClearedBecauseNoCombination:
+          noCombinationWithWorkingLocksDetected,
+        fixedLocksPreservedAfterWorkingClear: fixedLocks.every(
+          (isFixed, index) => !isFixed || fallbackWorkingOnlyMask[index],
+        ),
+        previousTargetClearedBecauseNoCombination,
+        rerollAfterNoCombinationGuard: remainingRolls > 0,
+        stallPreventedByNoCombinationGuard: true,
+        availableTargetCategoriesAtDecisionStart,
+        scoredCategoriesFilteredOut,
+        lockStateLegalityChecked: true,
+        lockStateHasWritableTarget,
+        lockStateRejectedBecauseNoWritableTarget: false,
+        workingLocksClearedBecauseNoWritableTarget: false,
+        previousTargetClearedBecauseNoWritableTarget: false,
+        rerollAllowedAfterLockStateGuard: true,
+        endTurnBecauseNoLegalContinuation: false,
+        currentCombinationExists: false,
+        currentCombinationWritable: false,
+        saveButtonDisabled: true,
+        lockMaskApplied: fallbackWorkingOnlyMask,
+        fallbackReason: "no-combination-decision-window-opened",
+      });
+    }
+
+    if (
+      lockStateRejectedBecauseNoWritableTarget &&
+      !afterRollNoCombinationWithRollsLeft
+    ) {
+      aiControllerPreviousTargetCategoryRef.current = null;
+
+      if (!areLockMasksEqual(lockedDice, fallbackWorkingOnlyMask)) {
+        setLockedDice(fallbackWorkingOnlyMask);
+      }
+
+      logAITurnAudit({
+        event: "working-replan-before-roll",
+        playerId,
+        legalMoveContextUsed: true,
         noCombinationGuardChecked: true,
         noCombinationWithWorkingLocksDetected: false,
         workingLocksClearedBecauseNoCombination: false,
@@ -3549,192 +2578,224 @@ useEffect(() => {
         availableTargetCategoriesAtDecisionStart,
         scoredCategoriesFilteredOut,
         lockStateLegalityChecked: true,
-        lockStateHasWritableTarget: true,
-        lockStateRejectedBecauseNoWritableTarget: false,
-        workingLocksClearedBecauseNoWritableTarget: false,
-        previousTargetClearedBecauseNoWritableTarget: false,
-        rerollAllowedAfterLockStateGuard: true,
+        lockStateHasWritableTarget,
+        lockStateRejectedBecauseNoWritableTarget: true,
+        workingLocksClearedBecauseNoWritableTarget: true,
+        previousTargetClearedBecauseNoWritableTarget:
+          previousTargetCategoryBeforeClear !== null,
+        rerollAllowedAfterLockStateGuard: remainingRolls > 0,
         endTurnBecauseNoLegalContinuation: false,
-        previousTargetClearedBecauseNotWritable: true,
+        currentCombinationExists: !!currentCombination,
+        currentCombinationWritable: lockStateCurrentCombinationWritable,
+        saveButtonDisabled: !saveCandidate.canSave,
+        previousTargetClearedBecauseNotWritable: previousTargetNotWritable,
         previousTargetClearedBecauseAlreadyScored:
           previousTargetRejectedBecauseAlreadyScored,
-        workingLocksClearedBecauseIllegalTarget: true,
-        targetRejectedByGameRules: true,
         targetRejectedBeforeLockBecauseAlreadyScored:
           previousTargetRejectedBecauseAlreadyScored,
         targetRejectedBecauseAlreadyScored:
           previousTargetRejectedBecauseAlreadyScored,
         detectedCombinationIgnoredBecauseAlreadyScored,
         fallbackBlockedBecauseTargetNotWritable: true,
-        saveBlockedReason:
-          "previous-target-not-writable",
-        strategyBlockedFromOverridingSave: false,
+        lockMaskApplied: fallbackWorkingOnlyMask,
+        fallbackReason: "lock-state-without-writable-target",
       });
 
       return;
     }
-  }
 
-  if (shouldClearWorkingLocksBecauseCandidateNotWritable) {
-    aiControllerPreviousTargetCategoryRef.current =
-      null;
-    setLockedDice(fallbackWorkingOnlyMask);
+    if (previousTargetNotWritable && !afterRollNoCombinationWithRollsLeft) {
+      aiControllerPreviousTargetCategoryRef.current = null;
 
-    clearLockProgressEnsured = true;
-    clearLockEarlyReturnPrevented = true;
-    rerollAfterClearLockIfNeeded = false;
+      const shouldClearWorkingLocksBecauseIllegalTarget =
+        remainingRolls > 0 &&
+        !areLockMasksEqual(lockedDice, fallbackWorkingOnlyMask);
 
-    logAITurnAudit({
-      event: "save-first-guard",
-      playerId,
-      dice: playModeDice,
-      remainingRolls,
-      saveFirstGuardChecked: true,
-      saveFirstCandidate:
-        saveCandidate.categoryId,
-      saveFirstCandidateScore:
-        saveCandidate.score,
-      saveFirstCandidateWritable:
-        saveCandidate.canSave,
-      saveFirstAccepted: false,
-      saveFirstRejectedReason:
-        saveCandidate.fallbackReason ??
-        "candidate-not-writable",
-      availableTargetCategoriesAtDecisionStart,
-      scoredCategoriesFilteredOut,
-      noCombinationGuardChecked: true,
-      noCombinationWithWorkingLocksDetected: false,
-      workingLocksClearedBecauseNoCombination: false,
-      fixedLocksPreservedAfterWorkingClear: true,
-      previousTargetClearedBecauseNoCombination: false,
-      rerollAfterNoCombinationGuard: false,
-      stallPreventedByNoCombinationGuard: false,
-      lockStateLegalityChecked: true,
-      lockStateHasWritableTarget,
-      lockStateRejectedBecauseNoWritableTarget: false,
-      workingLocksClearedBecauseNoWritableTarget: false,
-      previousTargetClearedBecauseNoWritableTarget: false,
-      rerollAllowedAfterLockStateGuard: true,
-      endTurnBecauseNoLegalContinuation: false,
-      writableSaveCandidateFound:
-        !!saveCandidate.canSave,
-      saveTimingGuardChecked: true,
-      saveForcedBecauseMaxScore: false,
-      saveForcedBecauseRemainingRollsLow: false,
-      saveNowBecauseMaxScore: false,
-      saveNowBecauseNoBetterLegalImprovement: false,
-      saveDelayedReason:
-        saveTimingDecision.reason,
-      saveBlockedReason:
-        saveCandidate.fallbackReason ??
-        "candidate-not-writable",
-      strategyBlockedFromOverridingLegalSave: false,
-      strategySkippedBecauseStrongSave: false,
-      workingLocksClearedBecauseCandidateNotWritable: true,
-      workingLocksClearedBecauseIllegalTarget: true,
-      previousTargetClearedBecauseNotWritable: true,
-      previousTargetClearedBecauseAlreadyScored:
-        previousTargetRejectedBecauseAlreadyScored,
-      targetRejectedBeforeLockBecauseAlreadyScored:
-        saveCandidate.fallbackReason ===
-        "rewrite-disabled",
-      targetRejectedBecauseAlreadyScored:
-        saveCandidate.fallbackReason ===
-          "rewrite-disabled" ||
-        saveCandidate.fallbackReason ===
-          "not-better-than-existing",
-      detectedCombinationIgnoredBecauseAlreadyScored,
-      fallbackBlockedBecauseTargetNotWritable:
-        saveCandidate.fallbackReason ===
-        "rewrite-disabled",
-      lockMaskApplied: fallbackWorkingOnlyMask,
-      clearLockProgressEnsured,
-      clearLockEarlyReturnPrevented,
-      rerollAfterClearLockIfNeeded,
-    });
-  }
+      if (shouldClearWorkingLocksBecauseIllegalTarget) {
+        setLockedDice(fallbackWorkingOnlyMask);
 
-  if (strongSaveDecision.accepted || saveTimingDecision.accepted) {
-    console.log("🎯 SAVE-FIRST-GUARD TRIGGERED", {
-      strongSaveDecision,
-      saveTimingDecision,
-      saveCandidate: {
-        categoryId: saveCandidate.categoryId,
-        score: saveCandidate.score,
-        canSave: saveCandidate.canSave,
-      },
-    });
+        logAITurnAudit({
+          event: "working-replan-before-roll",
+          playerId,
+          legalMoveContextUsed: true,
+          noCombinationGuardPhase,
+          beforeFirstRollNoCombinationIgnored: false,
+          noCombinationEndTurnBlockedBecauseRollsRemain: false,
+          terminalNoCombinationEndTurnAllowed: false,
+          forcedFirstRollBecauseNoCombinationAtTurnStart: false,
+          noCombinationGuardChecked: true,
+          noCombinationWithWorkingLocksDetected: false,
+          workingLocksClearedBecauseNoCombination: false,
+          fixedLocksPreservedAfterWorkingClear: true,
+          previousTargetClearedBecauseNoCombination: false,
+          rerollAfterNoCombinationGuard: false,
+          stallPreventedByNoCombinationGuard: false,
+          availableTargetCategoriesAtDecisionStart,
+          scoredCategoriesFilteredOut,
+          lockStateLegalityChecked: true,
+          lockStateHasWritableTarget: true,
+          lockStateRejectedBecauseNoWritableTarget: false,
+          workingLocksClearedBecauseNoWritableTarget: false,
+          previousTargetClearedBecauseNoWritableTarget: false,
+          rerollAllowedAfterLockStateGuard: true,
+          endTurnBecauseNoLegalContinuation: false,
+          previousTargetClearedBecauseNotWritable: true,
+          previousTargetClearedBecauseAlreadyScored:
+            previousTargetRejectedBecauseAlreadyScored,
+          workingLocksClearedBecauseIllegalTarget: true,
+          targetRejectedByGameRules: true,
+          targetRejectedBeforeLockBecauseAlreadyScored:
+            previousTargetRejectedBecauseAlreadyScored,
+          targetRejectedBecauseAlreadyScored:
+            previousTargetRejectedBecauseAlreadyScored,
+          detectedCombinationIgnoredBecauseAlreadyScored,
+          fallbackBlockedBecauseTargetNotWritable: true,
+          saveBlockedReason: "previous-target-not-writable",
+          strategyBlockedFromOverridingSave: false,
+        });
 
-    aiControllerPreviousTargetCategoryRef.current =
-      null;
+        return;
+      }
+    }
 
-    // BUGFIX #1: Don't set locks before save - it triggers effect rerun that cancels setTimeout
-    // Locks will be set after save completes or in the setTimeout handler
+    if (shouldClearWorkingLocksBecauseCandidateNotWritable) {
+      aiControllerPreviousTargetCategoryRef.current = null;
+      setLockedDice(fallbackWorkingOnlyMask);
 
-    logAITurnAudit({
-      event: "save-first-guard",
-      playerId,
-      dice: playModeDice,
-      remainingRolls,
-      saveFirstGuardChecked: true,
-      saveFirstCandidate:
-        saveCandidate.categoryId,
-      saveFirstCandidateScore:
-        saveCandidate.score,
-      saveFirstCandidateWritable:
-        saveCandidate.canSave,
-      saveFirstAccepted: true,
-      saveFirstRejectedReason: null,
-      strategySkippedBecauseStrongSave: true,
-      workingLocksClearedBecauseCandidateNotWritable: false,
-      availableTargetCategoriesAtDecisionStart,
-      scoredCategoriesFilteredOut,
-      noCombinationGuardChecked: true,
-      noCombinationWithWorkingLocksDetected: false,
-      workingLocksClearedBecauseNoCombination: false,
-      fixedLocksPreservedAfterWorkingClear: true,
-      previousTargetClearedBecauseNoCombination: false,
-      rerollAfterNoCombinationGuard: false,
-      stallPreventedByNoCombinationGuard: false,
-      lockStateLegalityChecked: true,
-      lockStateHasWritableTarget,
-      lockStateRejectedBecauseNoWritableTarget: false,
-      workingLocksClearedBecauseNoWritableTarget: false,
-      previousTargetClearedBecauseNoWritableTarget: false,
-      rerollAllowedAfterLockStateGuard: true,
-      endTurnBecauseNoLegalContinuation: false,
-      writableSaveCandidateFound:
-        !!saveCandidate.canSave,
-      saveTimingGuardChecked: true,
-      saveForcedBecauseMaxScore:
-        saveTimingDecision.reason ===
-        "save-now-because-max-score",
-      saveForcedBecauseRemainingRollsLow:
-        saveTimingDecision.reason ===
-        "save-now-because-remaining-rolls-low",
-      saveNowBecauseMaxScore:
-        saveTimingDecision.reason ===
-        "save-now-because-max-score",
-      saveNowBecauseNoBetterLegalImprovement:
-        saveTimingDecision.reason ===
-        "save-now-because-no-better-legal-improvement",
-      saveDelayedReason: null,
-      saveBlockedReason: null,
-      strategyBlockedFromOverridingLegalSave: true,
-      previousTargetClearedBecauseNotWritable: false,
-      previousTargetClearedBecauseAlreadyScored: false,
-      targetRejectedBeforeLockBecauseAlreadyScored: false,
-      targetRejectedBecauseAlreadyScored: false,
-      detectedCombinationIgnoredBecauseAlreadyScored,
-      fallbackBlockedBecauseTargetNotWritable: false,
-      saveFirstAcceptedReason:
-        strongSaveDecision.accepted
+      clearLockProgressEnsured = true;
+      clearLockEarlyReturnPrevented = true;
+      rerollAfterClearLockIfNeeded = false;
+
+      logAITurnAudit({
+        event: "save-first-guard",
+        playerId,
+        dice: playModeDice,
+        remainingRolls,
+        saveFirstGuardChecked: true,
+        saveFirstCandidate: saveCandidate.categoryId,
+        saveFirstCandidateScore: saveCandidate.score,
+        saveFirstCandidateWritable: saveCandidate.canSave,
+        saveFirstAccepted: false,
+        saveFirstRejectedReason:
+          saveCandidate.fallbackReason ?? "candidate-not-writable",
+        availableTargetCategoriesAtDecisionStart,
+        scoredCategoriesFilteredOut,
+        noCombinationGuardChecked: true,
+        noCombinationWithWorkingLocksDetected: false,
+        workingLocksClearedBecauseNoCombination: false,
+        fixedLocksPreservedAfterWorkingClear: true,
+        previousTargetClearedBecauseNoCombination: false,
+        rerollAfterNoCombinationGuard: false,
+        stallPreventedByNoCombinationGuard: false,
+        lockStateLegalityChecked: true,
+        lockStateHasWritableTarget,
+        lockStateRejectedBecauseNoWritableTarget: false,
+        workingLocksClearedBecauseNoWritableTarget: false,
+        previousTargetClearedBecauseNoWritableTarget: false,
+        rerollAllowedAfterLockStateGuard: true,
+        endTurnBecauseNoLegalContinuation: false,
+        writableSaveCandidateFound: !!saveCandidate.canSave,
+        saveTimingGuardChecked: true,
+        saveForcedBecauseMaxScore: false,
+        saveForcedBecauseRemainingRollsLow: false,
+        saveNowBecauseMaxScore: false,
+        saveNowBecauseNoBetterLegalImprovement: false,
+        saveDelayedReason: saveTimingDecision.reason,
+        saveBlockedReason:
+          saveCandidate.fallbackReason ?? "candidate-not-writable",
+        strategyBlockedFromOverridingLegalSave: false,
+        strategySkippedBecauseStrongSave: false,
+        workingLocksClearedBecauseCandidateNotWritable: true,
+        workingLocksClearedBecauseIllegalTarget: true,
+        previousTargetClearedBecauseNotWritable: true,
+        previousTargetClearedBecauseAlreadyScored:
+          previousTargetRejectedBecauseAlreadyScored,
+        targetRejectedBeforeLockBecauseAlreadyScored:
+          saveCandidate.fallbackReason === "rewrite-disabled",
+        targetRejectedBecauseAlreadyScored:
+          saveCandidate.fallbackReason === "rewrite-disabled" ||
+          saveCandidate.fallbackReason === "not-better-than-existing",
+        detectedCombinationIgnoredBecauseAlreadyScored,
+        fallbackBlockedBecauseTargetNotWritable:
+          saveCandidate.fallbackReason === "rewrite-disabled",
+        lockMaskApplied: fallbackWorkingOnlyMask,
+        clearLockProgressEnsured,
+        clearLockEarlyReturnPrevented,
+        rerollAfterClearLockIfNeeded,
+      });
+    }
+
+    if (strongSaveDecision.accepted || saveTimingDecision.accepted) {
+      console.log("🎯 SAVE-FIRST-GUARD TRIGGERED", {
+        strongSaveDecision,
+        saveTimingDecision,
+        saveCandidate: {
+          categoryId: saveCandidate.categoryId,
+          score: saveCandidate.score,
+          canSave: saveCandidate.canSave,
+        },
+      });
+
+      aiControllerPreviousTargetCategoryRef.current = null;
+
+      // BUGFIX #1: Don't set locks before save - it triggers effect rerun that cancels setTimeout
+      // Locks will be set after save completes or in the setTimeout handler
+
+      logAITurnAudit({
+        event: "save-first-guard",
+        playerId,
+        dice: playModeDice,
+        remainingRolls,
+        saveFirstGuardChecked: true,
+        saveFirstCandidate: saveCandidate.categoryId,
+        saveFirstCandidateScore: saveCandidate.score,
+        saveFirstCandidateWritable: saveCandidate.canSave,
+        saveFirstAccepted: true,
+        saveFirstRejectedReason: null,
+        strategySkippedBecauseStrongSave: true,
+        workingLocksClearedBecauseCandidateNotWritable: false,
+        availableTargetCategoriesAtDecisionStart,
+        scoredCategoriesFilteredOut,
+        noCombinationGuardChecked: true,
+        noCombinationWithWorkingLocksDetected: false,
+        workingLocksClearedBecauseNoCombination: false,
+        fixedLocksPreservedAfterWorkingClear: true,
+        previousTargetClearedBecauseNoCombination: false,
+        rerollAfterNoCombinationGuard: false,
+        stallPreventedByNoCombinationGuard: false,
+        lockStateLegalityChecked: true,
+        lockStateHasWritableTarget,
+        lockStateRejectedBecauseNoWritableTarget: false,
+        workingLocksClearedBecauseNoWritableTarget: false,
+        previousTargetClearedBecauseNoWritableTarget: false,
+        rerollAllowedAfterLockStateGuard: true,
+        endTurnBecauseNoLegalContinuation: false,
+        writableSaveCandidateFound: !!saveCandidate.canSave,
+        saveTimingGuardChecked: true,
+        saveForcedBecauseMaxScore:
+          saveTimingDecision.reason === "save-now-because-max-score",
+        saveForcedBecauseRemainingRollsLow:
+          saveTimingDecision.reason === "save-now-because-remaining-rolls-low",
+        saveNowBecauseMaxScore:
+          saveTimingDecision.reason === "save-now-because-max-score",
+        saveNowBecauseNoBetterLegalImprovement:
+          saveTimingDecision.reason ===
+          "save-now-because-no-better-legal-improvement",
+        saveDelayedReason: null,
+        saveBlockedReason: null,
+        strategyBlockedFromOverridingLegalSave: true,
+        previousTargetClearedBecauseNotWritable: false,
+        previousTargetClearedBecauseAlreadyScored: false,
+        targetRejectedBeforeLockBecauseAlreadyScored: false,
+        targetRejectedBecauseAlreadyScored: false,
+        detectedCombinationIgnoredBecauseAlreadyScored,
+        fallbackBlockedBecauseTargetNotWritable: false,
+        saveFirstAcceptedReason: strongSaveDecision.accepted
           ? strongSaveDecision.reason
           : saveTimingDecision.reason,
-      lockMaskApplied: fallbackWorkingOnlyMask,
-    });
+        lockMaskApplied: fallbackWorkingOnlyMask,
+      });
 
-    const timer = setTimeout(() => {
       if (
         !saveCandidate.canSave ||
         !saveCandidate.categoryId ||
@@ -3750,16 +2811,15 @@ useEffect(() => {
             combination: null,
             score: null,
             categoryId: null,
-            reason:
-              "ai-save-invalid-no-rolls-left",
+            reason: "ai-save-invalid-no-rolls-left",
           });
         }
         return;
       }
 
-      // BUGFIX #1 & #3: Ensure target is still writable (may have changed since decision)
+      // Ensure target is still writable (may have changed since decision)
       const saveTargetIsStillWritable = writableCategorySet.has(
-        saveCandidate.categoryId
+        saveCandidate.categoryId,
       );
       if (!saveTargetIsStillWritable) {
         if (remainingRolls > 0) {
@@ -3772,44 +2832,30 @@ useEffect(() => {
             combination: null,
             score: null,
             categoryId: null,
-            reason:
-              "ai-save-target-not-writable",
+            reason: "ai-save-target-not-writable",
           });
         }
         return;
       }
 
-      // BUGFIX #1: Set locks now before save validation (not earlier to avoid effect rerun)
-      if (
-        !areLockMasksEqual(
-          lockedDice,
-          fallbackWorkingOnlyMask
-        )
-      ) {
+      if (!areLockMasksEqual(lockedDice, fallbackWorkingOnlyMask)) {
         setLockedDice(fallbackWorkingOnlyMask);
       }
 
-      const fixedLocksRespectedAtSave =
-        fixedLocks.every(
-          (isFixed, index) =>
-            !isFixed || fallbackWorkingOnlyMask[index]
-        );
+      const fixedLocksRespectedAtSave = fixedLocks.every(
+        (isFixed, index) => !isFixed || fallbackWorkingOnlyMask[index],
+      );
 
-      if (
-        !fixedLocksRespectedAtSave ||
-        !saveCandidateFixedLockCompatible
-      ) {
+      if (!fixedLocksRespectedAtSave || !saveCandidateFixedLockCompatible) {
         logAITurnAudit({
           event: "save-rejected",
           playerId,
           fixedLocks,
-          lockMaskBeforeSave:
-            fallbackWorkingOnlyMask,
+          lockMaskBeforeSave: fallbackWorkingOnlyMask,
           fixedLocksRespectedAtSave,
           targetCategoryCompatibleWithFixedLocks:
             saveCandidateFixedLockCompatible,
-          reason:
-            "final-validation-fixed-locks",
+          reason: "final-validation-fixed-locks",
         });
 
         if (remainingRolls > 0) {
@@ -3822,8 +2868,7 @@ useEffect(() => {
             combination: null,
             score: null,
             categoryId: null,
-            reason:
-              "ai-save-rejected-no-rolls-left",
+            reason: "ai-save-rejected-no-rolls-left",
           });
         }
 
@@ -3832,14 +2877,11 @@ useEffect(() => {
 
       setSuppressNoCombinationSound(true);
 
-      lastStateChangeSourceRef.current =
-        "local-action";
+      lastStateChangeSourceRef.current = "local-action";
 
-      const savedTurnVersion =
-        bumpLocalTurnVersion();
+      const savedTurnVersion = bumpLocalTurnVersion();
 
-      localTurnVersionRef.current =
-        savedTurnVersion;
+      localTurnVersionRef.current = savedTurnVersion;
 
       bumpLocalRuntimeRevision();
 
@@ -3847,19 +2889,15 @@ useEffect(() => {
         ...prev,
         [playerId]: {
           ...prev[playerId],
-          [saveCandidate.categoryId as string]:
-            saveCandidate.score as number,
+          [saveCandidate.categoryId as string]: saveCandidate.score as number,
         },
       }));
 
       setShowPlayModeResult(false);
 
-      aiControllerPreviousTargetCategoryRef.current =
-        null;
-      aiControllerExecutionMarkerRef.current =
-        null;
-      aiControllerLastObservedStateRef.current =
-        null;
+      aiControllerPreviousTargetCategoryRef.current = null;
+      aiControllerExecutionMarkerRef.current = null;
+      aiControllerLastObservedStateRef.current = null;
       aiControllerStepRef.current = 0;
       aiControllerNoProgressRef.current = 0;
 
@@ -3868,10 +2906,7 @@ useEffect(() => {
         finalAction: "save",
         playerId,
         fixedLocks,
-        workingLocks: deriveWorkingLocks(
-          fallbackWorkingOnlyMask,
-          fixedLocks
-        ),
+        workingLocks: deriveWorkingLocks(fallbackWorkingOnlyMask, fixedLocks),
         categoryId: saveCandidate.categoryId,
         score: saveCandidate.score,
         saveFirstGuardChecked: true,
@@ -3882,730 +2917,245 @@ useEffect(() => {
       endTurn({
         playerId,
         savedScore: true,
-        combination:
-          saveCandidate.latestCombination?.combination ?? null,
-        score:
-          saveCandidate.score,
-        categoryId:
-          saveCandidate.categoryId,
+        combination: saveCandidate.latestCombination?.combination ?? null,
+        score: saveCandidate.score,
+        categoryId: saveCandidate.categoryId,
         reason: "ai-save",
       });
-    }, 220);
-
-    return () => clearTimeout(timer);
-  }
-
-  logAITurnAudit({
-    event: "make-ai-decision-call",
-    playerId,
-    dice: playModeDice,
-    remainingRolls,
-    noCombinationGuardPhase,
-    afterRollNoCombinationWithRollsLeft,
-    noCombinationDecisionAllowed,
-    noCombinationImmediateRerollSkipped,
-  });
-
-  const decision = makeAIDecision(
-    playModeDice,
-    currentCombination,
-    scores,
-    playerId,
-    playModeAllowRewrite,
-    remainingRolls,
-    {
-      fixedLocks,
-      previousTargetCategory:
-        aiControllerPreviousTargetCategoryRef.current,
-      legalMoveContext,
-    }
-  );
-
-  console.log("🤖 AI DECISION MADE", {
-    action: decision.action,
-    confidence: decision.confidence,
-    remainingRolls,
-    currentCombination,
-    hasLockedDice: fixedLocks.some((x) => x),
-  });
-
-  if (afterRollNoCombinationWithRollsLeft) {
-    decisionReachedAfterNoCombination = true;
-  }
-
-  const plannedLockMask =
-    decision.lockMask.length === 6
-      ? [...decision.lockMask]
-      : [
-          false,
-          false,
-          false,
-          false,
-          false,
-          false,
-        ];
-
-  const sanitizedWorkingMask =
-    sanitizeComputerLockMask(
-      playModeDice,
-      plannedLockMask
-    );
-
-  const appliedLockMask =
-    mergeWithFixedLocks(
-      fixedLocks,
-      sanitizedWorkingMask
-    );
-
-  const illegalUnlockPrevented =
-    !areLockMasksEqual(
-      sanitizedWorkingMask,
-      appliedLockMask
-    );
-
-  const previousWorkingLocks =
-    deriveWorkingLocks(
-      lockedDice,
-      fixedLocks
-    );
-
-  const workingLocks = deriveWorkingLocks(
-    appliedLockMask,
-    fixedLocks
-  );
-
-  const candidateHasWorkingLocks =
-    workingLocks.some(Boolean);
-
-  const firstLockAttempt =
-    !previousWorkingLocks.some(Boolean) &&
-    candidateHasWorkingLocks;
-
-  const workingLocksChangedBeforeRoll =
-    !areLockMasksEqual(
-      previousWorkingLocks,
-      workingLocks
-    );
-
-  const targetCategoryCompatibleWithFixedLocks =
-    canTargetCategoryWorkWithFixedLocks(
-      decision.targetCategory,
-      playModeDice,
-      fixedLocks
-    );
-
-  let action = decision.action;
-  let fallbackReason =
-    decision.fallbackReason ?? null;
-
-  if (
-    action === "save" &&
-    !saveCandidate.canSave
-  ) {
-    action =
-      remainingRolls > 0
-        ? "roll"
-        : "end_turn";
-    fallbackReason =
-      saveCandidate.fallbackReason ??
-      "invalid-save-candidate";
-  }
-
-  if (
-    action === "roll" &&
-    remainingRolls <= 0
-  ) {
-    action = saveCandidate.canSave
-      ? "save"
-      : "end_turn";
-    fallbackReason =
-      fallbackReason ?? "no-rolls-left";
-  }
-
-  if (
-    action === "save" &&
-    decision.targetCategory &&
-    saveCandidate.categoryId &&
-    decision.targetCategory !==
-      saveCandidate.categoryId
-  ) {
-    action =
-      remainingRolls > 0
-        ? "roll"
-        : "end_turn";
-    fallbackReason = "target-category-mismatch";
-  }
-
-  if (
-    !targetCategoryCompatibleWithFixedLocks
-  ) {
-    action =
-      remainingRolls > 0
-        ? "roll"
-        : "end_turn";
-    fallbackReason =
-      "target-incompatible-with-fixed-locks";
-  }
-
-  const targetCategoryWritableByRules =
-    !candidateHasWorkingLocks ||
-    (
-      decision.targetCategory !== null &&
-      writableCategorySet.has(
-        decision.targetCategory
-      )
-    );
-
-  const anonymousLockRejected =
-    candidateHasWorkingLocks &&
-    decision.targetCategory === null;
-
-  if (anonymousLockRejected) {
-    action =
-      remainingRolls > 0
-        ? "roll"
-        : "end_turn";
-    fallbackReason =
-      "anonymous-lock-without-target";
-  }
-
-  const candidateRejectedBeforeFirstLockBecauseNotWritable =
-    firstLockAttempt &&
-    !targetCategoryWritableByRules;
-
-  if (!targetCategoryWritableByRules) {
-    action =
-      remainingRolls > 0
-        ? "roll"
-        : "end_turn";
-    fallbackReason =
-      "target-not-writable-by-game-rules";
-  }
-
-  const rejectedBecauseFixedLockViolation =
-    !targetCategoryCompatibleWithFixedLocks;
-
-  const rejectedBecauseInvalidCandidate =
-    (decision.action === "save" &&
-      !saveCandidate.canSave) ||
-    fallbackReason === "target-category-mismatch" ||
-    fallbackReason ===
-      "target-incompatible-with-fixed-locks" ||
-    fallbackReason ===
-      "target-not-writable-by-game-rules" ||
-    fallbackReason ===
-      "anonymous-lock-without-target";
-
-  let selectedLockMask =
-    rejectedBecauseInvalidCandidate
-      ? fallbackWorkingOnlyMask
-      : appliedLockMask;
-
-  let effectiveTargetCategory =
-    rejectedBecauseInvalidCandidate
-      ? null
-      : decision.targetCategory;
-
-  if (
-    afterRollNoCombinationWithRollsLeft &&
-    !candidateHasWorkingLocks
-  ) {
-    // Keep progress-safe fallback only when decision returned no working locks.
-    selectedLockMask = fallbackWorkingOnlyMask;
-    effectiveTargetCategory = null;
-  }
-
-  const targetRejectedBecauseAlreadyScored =
-    fallbackReason ===
-      "target-not-writable-by-game-rules" &&
-    isTargetAlreadyScoredWhenRewriteDisabled(
-      decision.targetCategory,
-      scores[playerId] || {},
-      playModeAllowRewrite
-    );
-
-  const targetRejectedBeforeLockBecauseAlreadyScored =
-    targetRejectedBecauseAlreadyScored;
-
-  const fallbackBlockedBecauseTargetNotWritable =
-    fallbackReason ===
-      "target-not-writable-by-game-rules";
-
-  if (action === "roll") {
-    aiControllerPreviousTargetCategoryRef.current =
-      effectiveTargetCategory;
-  } else {
-    aiControllerPreviousTargetCategoryRef.current =
-      null;
-  }
-
-  if (
-    rejectedBecauseInvalidCandidate &&
-    remainingRolls > 0
-  ) {
-    if (
-      !areLockMasksEqual(
-        lockedDice,
-        fallbackWorkingOnlyMask
-      )
-    ) {
-      setLockedDice(
-        fallbackWorkingOnlyMask
-      );
-
-      logAITurnAudit({
-        event: "working-replan-before-roll",
-        playerId,
-        legalMoveContextUsed: true,
-        firstLockGuardChecked: true,
-        availableTargetCategoriesBeforeFirstLock:
-          availableTargetCategoriesAtDecisionStart,
-        candidateTargetCategory:
-          decision.targetCategory,
-        candidateRejectedBeforeFirstLockBecauseNotWritable,
-        anonymousLockRejected,
-        workingLocksSkippedBecauseNoWritableTarget:
-          rejectedBecauseInvalidCandidate,
-        aiAutoStartGuardTriggered: false,
-        previousWorkingLocks,
-        workingLocksCandidate:
-          workingLocks,
-        fixedLocks,
-        workingLocksChangedBeforeRoll: true,
-        rejectedBecauseFixedLockViolation,
-        rejectedBecauseInvalidCandidate,
-        noCombinationGuardChecked: true,
-        noCombinationWithWorkingLocksDetected: false,
-        workingLocksClearedBecauseNoCombination: false,
-        fixedLocksPreservedAfterWorkingClear: true,
-        previousTargetClearedBecauseNoCombination: false,
-        rerollAfterNoCombinationGuard: false,
-        stallPreventedByNoCombinationGuard: false,
-        availableTargetCategoriesAtDecisionStart,
-        scoredCategoriesFilteredOut,
-        lockStateLegalityChecked: true,
-        lockStateHasWritableTarget,
-        lockStateRejectedBecauseNoWritableTarget: false,
-        workingLocksClearedBecauseNoWritableTarget: false,
-        previousTargetClearedBecauseNoWritableTarget: false,
-        rerollAllowedAfterLockStateGuard: true,
-        endTurnBecauseNoLegalContinuation: false,
-        previousTargetClearedBecauseNotWritable:
-          rejectedBecauseInvalidCandidate,
-        previousTargetClearedBecauseAlreadyScored:
-          previousTargetRejectedBecauseAlreadyScored,
-        targetRejectedByGameRules:
-          rejectedBecauseInvalidCandidate,
-        targetRejectedBeforeLockBecauseAlreadyScored,
-        targetRejectedBecauseAlreadyScored,
-        detectedCombinationIgnoredBecauseAlreadyScored,
-        fallbackBlockedBecauseTargetNotWritable,
-        saveBlockedReason: fallbackReason,
-        strategyBlockedFromOverridingSave: false,
-        writableSaveCandidateFound:
-          !!saveCandidate.canSave,
-        fallbackReason,
-      });
-
-      // Reset previousTargetCategory to prevent deadlock when decision is invalid
-      aiControllerPreviousTargetCategoryRef.current = null;
-
-      // Schedule AI to reroll with new lock state
-      if (remainingRolls > 0) {
-        setTimeout(() => {
-          console.log("🎲 REROLL after invalid candidate", {
-            rejectedBecauseInvalidCandidate,
-            fallbackWorkingOnlyMask,
-            playerId,
-            remainingRolls,
-          });
-          // Don't reset hasRolledDice - rollAllDice handles it
-          rollAllDice(fallbackWorkingOnlyMask);
-        }, 220);
-      }
 
       return;
     }
-  }
-
-  const shouldApplyLockMaskBeforeAction =
-    action !== "roll" &&
-    !areLockMasksEqual(
-      lockedDice,
-      selectedLockMask
-    );
-
-  if (shouldApplyLockMaskBeforeAction) {
-    setLockedDice(selectedLockMask);
-  }
-
-  logAITurnAudit({
-    event: "decision",
-    playerId,
-    hasRolledThisTurn: hasRolledDice,
-    dice: playModeDice,
-    remainingRolls,
-    legalMoveContextUsed: true,
-    noCombinationGuardPhase,
-    beforeFirstRollNoCombinationIgnored:
-      false,
-    noCombinationEndTurnBlockedBecauseRollsRemain:
-      false,
-    terminalNoCombinationEndTurnAllowed:
-      false,
-    forcedFirstRollBecauseNoCombinationAtTurnStart:
-      false,
-    noCombinationGuardChecked: true,
-    noCombinationDecisionAllowed,
-    noCombinationImmediateRerollSkipped,
-    decisionReachedAfterNoCombination,
-    noCombinationWithWorkingLocksDetected: false,
-    workingLocksClearedBecauseNoCombination: false,
-    fixedLocksPreservedAfterWorkingClear: true,
-    previousTargetClearedBecauseNoCombination: false,
-    rerollAfterNoCombinationGuard: false,
-    stallPreventedByNoCombinationGuard: false,
-    firstLockGuardChecked: true,
-    availableTargetCategoriesBeforeFirstLock:
-      availableTargetCategoriesAtDecisionStart,
-    candidateTargetCategory:
-      decision.targetCategory,
-    candidateRejectedBeforeFirstLockBecauseNotWritable,
-    anonymousLockRejected,
-    workingLocksSkippedBecauseNoWritableTarget:
-      rejectedBecauseInvalidCandidate,
-    aiAutoStartGuardTriggered: false,
-    availableTargetCategoriesAtDecisionStart,
-    scoredCategoriesFilteredOut,
-    lockStateLegalityChecked: true,
-    lockStateHasWritableTarget,
-    lockStateRejectedBecauseNoWritableTarget: false,
-    workingLocksClearedBecauseNoWritableTarget: false,
-    previousTargetClearedBecauseNoWritableTarget: false,
-    rerollAllowedAfterLockStateGuard:
-      action !== "roll" ||
-      effectiveTargetCategory !== null,
-    endTurnBecauseNoLegalContinuation: false,
-    targetCategory:
-      decision.targetCategory,
-    targetCategoryCompatibleWithFixedLocks,
-    previousWorkingLocks,
-    workingLocksCandidate: workingLocks,
-    fixedLocks,
-    workingLocks,
-    workingLocksChangedBeforeRoll,
-    lockMaskPlanned: plannedLockMask,
-    lockMaskAfterReplan: sanitizedWorkingMask,
-    lockMaskBeforeRoll: selectedLockMask,
-    lockMaskApplied: selectedLockMask,
-    illegalUnlockPrevented,
-    rejectedBecauseFixedLockViolation,
-    rejectedBecauseInvalidCandidate,
-    action,
-    riskLevel: decision.riskLevel,
-    aiScore: decision.aiScore,
-    bestOpponentScore:
-      decision.bestOpponentScore,
-    endgameMode: decision.endgameMode,
-    scoreDelta: decision.scoreDelta,
-    aiRemainingPotential:
-      decision.aiRemainingPotential,
-    opponentRemainingPotential:
-      decision.opponentRemainingPotential,
-    requiredScoreEstimate:
-      decision.requiredScoreEstimate,
-    opponentScore: decision.opponentScore,
-    remainingCategories:
-      decision.remainingCategories,
-    riskBecauseBehind:
-      decision.riskBecauseBehind,
-    saveRejectedBecauseTooLow:
-      decision.saveRejectedBecauseTooLow,
-    currentPlanValue:
-      decision.currentPlanValue,
-    alternativePlanValue:
-      decision.alternativePlanValue,
-    pivotThreshold: decision.pivotThreshold,
-    pivotReason: decision.pivotReason,
-    confidence: decision.confidence,
-    reason: decision.reason,
-    fallbackReason,
-    targetRejectedByGameRules:
-      rejectedBecauseFixedLockViolation ||
-      rejectedBecauseInvalidCandidate,
-    targetRejectedBeforeLockBecauseAlreadyScored,
-    targetRejectedBecauseAlreadyScored,
-    detectedCombinationIgnoredBecauseAlreadyScored,
-    fallbackBlockedBecauseTargetNotWritable,
-    saveFirstGuardChecked: true,
-    writableSaveCandidateFound:
-      !!saveCandidate.canSave,
-    saveTimingGuardChecked: true,
-    saveForcedBecauseMaxScore:
-      saveTimingDecision.reason ===
-      "save-now-because-max-score",
-    saveForcedBecauseRemainingRollsLow:
-      saveTimingDecision.reason ===
-      "save-now-because-remaining-rolls-low",
-    saveNowBecauseMaxScore:
-      saveTimingDecision.reason ===
-      "save-now-because-max-score",
-    saveNowBecauseNoBetterLegalImprovement:
-      saveTimingDecision.reason ===
-      "save-now-because-no-better-legal-improvement",
-    saveDelayedReason:
-      saveTimingDecision.reason,
-    saveBlockedReason: fallbackReason,
-    saveFirstCandidate:
-      saveCandidate.categoryId,
-    saveFirstCandidateScore:
-      saveCandidate.score,
-    saveFirstCandidateWritable:
-      saveCandidate.canSave,
-    saveFirstAccepted: false,
-    saveFirstRejectedReason:
-      strongSaveDecision.reason,
-    strategySkippedBecauseStrongSave:
-      saveTimingDecision.accepted ||
-      strongSaveDecision.accepted,
-    strategyBlockedFromOverridingLegalSave:
-      saveTimingDecision.accepted ||
-      strongSaveDecision.accepted,
-    clearLockProgressEnsured,
-    clearLockEarlyReturnPrevented,
-    rerollAfterClearLockIfNeeded,
-    workingLocksClearedBecauseCandidateNotWritable: false,
-    workingLocksClearedBecauseIllegalTarget: false,
-    previousTargetClearedBecauseNotWritable:
-      rejectedBecauseInvalidCandidate,
-    previousTargetClearedBecauseAlreadyScored:
-      previousTargetRejectedBecauseAlreadyScored,
-  });
-
-  const rollTimeoutAuditId =
-    action === "roll"
-      ? ++aiRollTimeoutSequenceRef.current
-      : null;
-
-  if (rollTimeoutAuditId !== null) {
-    aiActiveRollTimeoutIdRef.current =
-      rollTimeoutAuditId;
 
     logAITurnAudit({
-      event: "aiRollTimeoutScheduled",
+      event: "make-ai-decision-call",
       playerId,
-      timeoutId: rollTimeoutAuditId,
+      dice: playModeDice,
       remainingRolls,
-      selectedLockMask,
-      fixedLocks,
-      workingLocks,
-      isRolling,
-      hasRolledThisTurn: hasRolledDice,
+      noCombinationGuardPhase,
+      afterRollNoCombinationWithRollsLeft,
+      noCombinationDecisionAllowed,
+      noCombinationImmediateRerollSkipped,
     });
-  }
 
-  const timer = setTimeout(() => {
-    if (rollTimeoutAuditId !== null) {
-      logAITurnAudit({
-        event: "aiRollTimeoutFired",
-        playerId,
-        timeoutId: rollTimeoutAuditId,
-        activeRollTimeoutId:
-          aiActiveRollTimeoutIdRef.current,
-        remainingRolls,
-        selectedLockMask,
-        isRolling,
-        hasRolledThisTurn: hasRolledDice,
-      });
+    const decision = makeAIDecision(
+      playModeDice,
+      currentCombination,
+      scores,
+      playerId,
+      playModeAllowRewrite,
+      remainingRolls,
+      {
+        fixedLocks,
+        previousTargetCategory: aiControllerPreviousTargetCategoryRef.current,
+        legalMoveContext,
+      },
+    );
 
-      if (
-        aiActiveRollTimeoutIdRef.current ===
-        rollTimeoutAuditId
-      ) {
-        aiActiveRollTimeoutIdRef.current =
-          null;
-      }
+    console.log("🤖 AI DECISION MADE", {
+      action: decision.action,
+      confidence: decision.confidence,
+      remainingRolls,
+      currentCombination,
+      hasLockedDice: fixedLocks.some((x) => x),
+    });
+
+    if (afterRollNoCombinationWithRollsLeft) {
+      decisionReachedAfterNoCombination = true;
+    }
+
+    const plannedLockMask =
+      decision.lockMask.length === 6
+        ? [...decision.lockMask]
+        : [false, false, false, false, false, false];
+
+    const sanitizedWorkingMask = sanitizeComputerLockMask(
+      playModeDice,
+      plannedLockMask,
+    );
+
+    const appliedLockMask = mergeWithFixedLocks(
+      fixedLocks,
+      sanitizedWorkingMask,
+    );
+
+    const illegalUnlockPrevented = !areLockMasksEqual(
+      sanitizedWorkingMask,
+      appliedLockMask,
+    );
+
+    const previousWorkingLocks = deriveWorkingLocks(lockedDice, fixedLocks);
+
+    const workingLocks = deriveWorkingLocks(appliedLockMask, fixedLocks);
+
+    const candidateHasWorkingLocks = workingLocks.some(Boolean);
+
+    const firstLockAttempt =
+      !previousWorkingLocks.some(Boolean) && candidateHasWorkingLocks;
+
+    const workingLocksChangedBeforeRoll = !areLockMasksEqual(
+      previousWorkingLocks,
+      workingLocks,
+    );
+
+    const targetCategoryCompatibleWithFixedLocks =
+      canTargetCategoryWorkWithFixedLocks(
+        decision.targetCategory,
+        playModeDice,
+        fixedLocks,
+      );
+
+    let action = decision.action;
+    let fallbackReason = decision.fallbackReason ?? null;
+
+    const saveAllowedByPolicy =
+      saveCandidate.canSave &&
+      saveCandidateFixedLockCompatible &&
+      (saveCandidate.categoryId === "postupka" ||
+        strongSaveDecision.accepted ||
+        saveTimingDecision.accepted);
+
+    const shouldForceSaveFromFullLock =
+      action === "roll" &&
+      remainingRolls > 0 &&
+      appliedLockMask.every(Boolean) &&
+      saveAllowedByPolicy;
+
+    if (action === "save" && !saveCandidate.canSave) {
+      action = remainingRolls > 0 ? "roll" : "end_turn";
+      fallbackReason = saveCandidate.fallbackReason ?? "invalid-save-candidate";
+    }
+
+    if (action === "roll" && remainingRolls <= 0) {
+      action = saveCandidate.canSave ? "save" : "end_turn";
+      fallbackReason = fallbackReason ?? "no-rolls-left";
     }
 
     if (
       action === "save" &&
-      saveCandidate.canSave &&
+      decision.targetCategory &&
       saveCandidate.categoryId &&
-      saveCandidate.score !== null
+      decision.targetCategory !== saveCandidate.categoryId &&
+      !shouldForceSaveFromFullLock
     ) {
-      // BUGFIX #3: Ensure save target is writable (may have become non-writable)
-      const saveTargetIsWritable = writableCategorySet.has(
-        saveCandidate.categoryId
-      );
-      if (!saveTargetIsWritable) {
-        if (remainingRolls > 0) {
-          setHasRolledDice(false);
-          rollAllDice(selectedLockMask);
-        } else {
-          endTurn({
-            playerId,
-            savedScore: false,
-            combination: null,
-            score: null,
-            categoryId: null,
-            reason:
-              "ai-save-target-became-non-writable",
-          });
-        }
-        return;
-      }
-
-      const fixedLocksRespectedAtSave =
-        fixedLocks.every(
-          (isFixed, index) =>
-            !isFixed || selectedLockMask[index]
-        );
-
-      if (
-        !fixedLocksRespectedAtSave ||
-        !targetCategoryCompatibleWithFixedLocks
-      ) {
-        logAITurnAudit({
-          event: "save-rejected",
-          playerId,
-          fixedLocks,
-          lockMaskBeforeSave: selectedLockMask,
-          fixedLocksRespectedAtSave,
-          targetCategoryCompatibleWithFixedLocks,
-          targetRejectedByGameRules:
-            !targetCategoryCompatibleWithFixedLocks,
-          legalMoveContextUsed: true,
-          reason:
-            "final-validation-fixed-locks",
-        });
-
-        if (remainingRolls > 0) {
-          setHasRolledDice(false);
-          rollAllDice(selectedLockMask);
-        } else {
-          endTurn({
-            playerId,
-            savedScore: false,
-            combination: null,
-            score: null,
-            categoryId: null,
-            reason:
-              "ai-save-validation-no-rolls-left",
-          });
-        }
-
-        return;
-      }
-
-      const saveCategoryId =
-        saveCandidate.categoryId;
-      const saveScore =
-        saveCandidate.score;
-
-      setSuppressNoCombinationSound(true);
-
-      lastStateChangeSourceRef.current =
-        "local-action";
-
-      const savedTurnVersion =
-        bumpLocalTurnVersion();
-
-      localTurnVersionRef.current =
-        savedTurnVersion;
-
-      bumpLocalRuntimeRevision();
-
-      setScores((prev) => ({
-        ...prev,
-        [playerId]: {
-          ...prev[playerId],
-          [saveCategoryId]: saveScore,
-        },
-      }));
-
-      setShowPlayModeResult(false);
-
-      aiControllerPreviousTargetCategoryRef.current =
-        null;
-      aiControllerExecutionMarkerRef.current =
-        null;
-      aiControllerLastObservedStateRef.current =
-        null;
-      aiControllerStepRef.current = 0;
-      aiControllerNoProgressRef.current = 0;
-
-      logAITurnAudit({
-        event: "final-action",
-        finalAction: "save",
-        playerId,
-        fixedLocks,
-        workingLocks,
-        categoryId: saveCandidate.categoryId,
-        score: saveCandidate.score,
-        endsTurnImmediately: true,
-      });
-
-      endTurn({
-        playerId,
-        savedScore: true,
-        combination:
-          saveCandidate.latestCombination?.combination ?? null,
-        score: saveCandidate.score,
-        categoryId: saveCandidate.categoryId,
-        reason: "ai-save",
-      });
-
-      return;
+      action = remainingRolls > 0 ? "roll" : "end_turn";
+      fallbackReason = "target-category-mismatch";
     }
 
+    if (
+      !targetCategoryCompatibleWithFixedLocks &&
+      !shouldForceSaveFromFullLock
+    ) {
+      action = remainingRolls > 0 ? "roll" : "end_turn";
+      fallbackReason = "target-incompatible-with-fixed-locks";
+    }
+
+    const targetCategoryWritableByRules =
+      shouldForceSaveFromFullLock ||
+      !candidateHasWorkingLocks ||
+      (decision.targetCategory !== null &&
+        writableCategorySet.has(decision.targetCategory));
+
+    const anonymousLockRejected =
+      !shouldForceSaveFromFullLock &&
+      candidateHasWorkingLocks &&
+      decision.targetCategory === null;
+
+    if (anonymousLockRejected) {
+      action = remainingRolls > 0 ? "roll" : "end_turn";
+      fallbackReason = "anonymous-lock-without-target";
+    }
+
+    const candidateRejectedBeforeFirstLockBecauseNotWritable =
+      firstLockAttempt && !targetCategoryWritableByRules;
+
+    if (!targetCategoryWritableByRules) {
+      action = remainingRolls > 0 ? "roll" : "end_turn";
+      fallbackReason = "target-not-writable-by-game-rules";
+    }
+
+    if (shouldForceSaveFromFullLock) {
+      action = "save";
+      fallbackReason = null;
+    }
+
+    const rejectedBecauseFixedLockViolation =
+      !targetCategoryCompatibleWithFixedLocks;
+
+    const fullLockWithoutWritableSave =
+      action === "roll" &&
+      remainingRolls > 0 &&
+      appliedLockMask.every(Boolean) &&
+      !saveCandidate.canSave;
+
+    if (fullLockWithoutWritableSave) {
+      fallbackReason = "full-lock-without-writable-save";
+    }
+
+    const rejectedBecauseInvalidCandidate =
+      (decision.action === "save" && !saveCandidate.canSave) ||
+      fallbackReason === "target-category-mismatch" ||
+      fallbackReason === "target-incompatible-with-fixed-locks" ||
+      fallbackReason === "target-not-writable-by-game-rules" ||
+      fallbackReason === "anonymous-lock-without-target" ||
+      fallbackReason === "full-lock-without-writable-save";
+
+    let selectedLockMask = rejectedBecauseInvalidCandidate
+      ? fallbackWorkingOnlyMask
+      : appliedLockMask;
+
+    let effectiveTargetCategory = rejectedBecauseInvalidCandidate
+      ? null
+      : decision.targetCategory;
+
+    if (afterRollNoCombinationWithRollsLeft && !candidateHasWorkingLocks) {
+      // Keep progress-safe fallback only when decision returned no working locks.
+      selectedLockMask = fallbackWorkingOnlyMask;
+      effectiveTargetCategory = null;
+    }
+
+    const targetRejectedBecauseAlreadyScored =
+      fallbackReason === "target-not-writable-by-game-rules" &&
+      isTargetAlreadyScoredWhenRewriteDisabled(
+        decision.targetCategory,
+        scores[playerId] || {},
+        playModeAllowRewrite,
+      );
+
+    const targetRejectedBeforeLockBecauseAlreadyScored =
+      targetRejectedBecauseAlreadyScored;
+
+    const fallbackBlockedBecauseTargetNotWritable =
+      fallbackReason === "target-not-writable-by-game-rules";
+
     if (action === "roll") {
-      const fixedLocksRespectedAtRoll =
-        fixedLocks.every(
-          (isFixed, index) =>
-            !isFixed || selectedLockMask[index]
-        );
+      aiControllerPreviousTargetCategoryRef.current = effectiveTargetCategory;
+    } else {
+      aiControllerPreviousTargetCategoryRef.current = null;
+    }
 
-      const rollWorkingLocks =
-        deriveWorkingLocks(
-          selectedLockMask,
-          fixedLocks
-        );
-
-      const rollHasWritableTarget =
-        effectiveTargetCategory !== null &&
-        writableCategorySet.has(
-          effectiveTargetCategory
-        );
-
-      const rerollAllowedAfterLockStateGuard =
-        fixedLocksRespectedAtRoll &&
-        (
-          !rollWorkingLocks.some(Boolean) ||
-          rollHasWritableTarget
-        );
-
-      if (!rerollAllowedAfterLockStateGuard) {
-        aiControllerPreviousTargetCategoryRef.current =
-          null;
-
-        if (
-          !areLockMasksEqual(
-            lockedDice,
-            fallbackWorkingOnlyMask
-          )
-        ) {
-          setLockedDice(
-            fallbackWorkingOnlyMask
-          );
-        }
-
-        const endTurnBecauseNoLegalContinuation =
-          remainingRolls <= 0;
+    if (rejectedBecauseInvalidCandidate && remainingRolls > 0) {
+      if (!areLockMasksEqual(lockedDice, fallbackWorkingOnlyMask)) {
+        setLockedDice(fallbackWorkingOnlyMask);
 
         logAITurnAudit({
           event: "working-replan-before-roll",
           playerId,
           legalMoveContextUsed: true,
+          firstLockGuardChecked: true,
+          availableTargetCategoriesBeforeFirstLock:
+            availableTargetCategoriesAtDecisionStart,
+          candidateTargetCategory: decision.targetCategory,
+          candidateRejectedBeforeFirstLockBecauseNotWritable,
+          anonymousLockRejected,
+          workingLocksSkippedBecauseNoWritableTarget:
+            rejectedBecauseInvalidCandidate,
+          aiAutoStartGuardTriggered: false,
+          previousWorkingLocks,
+          workingLocksCandidate: workingLocks,
+          fixedLocks,
+          workingLocksChangedBeforeRoll: true,
+          rejectedBecauseFixedLockViolation,
+          rejectedBecauseInvalidCandidate,
           noCombinationGuardChecked: true,
           noCombinationWithWorkingLocksDetected: false,
           workingLocksClearedBecauseNoCombination: false,
@@ -4613,507 +3163,717 @@ useEffect(() => {
           previousTargetClearedBecauseNoCombination: false,
           rerollAfterNoCombinationGuard: false,
           stallPreventedByNoCombinationGuard: false,
-          firstLockGuardChecked: true,
-          availableTargetCategoriesBeforeFirstLock:
-            availableTargetCategoriesAtDecisionStart,
-          candidateTargetCategory:
-            decision.targetCategory,
-          candidateRejectedBeforeFirstLockBecauseNotWritable,
-          anonymousLockRejected,
-          workingLocksSkippedBecauseNoWritableTarget:
-            true,
-          aiAutoStartGuardTriggered: false,
           availableTargetCategoriesAtDecisionStart,
           scoredCategoriesFilteredOut,
           lockStateLegalityChecked: true,
-          lockStateHasWritableTarget:
-            rollHasWritableTarget,
-          lockStateRejectedBecauseNoWritableTarget: true,
-          workingLocksClearedBecauseNoWritableTarget: true,
-          previousTargetClearedBecauseNoWritableTarget:
-            true,
-          rerollAllowedAfterLockStateGuard,
-          endTurnBecauseNoLegalContinuation,
-          fixedLocksRespectedAtRoll,
-          lockMaskBeforeRoll:
-            selectedLockMask,
-          lockMaskApplied:
-            fallbackWorkingOnlyMask,
-          fallbackReason:
-            "reroll-blocked-no-writable-target",
+          lockStateHasWritableTarget,
+          lockStateRejectedBecauseNoWritableTarget: false,
+          workingLocksClearedBecauseNoWritableTarget: false,
+          previousTargetClearedBecauseNoWritableTarget: false,
+          rerollAllowedAfterLockStateGuard: true,
+          endTurnBecauseNoLegalContinuation: false,
+          previousTargetClearedBecauseNotWritable:
+            rejectedBecauseInvalidCandidate,
+          previousTargetClearedBecauseAlreadyScored:
+            previousTargetRejectedBecauseAlreadyScored,
+          targetRejectedByGameRules: rejectedBecauseInvalidCandidate,
+          targetRejectedBeforeLockBecauseAlreadyScored,
+          targetRejectedBecauseAlreadyScored,
+          detectedCombinationIgnoredBecauseAlreadyScored,
+          fallbackBlockedBecauseTargetNotWritable,
+          saveBlockedReason: fallbackReason,
+          strategyBlockedFromOverridingSave: false,
+          writableSaveCandidateFound: !!saveCandidate.canSave,
+          fallbackReason,
         });
 
-        if (!endTurnBecauseNoLegalContinuation) {
-          setHasRolledDice(false);
-          rollAllDice(fallbackWorkingOnlyMask);
-          return;
+        // Reset previousTargetCategory to prevent deadlock when decision is invalid
+        aiControllerPreviousTargetCategoryRef.current = null;
+
+        // Schedule AI to reroll with new lock state
+        if (remainingRolls > 0) {
+          setTimeout(() => {
+            console.log("🎲 REROLL after invalid candidate", {
+              rejectedBecauseInvalidCandidate,
+              fallbackWorkingOnlyMask,
+              playerId,
+              remainingRolls,
+            });
+            // Don't reset hasRolledDice - rollAllDice handles it
+            rollAllDice(fallbackWorkingOnlyMask);
+          }, 220);
         }
 
-        endTurn({
-          playerId,
-          savedScore: false,
-          combination: null,
-          score: null,
-          categoryId: null,
-          reason:
-            "ai-no-legal-continuation-after-lock-guard",
-        });
         return;
       }
-
-      if (
-        !areLockMasksEqual(
-          lockedDice,
-          selectedLockMask
-        )
-      ) {
-        setLockedDice(selectedLockMask);
-      }
-
-      console.log("🎲 AI CALLING rollAllDice", {
-        selectedLockMask,
-        remainingRolls,
-        playerId,
-      });
-
-      setHasRolledDice(false);
-      rollAllDice(selectedLockMask);
-      return;
     }
 
-    const terminalNoCombinationEndTurnAllowed =
-      hasRolledDice &&
-      currentCombination === null &&
-      !saveCandidate.canSave &&
-      remainingRolls <= 0;
+    const shouldApplyLockMaskBeforeAction =
+      action !== "roll" && !areLockMasksEqual(lockedDice, selectedLockMask);
 
-    if (
-      !terminalNoCombinationEndTurnAllowed &&
-      remainingRolls > 0
-    ) {
-      if (
-        !areLockMasksEqual(
-          lockedDice,
-          fallbackWorkingOnlyMask
-        )
-      ) {
-        setLockedDice(
-          fallbackWorkingOnlyMask
-        );
-      }
-
-      logAITurnAudit({
-        event: "working-replan-before-roll",
-        playerId,
-        legalMoveContextUsed: true,
-        noCombinationGuardPhase:
-          noCombinationGuardPhase ===
-          "not-applicable"
-            ? "afterRollNoCombination"
-            : noCombinationGuardPhase,
-        beforeFirstRollNoCombinationIgnored:
-          false,
-        noCombinationEndTurnBlockedBecauseRollsRemain:
-          true,
-        terminalNoCombinationEndTurnAllowed:
-          false,
-        forcedFirstRollBecauseNoCombinationAtTurnStart:
-          false,
-        afterRollNoCombinationWithRollsLeft:
-          noCombinationAtDecisionStart &&
-          hasRolledDice,
-        noScoreSummaryBlockedBecauseRollsRemain:
-          true,
-        rerollBecauseNoCombinationAndRollsRemain:
-          true,
-        terminalNoCombinationSummaryAllowed:
-          false,
-        noWorkingLocksAfterRollHandled:
-          !deriveWorkingLocks(
-            lockedDice,
-            fixedLocks
-          ).some(Boolean),
-        noCombinationGuardChecked: true,
-        noCombinationWithWorkingLocksDetected:
-          noCombinationAtDecisionStart,
-        workingLocksClearedBecauseNoCombination:
-          true,
-        fixedLocksPreservedAfterWorkingClear:
-          fixedLocks.every(
-            (isFixed, index) =>
-              !isFixed ||
-              fallbackWorkingOnlyMask[index]
-          ),
-        previousTargetClearedBecauseNoCombination:
-          aiControllerPreviousTargetCategoryRef.current !==
-          null,
-        rerollAfterNoCombinationGuard: true,
-        stallPreventedByNoCombinationGuard: true,
-        lockMaskApplied:
-          fallbackWorkingOnlyMask,
-        fallbackReason:
-          "end-turn-blocked-rolls-remain",
-      });
-
-      aiControllerPreviousTargetCategoryRef.current =
-        null;
-      setHasRolledDice(false);
-      rollAllDice(fallbackWorkingOnlyMask);
-      return;
+    if (shouldApplyLockMaskBeforeAction) {
+      setLockedDice(selectedLockMask);
     }
 
     logAITurnAudit({
-      event: "final-action",
-      finalAction: "end_turn",
+      event: "decision",
       playerId,
+      hasRolledThisTurn: hasRolledDice,
+      dice: playModeDice,
+      remainingRolls,
+      legalMoveContextUsed: true,
       noCombinationGuardPhase,
-      beforeFirstRollNoCombinationIgnored:
-        false,
-      noCombinationEndTurnBlockedBecauseRollsRemain:
-        false,
-      terminalNoCombinationEndTurnAllowed,
-      forcedFirstRollBecauseNoCombinationAtTurnStart:
-        false,
-      afterRollNoCombinationWithRollsLeft: false,
-      noScoreSummaryBlockedBecauseRollsRemain:
-        false,
-      rerollBecauseNoCombinationAndRollsRemain:
-        false,
-      terminalNoCombinationSummaryAllowed:
-        terminalNoCombinationEndTurnAllowed,
-      noWorkingLocksAfterRollHandled: false,
+      beforeFirstRollNoCombinationIgnored: false,
+      noCombinationEndTurnBlockedBecauseRollsRemain: false,
+      terminalNoCombinationEndTurnAllowed: false,
+      forcedFirstRollBecauseNoCombinationAtTurnStart: false,
       noCombinationGuardChecked: true,
+      noCombinationDecisionAllowed,
+      noCombinationImmediateRerollSkipped,
+      decisionReachedAfterNoCombination,
       noCombinationWithWorkingLocksDetected: false,
       workingLocksClearedBecauseNoCombination: false,
       fixedLocksPreservedAfterWorkingClear: true,
       previousTargetClearedBecauseNoCombination: false,
       rerollAfterNoCombinationGuard: false,
       stallPreventedByNoCombinationGuard: false,
+      firstLockGuardChecked: true,
+      availableTargetCategoriesBeforeFirstLock:
+        availableTargetCategoriesAtDecisionStart,
+      candidateTargetCategory: decision.targetCategory,
+      candidateRejectedBeforeFirstLockBecauseNotWritable,
+      anonymousLockRejected,
+      workingLocksSkippedBecauseNoWritableTarget:
+        rejectedBecauseInvalidCandidate,
+      aiAutoStartGuardTriggered: false,
+      availableTargetCategoriesAtDecisionStart,
+      scoredCategoriesFilteredOut,
       lockStateLegalityChecked: true,
       lockStateHasWritableTarget,
       lockStateRejectedBecauseNoWritableTarget: false,
       workingLocksClearedBecauseNoWritableTarget: false,
       previousTargetClearedBecauseNoWritableTarget: false,
-      rerollAllowedAfterLockStateGuard: false,
-      endTurnBecauseNoLegalContinuation: true,
-      fallbackReason:
-        fallbackReason ??
-        "controller-end-turn",
+      rerollAllowedAfterLockStateGuard:
+        action !== "roll" || effectiveTargetCategory !== null,
+      endTurnBecauseNoLegalContinuation: false,
+      targetCategory: decision.targetCategory,
+      targetCategoryCompatibleWithFixedLocks,
+      previousWorkingLocks,
+      workingLocksCandidate: workingLocks,
+      fixedLocks,
+      workingLocks,
+      workingLocksChangedBeforeRoll,
+      lockMaskPlanned: plannedLockMask,
+      lockMaskAfterReplan: sanitizedWorkingMask,
+      lockMaskBeforeRoll: selectedLockMask,
+      lockMaskApplied: selectedLockMask,
+      illegalUnlockPrevented,
+      rejectedBecauseFixedLockViolation,
+      rejectedBecauseInvalidCandidate,
+      action,
+      riskLevel: decision.riskLevel,
+      aiScore: decision.aiScore,
+      bestOpponentScore: decision.bestOpponentScore,
+      endgameMode: decision.endgameMode,
+      scoreDelta: decision.scoreDelta,
+      aiRemainingPotential: decision.aiRemainingPotential,
+      opponentRemainingPotential: decision.opponentRemainingPotential,
+      requiredScoreEstimate: decision.requiredScoreEstimate,
+      opponentScore: decision.opponentScore,
+      remainingCategories: decision.remainingCategories,
+      riskBecauseBehind: decision.riskBecauseBehind,
+      saveRejectedBecauseTooLow: decision.saveRejectedBecauseTooLow,
+      currentPlanValue: decision.currentPlanValue,
+      alternativePlanValue: decision.alternativePlanValue,
+      pivotThreshold: decision.pivotThreshold,
+      pivotReason: decision.pivotReason,
+      confidence: decision.confidence,
+      reason: decision.reason,
+      fallbackReason,
+      targetRejectedByGameRules:
+        rejectedBecauseFixedLockViolation || rejectedBecauseInvalidCandidate,
+      targetRejectedBeforeLockBecauseAlreadyScored,
+      targetRejectedBecauseAlreadyScored,
+      detectedCombinationIgnoredBecauseAlreadyScored,
+      fallbackBlockedBecauseTargetNotWritable,
+      saveFirstGuardChecked: true,
+      writableSaveCandidateFound: !!saveCandidate.canSave,
+      saveTimingGuardChecked: true,
+      saveForcedBecauseMaxScore:
+        saveTimingDecision.reason === "save-now-because-max-score",
+      saveForcedBecauseRemainingRollsLow:
+        saveTimingDecision.reason === "save-now-because-remaining-rolls-low",
+      saveNowBecauseMaxScore:
+        saveTimingDecision.reason === "save-now-because-max-score",
+      saveNowBecauseNoBetterLegalImprovement:
+        saveTimingDecision.reason ===
+        "save-now-because-no-better-legal-improvement",
+      saveDelayedReason: saveTimingDecision.reason,
+      saveBlockedReason: fallbackReason,
+      saveFirstCandidate: saveCandidate.categoryId,
+      saveFirstCandidateScore: saveCandidate.score,
+      saveFirstCandidateWritable: saveCandidate.canSave,
+      saveFirstAccepted: false,
+      saveFirstRejectedReason: strongSaveDecision.reason,
+      strategySkippedBecauseStrongSave:
+        saveTimingDecision.accepted || strongSaveDecision.accepted,
+      strategyBlockedFromOverridingLegalSave:
+        saveTimingDecision.accepted || strongSaveDecision.accepted,
+      clearLockProgressEnsured,
+      clearLockEarlyReturnPrevented,
+      rerollAfterClearLockIfNeeded,
+      workingLocksClearedBecauseCandidateNotWritable: false,
+      workingLocksClearedBecauseIllegalTarget: false,
+      previousTargetClearedBecauseNotWritable: rejectedBecauseInvalidCandidate,
+      previousTargetClearedBecauseAlreadyScored:
+        previousTargetRejectedBecauseAlreadyScored,
     });
 
-    endTurn({
-      playerId,
-      savedScore: false,
-      combination: null,
-      score: null,
-      categoryId: null,
-      reason:
-        fallbackReason ?? "controller-end-turn",
-    });
-  }, 450);
+    const rollTimeoutAuditId =
+      action === "roll" ? ++aiRollTimeoutSequenceRef.current : null;
 
-  return () => {
     if (rollTimeoutAuditId !== null) {
+      aiActiveRollTimeoutIdRef.current = rollTimeoutAuditId;
+
       logAITurnAudit({
-        event: "aiRollTimeoutCleanedUp",
+        event: "aiRollTimeoutScheduled",
         playerId,
         timeoutId: rollTimeoutAuditId,
-        activeRollTimeoutId:
-          aiActiveRollTimeoutIdRef.current,
         remainingRolls,
         selectedLockMask,
+        fixedLocks,
+        workingLocks,
         isRolling,
         hasRolledThisTurn: hasRolledDice,
-        showPlayModeResult,
-        cleanupContext: "effect-dispose",
       });
+    }
+
+    const timer = setTimeout(() => {
+      if (rollTimeoutAuditId !== null) {
+        logAITurnAudit({
+          event: "aiRollTimeoutFired",
+          playerId,
+          timeoutId: rollTimeoutAuditId,
+          activeRollTimeoutId: aiActiveRollTimeoutIdRef.current,
+          remainingRolls,
+          selectedLockMask,
+          isRolling,
+          hasRolledThisTurn: hasRolledDice,
+        });
+
+        if (aiActiveRollTimeoutIdRef.current === rollTimeoutAuditId) {
+          aiActiveRollTimeoutIdRef.current = null;
+        }
+      }
 
       if (
-        aiActiveRollTimeoutIdRef.current ===
-        rollTimeoutAuditId
+        action === "save" &&
+        saveCandidate.canSave &&
+        saveCandidate.categoryId &&
+        saveCandidate.score !== null
       ) {
-        aiActiveRollTimeoutIdRef.current =
-          null;
+        // BUGFIX #3: Ensure save target is writable (may have become non-writable)
+        const saveTargetIsWritable = writableCategorySet.has(
+          saveCandidate.categoryId,
+        );
+        if (!saveTargetIsWritable) {
+          if (remainingRolls > 0) {
+            setHasRolledDice(false);
+            rollAllDice(selectedLockMask);
+          } else {
+            endTurn({
+              playerId,
+              savedScore: false,
+              combination: null,
+              score: null,
+              categoryId: null,
+              reason: "ai-save-target-became-non-writable",
+            });
+          }
+          return;
+        }
+
+        const fixedLocksRespectedAtSave = fixedLocks.every(
+          (isFixed, index) => !isFixed || selectedLockMask[index],
+        );
+
+        if (
+          !fixedLocksRespectedAtSave ||
+          !targetCategoryCompatibleWithFixedLocks
+        ) {
+          logAITurnAudit({
+            event: "save-rejected",
+            playerId,
+            fixedLocks,
+            lockMaskBeforeSave: selectedLockMask,
+            fixedLocksRespectedAtSave,
+            targetCategoryCompatibleWithFixedLocks,
+            targetRejectedByGameRules: !targetCategoryCompatibleWithFixedLocks,
+            legalMoveContextUsed: true,
+            reason: "final-validation-fixed-locks",
+          });
+
+          if (remainingRolls > 0) {
+            setHasRolledDice(false);
+            rollAllDice(selectedLockMask);
+          } else {
+            endTurn({
+              playerId,
+              savedScore: false,
+              combination: null,
+              score: null,
+              categoryId: null,
+              reason: "ai-save-validation-no-rolls-left",
+            });
+          }
+
+          return;
+        }
+
+        const saveCategoryId = saveCandidate.categoryId;
+        const saveScore = saveCandidate.score;
+
+        setSuppressNoCombinationSound(true);
+
+        lastStateChangeSourceRef.current = "local-action";
+
+        const savedTurnVersion = bumpLocalTurnVersion();
+
+        localTurnVersionRef.current = savedTurnVersion;
+
+        bumpLocalRuntimeRevision();
+
+        setScores((prev) => ({
+          ...prev,
+          [playerId]: {
+            ...prev[playerId],
+            [saveCategoryId]: saveScore,
+          },
+        }));
+
+        setShowPlayModeResult(false);
+
+        aiControllerPreviousTargetCategoryRef.current = null;
+        aiControllerExecutionMarkerRef.current = null;
+        aiControllerLastObservedStateRef.current = null;
+        aiControllerStepRef.current = 0;
+        aiControllerNoProgressRef.current = 0;
+
+        logAITurnAudit({
+          event: "final-action",
+          finalAction: "save",
+          playerId,
+          fixedLocks,
+          workingLocks,
+          categoryId: saveCandidate.categoryId,
+          score: saveCandidate.score,
+          endsTurnImmediately: true,
+        });
+
+        endTurn({
+          playerId,
+          savedScore: true,
+          combination: saveCandidate.latestCombination?.combination ?? null,
+          score: saveCandidate.score,
+          categoryId: saveCandidate.categoryId,
+          reason: "ai-save",
+        });
+
+        return;
+      }
+
+      if (action === "roll") {
+        const fixedLocksRespectedAtRoll = fixedLocks.every(
+          (isFixed, index) => !isFixed || selectedLockMask[index],
+        );
+
+        const rollWorkingLocks = deriveWorkingLocks(
+          selectedLockMask,
+          fixedLocks,
+        );
+
+        const rollHasWritableTarget =
+          effectiveTargetCategory !== null &&
+          writableCategorySet.has(effectiveTargetCategory);
+
+        const rerollAllowedAfterLockStateGuard =
+          fixedLocksRespectedAtRoll &&
+          (!rollWorkingLocks.some(Boolean) || rollHasWritableTarget);
+
+        if (!rerollAllowedAfterLockStateGuard) {
+          aiControllerPreviousTargetCategoryRef.current = null;
+
+          if (!areLockMasksEqual(lockedDice, fallbackWorkingOnlyMask)) {
+            setLockedDice(fallbackWorkingOnlyMask);
+          }
+
+          const endTurnBecauseNoLegalContinuation = remainingRolls <= 0;
+
+          logAITurnAudit({
+            event: "working-replan-before-roll",
+            playerId,
+            legalMoveContextUsed: true,
+            noCombinationGuardChecked: true,
+            noCombinationWithWorkingLocksDetected: false,
+            workingLocksClearedBecauseNoCombination: false,
+            fixedLocksPreservedAfterWorkingClear: true,
+            previousTargetClearedBecauseNoCombination: false,
+            rerollAfterNoCombinationGuard: false,
+            stallPreventedByNoCombinationGuard: false,
+            firstLockGuardChecked: true,
+            availableTargetCategoriesBeforeFirstLock:
+              availableTargetCategoriesAtDecisionStart,
+            candidateTargetCategory: decision.targetCategory,
+            candidateRejectedBeforeFirstLockBecauseNotWritable,
+            anonymousLockRejected,
+            workingLocksSkippedBecauseNoWritableTarget: true,
+            aiAutoStartGuardTriggered: false,
+            availableTargetCategoriesAtDecisionStart,
+            scoredCategoriesFilteredOut,
+            lockStateLegalityChecked: true,
+            lockStateHasWritableTarget: rollHasWritableTarget,
+            lockStateRejectedBecauseNoWritableTarget: true,
+            workingLocksClearedBecauseNoWritableTarget: true,
+            previousTargetClearedBecauseNoWritableTarget: true,
+            rerollAllowedAfterLockStateGuard,
+            endTurnBecauseNoLegalContinuation,
+            fixedLocksRespectedAtRoll,
+            lockMaskBeforeRoll: selectedLockMask,
+            lockMaskApplied: fallbackWorkingOnlyMask,
+            fallbackReason: "reroll-blocked-no-writable-target",
+          });
+
+          if (!endTurnBecauseNoLegalContinuation) {
+            setHasRolledDice(false);
+            rollAllDice(fallbackWorkingOnlyMask);
+            return;
+          }
+
+          endTurn({
+            playerId,
+            savedScore: false,
+            combination: null,
+            score: null,
+            categoryId: null,
+            reason: "ai-no-legal-continuation-after-lock-guard",
+          });
+          return;
+        }
+
+        if (!areLockMasksEqual(lockedDice, selectedLockMask)) {
+          setLockedDice(selectedLockMask);
+        }
+
+        console.log("🎲 AI CALLING rollAllDice", {
+          selectedLockMask,
+          remainingRolls,
+          playerId,
+        });
+
+        setHasRolledDice(false);
+        rollAllDice(selectedLockMask);
+        return;
+      }
+
+      const terminalNoCombinationEndTurnAllowed =
+        hasRolledDice &&
+        currentCombination === null &&
+        !saveCandidate.canSave &&
+        remainingRolls <= 0;
+
+      if (!terminalNoCombinationEndTurnAllowed && remainingRolls > 0) {
+        if (!areLockMasksEqual(lockedDice, fallbackWorkingOnlyMask)) {
+          setLockedDice(fallbackWorkingOnlyMask);
+        }
+
+        logAITurnAudit({
+          event: "working-replan-before-roll",
+          playerId,
+          legalMoveContextUsed: true,
+          noCombinationGuardPhase:
+            noCombinationGuardPhase === "not-applicable"
+              ? "afterRollNoCombination"
+              : noCombinationGuardPhase,
+          beforeFirstRollNoCombinationIgnored: false,
+          noCombinationEndTurnBlockedBecauseRollsRemain: true,
+          terminalNoCombinationEndTurnAllowed: false,
+          forcedFirstRollBecauseNoCombinationAtTurnStart: false,
+          afterRollNoCombinationWithRollsLeft:
+            noCombinationAtDecisionStart && hasRolledDice,
+          noScoreSummaryBlockedBecauseRollsRemain: true,
+          rerollBecauseNoCombinationAndRollsRemain: true,
+          terminalNoCombinationSummaryAllowed: false,
+          noWorkingLocksAfterRollHandled: !deriveWorkingLocks(
+            lockedDice,
+            fixedLocks,
+          ).some(Boolean),
+          noCombinationGuardChecked: true,
+          noCombinationWithWorkingLocksDetected: noCombinationAtDecisionStart,
+          workingLocksClearedBecauseNoCombination: true,
+          fixedLocksPreservedAfterWorkingClear: fixedLocks.every(
+            (isFixed, index) => !isFixed || fallbackWorkingOnlyMask[index],
+          ),
+          previousTargetClearedBecauseNoCombination:
+            aiControllerPreviousTargetCategoryRef.current !== null,
+          rerollAfterNoCombinationGuard: true,
+          stallPreventedByNoCombinationGuard: true,
+          lockMaskApplied: fallbackWorkingOnlyMask,
+          fallbackReason: "end-turn-blocked-rolls-remain",
+        });
+
+        aiControllerPreviousTargetCategoryRef.current = null;
+        setHasRolledDice(false);
+        rollAllDice(fallbackWorkingOnlyMask);
+        return;
+      }
+
+      logAITurnAudit({
+        event: "final-action",
+        finalAction: "end_turn",
+        playerId,
+        noCombinationGuardPhase,
+        beforeFirstRollNoCombinationIgnored: false,
+        noCombinationEndTurnBlockedBecauseRollsRemain: false,
+        terminalNoCombinationEndTurnAllowed,
+        forcedFirstRollBecauseNoCombinationAtTurnStart: false,
+        afterRollNoCombinationWithRollsLeft: false,
+        noScoreSummaryBlockedBecauseRollsRemain: false,
+        rerollBecauseNoCombinationAndRollsRemain: false,
+        terminalNoCombinationSummaryAllowed:
+          terminalNoCombinationEndTurnAllowed,
+        noWorkingLocksAfterRollHandled: false,
+        noCombinationGuardChecked: true,
+        noCombinationWithWorkingLocksDetected: false,
+        workingLocksClearedBecauseNoCombination: false,
+        fixedLocksPreservedAfterWorkingClear: true,
+        previousTargetClearedBecauseNoCombination: false,
+        rerollAfterNoCombinationGuard: false,
+        stallPreventedByNoCombinationGuard: false,
+        lockStateLegalityChecked: true,
+        lockStateHasWritableTarget,
+        lockStateRejectedBecauseNoWritableTarget: false,
+        workingLocksClearedBecauseNoWritableTarget: false,
+        previousTargetClearedBecauseNoWritableTarget: false,
+        rerollAllowedAfterLockStateGuard: false,
+        endTurnBecauseNoLegalContinuation: true,
+        fallbackReason: fallbackReason ?? "controller-end-turn",
+      });
+
+      endTurn({
+        playerId,
+        savedScore: false,
+        combination: null,
+        score: null,
+        categoryId: null,
+        reason: fallbackReason ?? "controller-end-turn",
+      });
+    }, 450);
+
+    return () => {
+      if (rollTimeoutAuditId !== null) {
+        logAITurnAudit({
+          event: "aiRollTimeoutCleanedUp",
+          playerId,
+          timeoutId: rollTimeoutAuditId,
+          activeRollTimeoutId: aiActiveRollTimeoutIdRef.current,
+          remainingRolls,
+          selectedLockMask,
+          isRolling,
+          hasRolledThisTurn: hasRolledDice,
+          showPlayModeResult,
+          cleanupContext: "effect-dispose",
+        });
+
+        if (aiActiveRollTimeoutIdRef.current === rollTimeoutAuditId) {
+          aiActiveRollTimeoutIdRef.current = null;
+        }
+      }
+
+      clearTimeout(timer);
+    };
+  }, [
+    isOnlineGame,
+    gameStarted,
+    hasStartedPlayMode,
+    gameFinished,
+    showPlayModeResult,
+    hasRolledDice,
+    isRolling,
+    currentCombination,
+    currentPlayPlayerIndex,
+    selectedPlayers,
+    scores,
+    playModeDice,
+    remainingRolls,
+    playModeRolls,
+    playModeAllowRewrite,
+    isComputerPlayerId,
+    // endTurn and rollAllDice intentionally excluded: they are plain functions recreated every render,
+    // including them causes useEffect cleanup to cancel the 450ms setTimeout on every state change
+    // (e.g. setIsRolling, setPlayModeDice), which prevents the AI from ever completing a roll action.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ]);
+
+  const activateBonus = () => {
+    if (hasComputerPlayer) {
+      return;
+    }
+
+    if (isOnlineGame && !isCurrentPlayer) {
+      return;
+    }
+
+    if (bonusUsed) {
+      if (bonusActivatedThisTurn) {
+        lastStateChangeSourceRef.current = "local-action";
+
+        bumpLocalRuntimeRevision();
+
+        setRemainingRolls((prev) => prev - bonusDifference);
+
+        setBonusUsed(false);
+      }
+      setMaxScoreSoundPlayed(false);
+      setNoCombinationSoundPlayed(false);
+      return;
+    }
+    if (playModeBonusMode === "general-only") {
+      const lockedValues = playModeDice.filter((_, index) => lockedDice[index]);
+
+      const uniqueValues = [...new Set(lockedValues)];
+
+      if (uniqueValues.length > 1) {
+        return;
       }
     }
 
-    clearTimeout(timer);
+    lastStateChangeSourceRef.current = "local-action";
+
+    bumpLocalRuntimeRevision();
+
+    setRemainingRolls((prev) => prev + bonusDifference);
+
+    setBonusUsed(true);
+
+    setBonusActivatedThisTurn(true);
   };
-}, [
-  isOnlineGame,
-  gameStarted,
-  hasStartedPlayMode,
-  gameFinished,
-  showPlayModeResult,
-  hasRolledDice,
-  isRolling,
-  currentCombination,
-  currentPlayPlayerIndex,
-  selectedPlayers,
-  scores,
-  playModeDice,
-  remainingRolls,
-  playModeRolls,
-  playModeAllowRewrite,
-  isComputerPlayerId,
-  // endTurn and rollAllDice intentionally excluded: they are plain functions recreated every render,
-  // including them causes useEffect cleanup to cancel the 450ms setTimeout on every state change
-  // (e.g. setIsRolling, setPlayModeDice), which prevents the AI from ever completing a roll action.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-]);
 
-const activateBonus = () => {
-  if (hasComputerPlayer) {
-    return;
-  }
+  function rollAllDice(plannedLockMask?: boolean[]) {
+    logAITurnAudit({
+      event: "rollAllDiceEntered",
+      remainingRolls,
+      isRolling,
+      plannedLockMask:
+        plannedLockMask && plannedLockMask.length === 6
+          ? plannedLockMask
+          : null,
+      lockedDice,
+      confirmedLockedDice,
+      activeRollTimeoutId: aiActiveRollTimeoutIdRef.current,
+    });
 
-  if (
-    isOnlineGame &&
-    !isCurrentPlayer
-  ) {
-    return;
-  }
+    if (isOnlineGame && !isCurrentPlayer) {
+      logAITurnAudit({
+        event: "rollAllDiceEarlyReturn",
+        reason: "not-current-online-player",
+        remainingRolls,
+        isRolling,
+        plannedLockMask:
+          plannedLockMask && plannedLockMask.length === 6
+            ? plannedLockMask
+            : null,
+      });
 
-  if (bonusUsed) {
-  if (
-    bonusActivatedThisTurn
-  ) {
-      lastStateChangeSourceRef.current =
-        "local-action";
-
-      bumpLocalRuntimeRevision();
-
-      setRemainingRolls(
-        (prev) =>
-          prev - bonusDifference
-      );
-
-      setBonusUsed(false);
+      return;
     }
-setMaxScoreSoundPlayed(
-  false
-);
-setNoCombinationSoundPlayed(
-  false
-);
-    return;
-  }
-if (
-  playModeBonusMode ===
-    "general-only"
-) {
-  const lockedValues =
-    playModeDice.filter(
-      (_, index) =>
-        lockedDice[index]
-    );
 
-  const uniqueValues =
-    [...new Set(lockedValues)];
+    if (remainingRolls <= 0) {
+      logAITurnAudit({
+        event: "rollAllDiceEarlyReturn",
+        reason: "remainingRolls<=0",
+        remainingRolls,
+        isRolling,
+        plannedLockMask:
+          plannedLockMask && plannedLockMask.length === 6
+            ? plannedLockMask
+            : null,
+      });
 
-  if (
-    uniqueValues.length > 1
-  ) {
-    return;
-  }
-}
+      return;
+    }
 
-  lastStateChangeSourceRef.current =
-    "local-action";
+    if (isRolling) {
+      logAITurnAudit({
+        event: "rollAllDiceEarlyReturn",
+        reason: "isRolling",
+        remainingRolls,
+        isRolling,
+        plannedLockMask:
+          plannedLockMask && plannedLockMask.length === 6
+            ? plannedLockMask
+            : null,
+      });
 
-  bumpLocalRuntimeRevision();
+      return;
+    }
 
-  setRemainingRolls(
-    (prev) =>
-      prev + bonusDifference
-  );
+    lastStateChangeSourceRef.current = "local-action";
 
-  setBonusUsed(true);
+    const activeLockMask =
+      plannedLockMask && plannedLockMask.length === 6
+        ? [...plannedLockMask]
+        : [...lockedDice];
 
-setBonusActivatedThisTurn(
-  true
-);
-};
+    setIsRolling(true);
 
-function rollAllDice(
-  plannedLockMask?: boolean[]
-) {
-  logAITurnAudit({
-    event: "rollAllDiceEntered",
-    remainingRolls,
-    isRolling,
-    plannedLockMask:
-      plannedLockMask &&
-      plannedLockMask.length === 6
-        ? plannedLockMask
-        : null,
-    lockedDice,
-    confirmedLockedDice,
-    activeRollTimeoutId:
-      aiActiveRollTimeoutIdRef.current,
-  });
+    let ticks = 0;
 
-  if (
-    isOnlineGame &&
-    !isCurrentPlayer
-  ) {
-    logAITurnAudit({
-      event: "rollAllDiceEarlyReturn",
-      reason: "not-current-online-player",
-      remainingRolls,
-      isRolling,
-      plannedLockMask:
-        plannedLockMask &&
-        plannedLockMask.length === 6
-          ? plannedLockMask
-          : null,
-    });
+    const interval = setInterval(() => {
+      setPlayModeDice((prev) =>
+        prev.map((dice, index) => {
+          if (activeLockMask[index]) {
+            return dice;
+          }
 
-    return;
-  }
-
-  if (remainingRolls <= 0) {
-    logAITurnAudit({
-      event: "rollAllDiceEarlyReturn",
-      reason: "remainingRolls<=0",
-      remainingRolls,
-      isRolling,
-      plannedLockMask:
-        plannedLockMask &&
-        plannedLockMask.length === 6
-          ? plannedLockMask
-          : null,
-    });
-
-    return;
-  }
-
-  if (isRolling) {
-    logAITurnAudit({
-      event: "rollAllDiceEarlyReturn",
-      reason: "isRolling",
-      remainingRolls,
-      isRolling,
-      plannedLockMask:
-        plannedLockMask &&
-        plannedLockMask.length === 6
-          ? plannedLockMask
-          : null,
-    });
-
-    return;
-  }
-
-  lastStateChangeSourceRef.current =
-    "local-action";
-
-  const activeLockMask =
-    plannedLockMask &&
-    plannedLockMask.length === 6
-      ? [...plannedLockMask]
-      : [...lockedDice];
-
-  setIsRolling(true);
-
-  let ticks = 0;
-
-  const interval =
-    setInterval(() => {
-      setPlayModeDice(
-        (prev) =>
-          prev.map(
-            (
-              dice,
-              index
-            ) => {
-              if (
-                activeLockMask[
-                  index
-                ]
-              ) {
-                return dice;
-              }
-
-              return (
-                Math.floor(
-                  Math.random() *
-                    6
-                ) + 1
-              );
-            }
-          )
+          return Math.floor(Math.random() * 6) + 1;
+        }),
       );
 
       ticks++;
 
       if (ticks >= 6) {
-        clearInterval(
-          interval
-        );
+        clearInterval(interval);
 
         bumpLocalRuntimeRevision();
 
-        const finalDice =
-          playModeDice.map(
-            (
-              dice,
-              index
-            ) => {
-              if (
-                activeLockMask[
-                  index
-                ]
-              ) {
-                return dice;
-              }
+        const finalDice = playModeDice.map((dice, index) => {
+          if (activeLockMask[index]) {
+            return dice;
+          }
 
-              return (
-                Math.floor(
-                  Math.random() *
-                    6
-                ) + 1
-              );
-            }
-          );
+          return Math.floor(Math.random() * 6) + 1;
+        });
 
-        setPlayModeDice(
-  finalDice
-);
+        setPlayModeDice(finalDice);
 
-setHasRolledDice(
-  true
-);
+        setHasRolledDice(true);
 
-setMaxScoreSoundPlayed(
-  false
-);
-setNoCombinationSoundPlayed(
-  false
-);
+        setMaxScoreSoundPlayed(false);
+        setNoCombinationSoundPlayed(false);
 
-setRemainingRolls(
-  (prev) =>
-    prev - 1
-);
+        setRemainingRolls((prev) => prev - 1);
 
-        setConfirmedLockedDice(
-          activeLockMask
-        );
+        setConfirmedLockedDice(activeLockMask);
 
-setBonusActivatedThisTurn(
-  false
-);
+        setBonusActivatedThisTurn(false);
 
-setIsRolling(
-  false
-);
+        setIsRolling(false);
       }
     }, 133);
-}
+  }
 
   // 12. SAVE / LOAD
-  const saveFunGame =
-    async ({
+  const saveFunGame = async ({
     winner,
     winnerScore,
     players,
@@ -5124,75 +3884,59 @@ setIsRolling(
     players: string[];
     scores: any;
   }): Promise<boolean> => {
-    const resolvedGameId =
-      resolveGameId(gameId);
+    const resolvedGameId = resolveGameId(gameId);
 
     if (resolvedGameId !== gameId) {
       setGameId(resolvedGameId);
     }
 
-    const { data: existing } =
-      await supabase
-        .from("fun_games")
-        .select("id")
-        .eq("game_id", resolvedGameId)
-        .limit(1);
+    const { data: existing } = await supabase
+      .from("fun_games")
+      .select("id")
+      .eq("game_id", resolvedGameId)
+      .limit(1);
 
     if (existing && existing.length > 0) {
       return false;
     }
 
-    const { error } =
-      await supabase
-        .from("fun_games")
-        .insert([
-          {
-            date:
-              new Date().toISOString(),
+    const { error } = await supabase.from("fun_games").insert([
+      {
+        date: new Date().toISOString(),
 
-            winner,
+        winner,
 
-            winner_score:
-              winnerScore,
+        winner_score: winnerScore,
 
-            players,
+        players,
 
-            scores,
+        scores,
 
-            roll_count:
-              playModeRolls,
+        roll_count: playModeRolls,
 
-            rewrite_enabled:
-              playModeAllowRewrite,
+        rewrite_enabled: playModeAllowRewrite,
 
-            bonus_mode:
-              playModeBonusMode,
+        bonus_mode: playModeBonusMode,
 
-            bonus_rolls:
-              playModeBonusRolls,
+        bonus_rolls: playModeBonusRolls,
 
-            game_id: resolvedGameId,
-          },
-        ]);
+        game_id: resolvedGameId,
+      },
+    ]);
 
     if (error) {
-      console.error(
-        "Fun game save error:",
-        error
-      );
+      console.error("Fun game save error:", error);
       return false;
     }
 
     return true;
   };
 
-const checkExistingGameVersion =
-  async () => {
-    const { data, error } =
-      await supabase
-        .from("saved_games")
-        .select("id")
-        .eq("game_id", gameId);
+  const checkExistingGameVersion = async () => {
+    const { data, error } = await supabase
+      .from("saved_games")
+      .select("id")
+      .eq("game_id", gameId);
 
     if (error) {
       console.error(error);
@@ -5200,55 +3944,39 @@ const checkExistingGameVersion =
       return false;
     }
 
-    return (
-      data &&
-      data.length > 0
-    );
+    return data && data.length > 0;
   };
 
-const resolveSavedGameMetadata =
-  (): SavedGameMetadata => {
-    const isOnlineSave =
-      gameMode === "online";
+  const resolveSavedGameMetadata = (): SavedGameMetadata => {
+    const isOnlineSave = gameMode === "online";
 
-    const knownOnlineSessionId =
-      onlineSessionId ??
-      onlineSessionIdRef.current;
+    const knownOnlineSessionId = onlineSessionId ?? onlineSessionIdRef.current;
 
     return {
       gameMode,
-      onlineSessionId:
-        isOnlineSave
-          ? knownOnlineSessionId ?? null
-          : null,
-      localOnlinePlayerId:
-        isOnlineSave
-          ? localOnlinePlayerId
-          : null,
+      onlineSessionId: isOnlineSave ? (knownOnlineSessionId ?? null) : null,
+      localOnlinePlayerId: isOnlineSave ? localOnlinePlayerId : null,
     };
   };
 
-const isUuid = (
-  value: string
-) => {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
-};
+  const isUuid = (value: string) => {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    );
+  };
 
-const checkSavedGamesColumnExists =
-  async (column: string) => {
-    const { error } =
-      await supabase
-        .from("saved_games")
-        .select(column)
-        .limit(1);
+  const checkSavedGamesColumnExists = async (column: string) => {
+    const { error } = await supabase
+      .from("saved_games")
+      .select(column)
+      .limit(1);
 
     if (!error) {
       return true;
     }
 
-    const message = `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
+    const message =
+      `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
 
     const missingColumnError =
       message.includes("could not find") ||
@@ -5264,207 +3992,135 @@ const checkSavedGamesColumnExists =
     return false;
   };
 
-const getSavedGamesMetadataColumnSupport =
-  async (): Promise<SavedGamesMetadataColumnSupport> => {
-    if (
-      savedGamesMetadataColumnSupportRef.current
-    ) {
-      return savedGamesMetadataColumnSupportRef.current;
-    }
+  const getSavedGamesMetadataColumnSupport =
+    async (): Promise<SavedGamesMetadataColumnSupport> => {
+      if (savedGamesMetadataColumnSupportRef.current) {
+        return savedGamesMetadataColumnSupportRef.current;
+      }
 
-    const [
-      hasGameMode,
-      hasOnlineSessionId,
-      hasLocalOnlinePlayerId,
-      hasCurrentPlayPlayerIndex,
-      hasPlayModeDice,
-      hasLockedDice,
-      hasConfirmedLockedDice,
-      hasRemainingRolls,
-      hasBonusUsed,
-      hasSelectedGeneralValue,
-      hasHasRolledDice,
-      hasHasStartedPlayMode,
-    ] = await Promise.all([
-      checkSavedGamesColumnExists("game_mode"),
-      checkSavedGamesColumnExists("online_session_id"),
-      checkSavedGamesColumnExists(
-        "local_online_player_id"
-      ),
-      checkSavedGamesColumnExists(
-        "current_play_player_index"
-      ),
-      checkSavedGamesColumnExists(
-        "play_mode_dice"
-      ),
-      checkSavedGamesColumnExists(
-        "locked_dice"
-      ),
-      checkSavedGamesColumnExists(
-        "confirmed_locked_dice"
-      ),
-      checkSavedGamesColumnExists(
-        "remaining_rolls"
-      ),
-      checkSavedGamesColumnExists(
-        "bonus_used"
-      ),
-      checkSavedGamesColumnExists(
-        "selected_general_value"
-      ),
-      checkSavedGamesColumnExists(
-        "has_rolled_dice"
-      ),
-      checkSavedGamesColumnExists(
-        "has_started_play_mode"
-      ),
-    ]);
-
-    const support = {
-      game_mode: hasGameMode,
-      online_session_id:
+      const [
+        hasGameMode,
         hasOnlineSessionId,
-      local_online_player_id:
         hasLocalOnlinePlayerId,
-      current_play_player_index:
         hasCurrentPlayPlayerIndex,
-      play_mode_dice:
         hasPlayModeDice,
-      locked_dice:
         hasLockedDice,
-      confirmed_locked_dice:
         hasConfirmedLockedDice,
-      remaining_rolls:
         hasRemainingRolls,
-      bonus_used:
         hasBonusUsed,
-      selected_general_value:
         hasSelectedGeneralValue,
-      has_rolled_dice:
         hasHasRolledDice,
-      has_started_play_mode:
         hasHasStartedPlayMode,
+      ] = await Promise.all([
+        checkSavedGamesColumnExists("game_mode"),
+        checkSavedGamesColumnExists("online_session_id"),
+        checkSavedGamesColumnExists("local_online_player_id"),
+        checkSavedGamesColumnExists("current_play_player_index"),
+        checkSavedGamesColumnExists("play_mode_dice"),
+        checkSavedGamesColumnExists("locked_dice"),
+        checkSavedGamesColumnExists("confirmed_locked_dice"),
+        checkSavedGamesColumnExists("remaining_rolls"),
+        checkSavedGamesColumnExists("bonus_used"),
+        checkSavedGamesColumnExists("selected_general_value"),
+        checkSavedGamesColumnExists("has_rolled_dice"),
+        checkSavedGamesColumnExists("has_started_play_mode"),
+      ]);
+
+      const support = {
+        game_mode: hasGameMode,
+        online_session_id: hasOnlineSessionId,
+        local_online_player_id: hasLocalOnlinePlayerId,
+        current_play_player_index: hasCurrentPlayPlayerIndex,
+        play_mode_dice: hasPlayModeDice,
+        locked_dice: hasLockedDice,
+        confirmed_locked_dice: hasConfirmedLockedDice,
+        remaining_rolls: hasRemainingRolls,
+        bonus_used: hasBonusUsed,
+        selected_general_value: hasSelectedGeneralValue,
+        has_rolled_dice: hasHasRolledDice,
+        has_started_play_mode: hasHasStartedPlayMode,
+      };
+
+      savedGamesMetadataColumnSupportRef.current = support;
+
+      return support;
     };
 
-    savedGamesMetadataColumnSupportRef.current =
-      support;
-
-    return support;
-  };
-
-const buildSavedGamesPayload =
-  async (
+  const buildSavedGamesPayload = async (
     gameName: string,
     resolvedSaveMetadata: SavedGameMetadata,
-    overrideGameId?: string
+    overrideGameId?: string,
   ) => {
-    if (
-      !isValidSelectedPlayersForCount(
-        selectedPlayers,
-        playerCount
-      )
-    ) {
-      throw new Error(
-        "INVALID_SELECTED_PLAYERS_STATE"
-      );
+    if (!isValidSelectedPlayersForCount(selectedPlayers, playerCount)) {
+      throw new Error("INVALID_SELECTED_PLAYERS_STATE");
     }
 
-    const columnSupport =
-      await getSavedGamesMetadataColumnSupport();
+    const columnSupport = await getSavedGamesMetadataColumnSupport();
 
     const payload: Record<string, any> = {
-      game_id:
-        overrideGameId ??
-        gameId,
+      game_id: overrideGameId ?? gameId,
       name: gameName,
       player_count: playerCount,
       selected_players: selectedPlayers,
       scores,
       game_started: gameStarted,
       game_finished: gameFinished,
-      is_play_mode_active:
-        isPlayModeActive,
+      is_play_mode_active: isPlayModeActive,
       play_mode_rolls: playModeRolls,
-      play_mode_allow_rewrite:
-        playModeAllowRewrite,
-      play_mode_bonus_mode:
-        playModeBonusMode,
-      play_mode_bonus_rolls:
-        playModeBonusRolls,
+      play_mode_allow_rewrite: playModeAllowRewrite,
+      play_mode_bonus_mode: playModeBonusMode,
+      play_mode_bonus_rolls: playModeBonusRolls,
     };
 
-    if (
-      columnSupport.current_play_player_index
-    ) {
-      payload.current_play_player_index =
-        currentPlayPlayerIndex;
+    if (columnSupport.current_play_player_index) {
+      payload.current_play_player_index = currentPlayPlayerIndex;
     }
 
     if (columnSupport.play_mode_dice) {
-      payload.play_mode_dice =
-        playModeDice;
+      payload.play_mode_dice = playModeDice;
     }
 
     if (columnSupport.locked_dice) {
-      payload.locked_dice =
-        lockedDice;
+      payload.locked_dice = lockedDice;
     }
 
-    if (
-      columnSupport.confirmed_locked_dice
-    ) {
-      payload.confirmed_locked_dice =
-        confirmedLockedDice;
+    if (columnSupport.confirmed_locked_dice) {
+      payload.confirmed_locked_dice = confirmedLockedDice;
     }
 
     if (columnSupport.remaining_rolls) {
-      payload.remaining_rolls =
-        remainingRolls;
+      payload.remaining_rolls = remainingRolls;
     }
 
     if (columnSupport.bonus_used) {
       payload.bonus_used = bonusUsed;
     }
 
-    if (
-      columnSupport.selected_general_value
-    ) {
-      payload.selected_general_value =
-        selectedGeneralValue;
+    if (columnSupport.selected_general_value) {
+      payload.selected_general_value = selectedGeneralValue;
     }
 
     if (columnSupport.has_rolled_dice) {
-      payload.has_rolled_dice =
-        hasRolledDice;
+      payload.has_rolled_dice = hasRolledDice;
     }
 
-    if (
-      columnSupport.has_started_play_mode
-    ) {
-      payload.has_started_play_mode =
-        hasStartedPlayMode;
+    if (columnSupport.has_started_play_mode) {
+      payload.has_started_play_mode = hasStartedPlayMode;
     }
 
     if (columnSupport.game_mode) {
-      payload.game_mode =
-        resolvedSaveMetadata.gameMode;
+      payload.game_mode = resolvedSaveMetadata.gameMode;
     }
 
     if (columnSupport.online_session_id) {
-      const rawSessionId =
-        resolvedSaveMetadata.onlineSessionId;
+      const rawSessionId = resolvedSaveMetadata.onlineSessionId;
 
       payload.online_session_id =
-        rawSessionId && isUuid(rawSessionId)
-          ? rawSessionId
-          : null;
+        rawSessionId && isUuid(rawSessionId) ? rawSessionId : null;
     }
 
-    if (
-      columnSupport.local_online_player_id
-    ) {
-      payload.local_online_player_id =
-        resolvedSaveMetadata.localOnlinePlayerId;
+    if (columnSupport.local_online_player_id) {
+      payload.local_online_player_id = resolvedSaveMetadata.localOnlinePlayerId;
     }
 
     return {
@@ -5473,275 +4129,156 @@ const buildSavedGamesPayload =
     };
   };
 
-const overwriteGameInSupabase =
-  async (
-    saveMetadata?: SavedGameMetadata
-  ) => {
-
+  const overwriteGameInSupabase = async (saveMetadata?: SavedGameMetadata) => {
     try {
-      const resolvedSaveMetadata =
-        saveMetadata ??
-        resolveSavedGameMetadata();
+      const resolvedSaveMetadata = saveMetadata ?? resolveSavedGameMetadata();
 
-      const gameName =
-        selectedPlayers
-          .map(
-            (player) =>
-              getPlayerDisplayName(
-                player
-              )
-          )
-          .join(" vs ");
+      const gameName = selectedPlayers
+        .map((player) => getPlayerDisplayName(player))
+        .join(" vs ");
 
-      const {
+      const { payload: savedGamePayload, columnSupport } =
+        await buildSavedGamesPayload(gameName, resolvedSaveMetadata);
+
+      console.log("[saved_games][overwrite] pre-write", {
+        isOnlineGame,
+        isOnlineGameRefCurrent: isOnlineGameRef.current,
+        onlineSessionId,
+        onlineSessionIdRefCurrent: onlineSessionIdRef.current,
+        hasOnlineChannel: Boolean(onlineChannel),
+        resolvedGameMode: resolvedSaveMetadata.gameMode,
+        resolvedOnlineSessionId: resolvedSaveMetadata.onlineSessionId,
+        savedGamesColumnSupport: columnSupport,
         payload: savedGamePayload,
-        columnSupport,
-      } = await buildSavedGamesPayload(
-        gameName,
-        resolvedSaveMetadata
-      );
+      });
 
-      console.log(
-        "[saved_games][overwrite] pre-write",
-        {
-          isOnlineGame,
-          isOnlineGameRefCurrent:
-            isOnlineGameRef.current,
-          onlineSessionId,
-          onlineSessionIdRefCurrent:
-            onlineSessionIdRef.current,
-          hasOnlineChannel:
-            Boolean(onlineChannel),
-          resolvedGameMode:
-            resolvedSaveMetadata.gameMode,
-          resolvedOnlineSessionId:
-            resolvedSaveMetadata.onlineSessionId,
-          savedGamesColumnSupport:
-            columnSupport,
-          payload: savedGamePayload,
+      const { data: insertedGame, error } = await supabase
+        .from("saved_games")
+        .insert([savedGamePayload])
+        .select()
+        .single();
+
+      const { data: oldGames, error: findError } = await supabase
+        .from("saved_games")
+        .select("id")
+        .eq("game_id", gameId);
+
+      if (!findError && oldGames) {
+        const idsToDelete = oldGames
+          .filter((game) => game.id !== insertedGame.id)
+          .map((game) => game.id);
+
+        if (idsToDelete.length > 0) {
+          await supabase.from("saved_games").delete().in("id", idsToDelete);
         }
-      );
-
-      const {
-  data: insertedGame,
-  error,
-} = await supabase
-  .from("saved_games")
-  .insert([
-    savedGamePayload,
-  ])
-  .select()
-  .single();
-
-
-const {
-  data: oldGames,
-  error: findError,
-} = await supabase
-  .from("saved_games")
-  .select("id")
-  .eq(
-    "game_id",
-    gameId
-  );
-
-if (
-  !findError &&
-  oldGames
-) {
-  const idsToDelete =
-    oldGames
-      .filter(
-        (game) =>
-          game.id !==
-          insertedGame.id
-      )
-      .map(
-        (game) =>
-          game.id
-      );
-
-  if (
-    idsToDelete.length > 0
-  ) {
-    await supabase
-      .from("saved_games")
-      .delete()
-      .in(
-        "id",
-        idsToDelete
-      );
-  }
-}
+      }
       if (error) {
-        console.error(
-          "OVERWRITE GAME ERROR:",
-          error
-        );
+        console.error("OVERWRITE GAME ERROR:", error);
 
-        alert(
-          "Nepodařilo se přepsat hru."
-        );
+        alert("Nepodařilo se přepsat hru.");
 
         return;
       }
 
-      setShowGameVersionModal(
-        false
-      );
+      setShowGameVersionModal(false);
 
       setPendingSaveMetadata(null);
 
-      setShowGameSavedModal(
-        true
-      );
+      setShowGameSavedModal(true);
     } catch (error) {
       console.error(error);
 
-      alert(
-        "Nepodařilo se přepsat hru."
-      );
+      alert("Nepodařilo se přepsat hru.");
     }
   };
 
-const saveGameToSupabase =
-  async (
+  const saveGameToSupabase = async (
     overrideGameId?: string,
-    saveMetadata?: SavedGameMetadata
+    saveMetadata?: SavedGameMetadata,
   ) => {
     try {
-      const resolvedSaveMetadata =
-        saveMetadata ??
-        resolveSavedGameMetadata();
+      const resolvedSaveMetadata = saveMetadata ?? resolveSavedGameMetadata();
 
-      const gameName =
-        selectedPlayers
-          .map(
-            (player) =>
-              getPlayerDisplayName(
-                player
-              )
-          )
-          .join(" vs ");
+      const gameName = selectedPlayers
+        .map((player) => getPlayerDisplayName(player))
+        .join(" vs ");
 
-      const {
+      const { payload: savedGamePayload, columnSupport } =
+        await buildSavedGamesPayload(
+          gameName,
+          resolvedSaveMetadata,
+          overrideGameId,
+        );
+
+      console.log("[saved_games][save] pre-write", {
+        isOnlineGame,
+        isOnlineGameRefCurrent: isOnlineGameRef.current,
+        onlineSessionId,
+        onlineSessionIdRefCurrent: onlineSessionIdRef.current,
+        hasOnlineChannel: Boolean(onlineChannel),
+        resolvedGameMode: resolvedSaveMetadata.gameMode,
+        resolvedOnlineSessionId: resolvedSaveMetadata.onlineSessionId,
+        savedGamesColumnSupport: columnSupport,
         payload: savedGamePayload,
-        columnSupport,
-      } = await buildSavedGamesPayload(
-        gameName,
-        resolvedSaveMetadata,
-        overrideGameId
-      );
+      });
 
-      console.log(
-        "[saved_games][save] pre-write",
-        {
-          isOnlineGame,
-          isOnlineGameRefCurrent:
-            isOnlineGameRef.current,
-          onlineSessionId,
-          onlineSessionIdRefCurrent:
-            onlineSessionIdRef.current,
-          hasOnlineChannel:
-            Boolean(onlineChannel),
-          resolvedGameMode:
-            resolvedSaveMetadata.gameMode,
-          resolvedOnlineSessionId:
-            resolvedSaveMetadata.onlineSessionId,
-          savedGamesColumnSupport:
-            columnSupport,
-          payload: savedGamePayload,
-        }
-      );
-
-      const { error } =
-        await supabase
-          .from("saved_games")
-          .insert([
-            savedGamePayload,
-          ]);
+      const { error } = await supabase
+        .from("saved_games")
+        .insert([savedGamePayload]);
 
       if (error) {
-        console.error(
-          "SAVE GAME ERROR:",
-          error
-        );
+        console.error("SAVE GAME ERROR:", error);
 
-        alert(
-          "Nepodařilo se uložit hru."
-        );
+        alert("Nepodařilo se uložit hru.");
 
         return;
       }
 
-      setShowSaveGameConfirm(
-  false
-);
+      setShowSaveGameConfirm(false);
 
       setPendingSaveMetadata(null);
 
-setShowGameSavedModal(
-  true
-);
+      setShowGameSavedModal(true);
     } catch (error) {
       console.error(error);
 
-      alert(
-        "Nepodařilo se uložit hru."
-      );
+      alert("Nepodařilo se uložit hru.");
     }
   };
 
-const runSaveCurrentGameFlow =
-  async () => {
-    const saveMetadata =
-      resolveSavedGameMetadata();
+  const runSaveCurrentGameFlow = async () => {
+    const saveMetadata = resolveSavedGameMetadata();
 
-    const exists =
-      await checkExistingGameVersion();
+    const exists = await checkExistingGameVersion();
 
-    setPendingSaveMetadata(
-      saveMetadata
-    );
+    setPendingSaveMetadata(saveMetadata);
 
     if (exists) {
-      setShowGameVersionModal(
-        true
-      );
+      setShowGameVersionModal(true);
 
       return;
     }
 
-    await saveGameToSupabase(
-      undefined,
-      saveMetadata
-    );
+    await saveGameToSupabase(undefined, saveMetadata);
   };
 
-const loadSavedGames =
-  async () => {
+  const loadSavedGames = async () => {
     if (isOnlineGame) {
       return;
     }
 
     try {
-      const { data, error } =
-        await supabase
-          .from("saved_games")
-          .select("*")
-          .order(
-            "created_at",
-            {
-              ascending: false,
-            }
-          );
+      const { data, error } = await supabase
+        .from("saved_games")
+        .select("*")
+        .order("created_at", {
+          ascending: false,
+        });
 
       if (error) {
         console.error(error);
 
-        alert(
-          "Nepodařilo se načíst hry."
-        );
+        alert("Nepodařilo se načíst hry.");
 
         return;
       }
@@ -5752,204 +4289,138 @@ const loadSavedGames =
     } catch (error) {
       console.error(error);
 
-      alert(
-        "Nepodařilo se načíst hry."
-      );
+      alert("Nepodařilo se načíst hry.");
     }
   };
 
-const deleteSavedGame =
-  async (gameId: string) => {
-    const result =
-  await supabase
-    .from("saved_games")
-    .delete()
-    .eq("id", gameId);
+  const deleteSavedGame = async (gameId: string) => {
+    const result = await supabase.from("saved_games").delete().eq("id", gameId);
 
-const { error } =
-  result;
+    const { error } = result;
 
     if (error) {
       console.error(error);
 
-      alert(
-        "Nepodařilo se smazat hru."
-      );
+      alert("Nepodařilo se smazat hru.");
 
       return;
     }
 
-    setSavedGames((prev) =>
-      prev.filter(
-        (game) =>
-          game.id !== gameId
-      )
-    );
+    setSavedGames((prev) => prev.filter((game) => game.id !== gameId));
   };
 
-const loadPlayersFromSupabase =
-  async () => {
+  const loadPlayersFromSupabase = async () => {
     try {
-      const { data, error } =
-        await supabase
-          .from("players")
-          .select("*")
-          .order("created_at", {
-            ascending: true,
-          });
+      const { data, error } = await supabase
+        .from("players")
+        .select("*")
+        .order("created_at", {
+          ascending: true,
+        });
 
       if (error) {
-        console.error(
-          "PLAYERS LOAD ERROR:",
-          error
-        );
+        console.error("PLAYERS LOAD ERROR:", error);
 
         return;
       }
 
-      if (
-        data &&
-        data.length > 0
-      ) {
+      if (data && data.length > 0) {
         setPlayersState(data);
 
-        localStorage.setItem(
-          "heroDicePlayers",
-          JSON.stringify(data)
-        );
+        localStorage.setItem("heroDicePlayers", JSON.stringify(data));
       }
     } catch (error) {
       console.error(error);
     }
   };
 
-const addPlayerToSupabase =
-  async (
-    player: {
-      id: string;
-      name: string;
-      active: boolean;
-    }
-  ) => {
+  const addPlayerToSupabase = async (player: {
+    id: string;
+    name: string;
+    active: boolean;
+  }) => {
     try {
-      const { error } =
-        await supabase
-          .from("players")
-          .insert([
-            {
-              id: player.id,
-              name: player.name,
-              active:
-                player.active,
-            },
-          ]);
+      const { error } = await supabase.from("players").insert([
+        {
+          id: player.id,
+          name: player.name,
+          active: player.active,
+        },
+      ]);
 
-      if (
-  error &&
-  error.code !==
-    "23505"
-) {
-  console.error(
-    "ADD PLAYER ERROR:",
-    error
-  );
-}
+      if (error && error.code !== "23505") {
+        console.error("ADD PLAYER ERROR:", error);
+      }
     } catch (error) {
       console.error(error);
     }
   };
 
-const updatePlayerInSupabase =
-  async (
+  const updatePlayerInSupabase = async (
     playerId: string,
     updates: {
       name?: string;
       active?: boolean;
-    }
+    },
   ) => {
     try {
-      const { error } =
-        await supabase
-          .from("players")
-          .update(updates)
-          .eq("id", playerId);
+      const { error } = await supabase
+        .from("players")
+        .update(updates)
+        .eq("id", playerId);
 
       if (error) {
-        console.error(
-          "UPDATE PLAYER ERROR:",
-          error
-        );
+        console.error("UPDATE PLAYER ERROR:", error);
       }
     } catch (error) {
       console.error(error);
     }
   };
 
-const deletePlayerFromSupabase =
-  async (
-    playerId: string
-  ) => {
+  const deletePlayerFromSupabase = async (playerId: string) => {
     try {
-      const { error } =
-        await supabase
-          .from("players")
-          .delete()
-          .eq("id", playerId);
+      const { error } = await supabase
+        .from("players")
+        .delete()
+        .eq("id", playerId);
 
       if (error) {
-        console.error(
-          "DELETE PLAYER ERROR:",
-          error
-        );
+        console.error("DELETE PLAYER ERROR:", error);
       }
     } catch (error) {
       console.error(error);
     }
   };
 
-const buildLobbyReadinessMap = (
-  playerIds: string[],
-  readiness?: {
-    [playerId: string]: boolean;
-  } | null
-) => {
-  const next: {
-    [playerId: string]: boolean;
-  } = {};
+  const buildLobbyReadinessMap = (
+    playerIds: string[],
+    readiness?: {
+      [playerId: string]: boolean;
+    } | null,
+  ) => {
+    const next: {
+      [playerId: string]: boolean;
+    } = {};
 
-  playerIds.forEach((playerId) => {
-    next[playerId] = Boolean(
-      readiness?.[playerId]
-    );
-  });
+    playerIds.forEach((playerId) => {
+      next[playerId] = Boolean(readiness?.[playerId]);
+    });
 
-  return next;
-};
+    return next;
+  };
 
-  
   // 11. ONLINE
-  const handleCreateOnlineSession =
-    async () => {
-    if (
-      !isValidSelectedPlayersForCount(
-        selectedPlayers,
-        playerCount
-      )
-    ) {
-      alert(
-        "Vyber platný seznam hráčů před vytvořením online hry."
-      );
+  const handleCreateOnlineSession = async () => {
+    if (!isValidSelectedPlayersForCount(selectedPlayers, playerCount)) {
+      alert("Vyber platný seznam hráčů před vytvořením online hry.");
 
       return;
     }
 
     try {
-      const sessionSelectedPlayers = [
-        ...selectedPlayers,
-      ];
+      const sessionSelectedPlayers = [...selectedPlayers];
 
-      const sessionPlayerCount =
-        playerCount;
+      const sessionPlayerCount = playerCount;
 
       localTurnVersionRef.current = 0;
 
@@ -5966,10 +4437,8 @@ const buildLobbyReadinessMap = (
 
       const initialOnlineState = {
         scores,
-        selectedPlayers:
-          sessionSelectedPlayers,
-        playerCount:
-          sessionPlayerCount,
+        selectedPlayers: sessionSelectedPlayers,
+        playerCount: sessionPlayerCount,
         playerReadiness: initialReadiness,
         playModeRolls,
         playModeAllowRewrite,
@@ -5989,11 +4458,10 @@ const buildLobbyReadinessMap = (
         resume_started_at: null,
       };
 
-      const session =
-        await createOnlineSession(
-          sessionSelectedPlayers[0] || "",
-          initialOnlineState
-        );
+      const session = await createOnlineSession(
+        sessionSelectedPlayers[0] || "",
+        initialOnlineState,
+      );
 
       setOnlineSessionId(session.id);
 
@@ -6003,12 +4471,9 @@ const buildLobbyReadinessMap = (
 
       setPlayerReadiness(initialReadiness);
 
-      const channel = subscribeToSession(
-        session.id,
-        (gameState) => {
-          applyOnlineGameState(gameState);
-        }
-      );
+      const channel = subscribeToSession(session.id, (gameState) => {
+        applyOnlineGameState(gameState);
+      });
 
       setOnlineChannel(channel);
 
@@ -6027,406 +4492,290 @@ const buildLobbyReadinessMap = (
     } catch (error) {
       console.error(error);
 
-      alert(
-        "Nepodařilo se vytvořit online hru."
-      );
+      alert("Nepodařilo se vytvořit online hru.");
     }
   };
-  
-  const applyOnlineGameState = (
-  gameState: any
-) => {
-  lastStateChangeSourceRef.current =
-    "remote-sync";
 
-  const remoteSelectedPlayers =
-    Array.isArray(
-      gameState.selectedPlayers
-    )
+  const applyOnlineGameState = (gameState: any) => {
+    lastStateChangeSourceRef.current = "remote-sync";
+
+    const remoteSelectedPlayers = Array.isArray(gameState.selectedPlayers)
       ? gameState.selectedPlayers.filter(
           (playerId: unknown): playerId is string =>
-            typeof playerId === "string"
+            typeof playerId === "string",
         )
       : [];
 
-  const remotePlayerCount =
-    typeof gameState.playerCount ===
-    "number"
-      ? gameState.playerCount
-      : "";
+    const remotePlayerCount =
+      typeof gameState.playerCount === "number" ? gameState.playerCount : "";
 
-  if (
-    !isValidSelectedPlayersForCount(
-      remoteSelectedPlayers,
-      remotePlayerCount
-    )
-  ) {
-    setSelectedPlayers([]);
-    setPlayerCount("");
-    setPlayerReadiness({});
+    if (
+      !isValidSelectedPlayersForCount(remoteSelectedPlayers, remotePlayerCount)
+    ) {
+      setSelectedPlayers([]);
+      setPlayerCount("");
+      setPlayerReadiness({});
 
-    return;
-  }
+      return;
+    }
 
-  const incomingTurnVersion =
-    Number(gameState.turnVersion ?? 0);
+    const incomingTurnVersion = Number(gameState.turnVersion ?? 0);
 
-  const incomingUpdatedByPlayerId =
-    gameState.updatedByPlayerId ?? null;
+    const incomingUpdatedByPlayerId = gameState.updatedByPlayerId ?? null;
 
-  const shouldIgnoreOwnEcho =
-    localOnlinePlayerId !== null &&
-    incomingUpdatedByPlayerId ===
-      localOnlinePlayerId &&
-    incomingTurnVersion <=
-      localTurnVersionRef.current;
+    const shouldIgnoreOwnEcho =
+      localOnlinePlayerId !== null &&
+      incomingUpdatedByPlayerId === localOnlinePlayerId &&
+      incomingTurnVersion <= localTurnVersionRef.current;
 
-  const isStaleTurnVersion =
-    incomingTurnVersion <
-    localTurnVersionRef.current;
+    const isStaleTurnVersion =
+      incomingTurnVersion < localTurnVersionRef.current;
 
-  if (
-    shouldIgnoreOwnEcho ||
-    isStaleTurnVersion
-  ) {
-    return;
-  }
+    if (shouldIgnoreOwnEcho || isStaleTurnVersion) {
+      return;
+    }
 
-  localTurnVersionRef.current =
-    Math.max(
+    localTurnVersionRef.current = Math.max(
       localTurnVersionRef.current,
-      incomingTurnVersion
+      incomingTurnVersion,
     );
 
-  const incomingRuntimeRevision =
-    Number(
-      gameState.runtimeRevision ?? 0
-    );
+    const incomingRuntimeRevision = Number(gameState.runtimeRevision ?? 0);
 
-  const isStaleRuntimeRevision =
-    incomingRuntimeRevision <
-    localRuntimeRevisionRef.current;
+    const isStaleRuntimeRevision =
+      incomingRuntimeRevision < localRuntimeRevisionRef.current;
 
-  if (isStaleRuntimeRevision) {
-    return;
-  }
+    if (isStaleRuntimeRevision) {
+      return;
+    }
 
-  const incomingTurnIndex =
-    gameState.currentPlayPlayerIndex ??
-    currentPlayPlayerIndex;
+    const incomingTurnIndex =
+      gameState.currentPlayPlayerIndex ?? currentPlayPlayerIndex;
 
-  const isStaleForActiveTurn =
-    isOnlineGame &&
-    isCurrentPlayer &&
-    gameStarted &&
-    incomingTurnIndex ===
-      currentPlayPlayerIndex &&
-    incomingRuntimeRevision <=
-      localRuntimeRevisionRef.current;
+    const isStaleForActiveTurn =
+      isOnlineGame &&
+      isCurrentPlayer &&
+      gameStarted &&
+      incomingTurnIndex === currentPlayPlayerIndex &&
+      incomingRuntimeRevision <= localRuntimeRevisionRef.current;
 
-  if (isStaleForActiveTurn) {
-    return;
-  }
+    if (isStaleForActiveTurn) {
+      return;
+    }
 
-  localRuntimeRevisionRef.current =
-    Math.max(
+    localRuntimeRevisionRef.current = Math.max(
       localRuntimeRevisionRef.current,
-      incomingRuntimeRevision
+      incomingRuntimeRevision,
     );
 
-  setScores(
-    gameState.scores ?? {}
-  );
+    setScores(gameState.scores ?? {});
 
-  setCurrentPlayPlayerIndex(
-    gameState.currentPlayPlayerIndex ?? 0
-  );
+    setCurrentPlayPlayerIndex(gameState.currentPlayPlayerIndex ?? 0);
 
-  setPlayModeDice(
-    gameState.playModeDice ??
-      [1, 1, 1, 1, 1, 1]
-  );
+    setPlayModeDice(gameState.playModeDice ?? [1, 1, 1, 1, 1, 1]);
 
-  setLockedDice(
-    gameState.lockedDice ??
-      [
+    setLockedDice(
+      gameState.lockedDice ?? [false, false, false, false, false, false],
+    );
+
+    setConfirmedLockedDice(
+      gameState.confirmedLockedDice ?? [
         false,
         false,
         false,
         false,
         false,
         false,
-      ]
-  );
+      ],
+    );
 
-  setConfirmedLockedDice(
-    gameState.confirmedLockedDice ??
-      [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ]
-  );
+    setRemainingRolls(gameState.remainingRolls ?? 0);
 
-  setRemainingRolls(
-    gameState.remainingRolls ?? 0
-  );
+    setBonusUsed(gameState.bonusUsed ?? false);
 
-  setBonusUsed(
-    gameState.bonusUsed ?? false
-  );
+    setSelectedGeneralValue(gameState.selectedGeneralValue ?? null);
 
-  setSelectedGeneralValue(
-    gameState.selectedGeneralValue ??
-      null
-  );
+    setHasRolledDice(gameState.hasRolledDice ?? false);
 
-  setHasRolledDice(
-    gameState.hasRolledDice ??
-      false
-  );
+    const nextSelectedPlayers = remoteSelectedPlayers;
 
-  const nextSelectedPlayers =
-    remoteSelectedPlayers;
+    setSelectedPlayers(nextSelectedPlayers);
 
-  setSelectedPlayers(
-    nextSelectedPlayers
-  );
+    setPlayerCount(remotePlayerCount);
 
-  setPlayerCount(
-    remotePlayerCount
-  );
-
-  const nextLobbyReadiness =
-    buildLobbyReadinessMap(
+    const nextLobbyReadiness = buildLobbyReadinessMap(
       nextSelectedPlayers,
-      gameState.playerReadiness ?? null
+      gameState.playerReadiness ?? null,
     );
 
-  setPlayerReadiness(
-    nextLobbyReadiness
-  );
+    setPlayerReadiness(nextLobbyReadiness);
 
-  setPlayModeRolls(
-    gameState.playModeRolls ??
-      playModeRolls
-  );
+    setPlayModeRolls(gameState.playModeRolls ?? playModeRolls);
 
-  setPlayModeAllowRewrite(
-    gameState.playModeAllowRewrite ??
-      playModeAllowRewrite
-  );
-
-  setPlayModeBonusMode(
-    gameState.playModeBonusMode ??
-      playModeBonusMode
-  );
-
-  setPlayModeBonusRolls(
-    gameState.playModeBonusRolls ??
-      playModeBonusRolls
-  );
-
-  debugSetGameStarted(
-    gameState.gameStarted ??
-      gameStarted
-  );
-
-  const hasResumeSnapshotState =
-    Boolean(
-      gameState.gameStarted &&
-      gameState.hasStartedPlayMode
+    setPlayModeAllowRewrite(
+      gameState.playModeAllowRewrite ?? playModeAllowRewrite,
     );
 
-  const hasResumeStartSignal =
-    Boolean(
-      gameState.resume_started_at
+    setPlayModeBonusMode(gameState.playModeBonusMode ?? playModeBonusMode);
+
+    setPlayModeBonusRolls(gameState.playModeBonusRolls ?? playModeBonusRolls);
+
+    debugSetGameStarted(gameState.gameStarted ?? gameStarted);
+
+    const hasResumeSnapshotState = Boolean(
+      gameState.gameStarted && gameState.hasStartedPlayMode,
     );
 
-  const shouldHoldInLobby =
-    forceOnlineLobbyUntilHostStartRef.current &&
-    hasResumeSnapshotState &&
-    !hasResumeStartSignal;
+    const hasResumeStartSignal = Boolean(gameState.resume_started_at);
 
-  if (hasResumeStartSignal) {
-    forceOnlineLobbyUntilHostStartRef.current =
-      false;
-  }
+    const shouldHoldInLobby =
+      forceOnlineLobbyUntilHostStartRef.current &&
+      hasResumeSnapshotState &&
+      !hasResumeStartSignal;
 
-  const shouldAutoOpenPlayMode =
-    Boolean(
+    if (hasResumeStartSignal) {
+      forceOnlineLobbyUntilHostStartRef.current = false;
+    }
+
+    const shouldAutoOpenPlayMode = Boolean(
       gameState.gameStarted &&
       gameState.hasStartedPlayMode &&
-      !hasStartedPlayMode
+      !hasStartedPlayMode,
     );
 
-  const shouldOpenFromResumeSignal =
-    Boolean(
+    const shouldOpenFromResumeSignal = Boolean(
       hasResumeStartSignal &&
       gameState.gameStarted &&
-      gameState.hasStartedPlayMode
+      gameState.hasStartedPlayMode,
     );
 
-  debugSetHasStartedPlayMode(
-    gameState.hasStartedPlayMode ??
-      hasStartedPlayMode
-  );
+    debugSetHasStartedPlayMode(
+      gameState.hasStartedPlayMode ?? hasStartedPlayMode,
+    );
 
-  if (
-    (shouldAutoOpenPlayMode ||
-      shouldOpenFromResumeSignal) &&
-    !shouldHoldInLobby
-  ) {
-    if (!hasAutoOpenedOnlinePlayModeRef.current) {
-      hasAutoOpenedOnlinePlayModeRef.current = true;
-      debugSetIsPlayModeActive(true);
-    }
-  }
-
-  if (shouldHoldInLobby) {
-    debugSetIsPlayModeActive(false);
-    debugSetScreen("online-lobby");
-
-    return;
-  }
-
-  if (gameState.gameStarted) {
-    debugSetScreen("game");
-  }
-};
-
-  const syncCurrentGameState =
-  async () => {
     if (
-      !isOnlineGame ||
-      !onlineSessionId
+      (shouldAutoOpenPlayMode || shouldOpenFromResumeSignal) &&
+      !shouldHoldInLobby
     ) {
+      if (!hasAutoOpenedOnlinePlayModeRef.current) {
+        hasAutoOpenedOnlinePlayModeRef.current = true;
+        debugSetIsPlayModeActive(true);
+      }
+    }
+
+    if (shouldHoldInLobby) {
+      debugSetIsPlayModeActive(false);
+      debugSetScreen("online-lobby");
+
+      return;
+    }
+
+    if (gameState.gameStarted) {
+      debugSetScreen("game");
+    }
+  };
+
+  const syncCurrentGameState = async () => {
+    if (!isOnlineGame || !onlineSessionId) {
       return;
     }
 
     try {
-      await updateOnlineState(
-        onlineSessionId,
-        {
-          scores,
+      await updateOnlineState(onlineSessionId, {
+        scores,
 
-          currentPlayPlayerIndex,
+        currentPlayPlayerIndex,
 
-          playModeDice,
+        playModeDice,
 
-          lockedDice,
+        lockedDice,
 
-          confirmedLockedDice,
+        confirmedLockedDice,
 
-          remainingRolls,
+        remainingRolls,
 
-          bonusUsed,
+        bonusUsed,
 
-          selectedGeneralValue,
+        selectedGeneralValue,
 
-          hasRolledDice,
+        hasRolledDice,
 
-          selectedPlayers,
+        selectedPlayers,
 
-          playerCount,
+        playerCount,
 
-          playModeRolls,
+        playModeRolls,
 
-          playModeAllowRewrite,
+        playModeAllowRewrite,
 
-          playModeBonusMode,
+        playModeBonusMode,
 
-          playModeBonusRolls,
+        playModeBonusRolls,
 
-          playerReadiness,
+        playerReadiness,
 
-          gameStarted,
+        gameStarted,
 
-          hasStartedPlayMode,
+        hasStartedPlayMode,
 
-          turnVersion:
-            localTurnVersionRef.current,
+        turnVersion: localTurnVersionRef.current,
 
-          updatedByPlayerId:
-            localOnlinePlayerId,
+        updatedByPlayerId: localOnlinePlayerId,
 
-          updatedAt: Date.now(),
+        updatedAt: Date.now(),
 
-          runtimeRevision:
-            localRuntimeRevisionRef.current,
-        }
-      );
+        runtimeRevision: localRuntimeRevisionRef.current,
+      });
     } catch (error) {
-      console.error(
-        "ONLINE SYNC ERROR:",
-        error
-      );
+      console.error("ONLINE SYNC ERROR:", error);
     }
   };
 
-  const claimOnlinePlayer = async (
-    playerId: string
-  ) => {
-    if (
-      isOnlineGame &&
-      onlineSessionId
-    ) {
+  const claimOnlinePlayer = async (playerId: string) => {
+    if (isOnlineGame && onlineSessionId) {
       try {
-        const session =
-          await joinOnlineSession(
-            onlineSessionId
-          );
+        const session = await joinOnlineSession(onlineSessionId);
 
-        const currentState =
-          session.game_state ?? {};
+        const currentState = session.game_state ?? {};
 
-        const remoteSelectedPlayers =
-          Array.isArray(
-            currentState.selectedPlayers
-          )
-            ? currentState.selectedPlayers.filter(
-                (candidate: unknown): candidate is string =>
-                  typeof candidate === "string"
-              )
-            : [];
+        const remoteSelectedPlayers = Array.isArray(
+          currentState.selectedPlayers,
+        )
+          ? currentState.selectedPlayers.filter(
+              (candidate: unknown): candidate is string =>
+                typeof candidate === "string",
+            )
+          : [];
 
         const remotePlayerCount =
-          typeof currentState.playerCount ===
-          "number"
+          typeof currentState.playerCount === "number"
             ? currentState.playerCount
             : "";
 
         if (
           !isValidSelectedPlayersForCount(
             remoteSelectedPlayers,
-            remotePlayerCount
+            remotePlayerCount,
           )
         ) {
           setSelectedPlayers([]);
           setPlayerCount("");
           setPlayerReadiness({});
 
-          alert(
-            "Online session neobsahuje platný výběr hráčů."
-          );
+          alert("Online session neobsahuje platný výběr hráčů.");
 
           return;
         }
 
-        const nextReadiness =
-          buildLobbyReadinessMap(
-            remoteSelectedPlayers,
-            currentState.playerReadiness
-          );
+        const nextReadiness = buildLobbyReadinessMap(
+          remoteSelectedPlayers,
+          currentState.playerReadiness,
+        );
 
         if (
           localOnlinePlayerId &&
           localOnlinePlayerId !== playerId &&
-          localOnlinePlayerId in
-            nextReadiness
+          localOnlinePlayerId in nextReadiness
         ) {
           nextReadiness[localOnlinePlayerId] = false;
         }
@@ -6442,35 +4791,24 @@ const buildLobbyReadinessMap = (
 
         const claimTurnVersion =
           Math.max(
-            Number(
-              currentState.turnVersion ??
-                0
-            ),
-            localTurnVersionRef.current
+            Number(currentState.turnVersion ?? 0),
+            localTurnVersionRef.current,
           ) + 1;
 
-        await updateOnlineState(
-          onlineSessionId,
-          {
-            ...currentState,
-            playerReadiness: nextReadiness,
-            updatedByPlayerId: playerId,
-            updatedAt: Date.now(),
-            turnVersion: claimTurnVersion,
-          }
-        );
+        await updateOnlineState(onlineSessionId, {
+          ...currentState,
+          playerReadiness: nextReadiness,
+          updatedByPlayerId: playerId,
+          updatedAt: Date.now(),
+          turnVersion: claimTurnVersion,
+        });
       } catch (error) {
-        console.error(
-          "CLAIM PLAYER SYNC ERROR:",
-          error
-        );
+        console.error("CLAIM PLAYER SYNC ERROR:", error);
       }
     }
   };
-  
-  
-  const handleJoinOnlineSession =
-  async () => {
+
+  const handleJoinOnlineSession = async () => {
     if (!joinSessionId.trim()) {
       alert("Zadej kód místnosti.");
 
@@ -6481,40 +4819,33 @@ const buildLobbyReadinessMap = (
       localTurnVersionRef.current = 0;
       hasAutoOpenedOnlinePlayModeRef.current = false;
 
-      const session =
-        await joinOnlineSession(
-          joinSessionId.trim()
-        );
+      const session = await joinOnlineSession(joinSessionId.trim());
 
-      const sessionSelectedPlayers: string[] =
-        Array.isArray(
-          session.game_state?.selectedPlayers
-        )
-          ? session.game_state.selectedPlayers.filter(
-              (candidate: unknown): candidate is string =>
-                typeof candidate === "string"
-            )
-          : [];
+      const sessionSelectedPlayers: string[] = Array.isArray(
+        session.game_state?.selectedPlayers,
+      )
+        ? session.game_state.selectedPlayers.filter(
+            (candidate: unknown): candidate is string =>
+              typeof candidate === "string",
+          )
+        : [];
 
       const sessionPlayerCount =
-        typeof session.game_state?.playerCount ===
-        "number"
+        typeof session.game_state?.playerCount === "number"
           ? session.game_state.playerCount
           : "";
 
       if (
         !isValidSelectedPlayersForCount(
           sessionSelectedPlayers,
-          sessionPlayerCount
+          sessionPlayerCount,
         )
       ) {
         setSelectedPlayers([]);
         setPlayerCount("");
         setPlayerReadiness({});
 
-        alert(
-          "Online session neobsahuje platný výběr hráčů."
-        );
+        alert("Online session neobsahuje platný výběr hráčů.");
 
         return false;
       }
@@ -6522,14 +4853,12 @@ const buildLobbyReadinessMap = (
       setGameMode("online");
       setSelectedGameMode("online");
 
-      const isResumeLobbyJoin =
-        Boolean(
-          session.game_state?.gameStarted &&
-          session.game_state?.hasStartedPlayMode
-        );
+      const isResumeLobbyJoin = Boolean(
+        session.game_state?.gameStarted &&
+        session.game_state?.hasStartedPlayMode,
+      );
 
-      forceOnlineLobbyUntilHostStartRef.current =
-        isResumeLobbyJoin;
+      forceOnlineLobbyUntilHostStartRef.current = isResumeLobbyJoin;
 
       setOnlineSessionId(session.id);
 
@@ -6538,25 +4867,18 @@ const buildLobbyReadinessMap = (
 
       setPlayerCount(sessionPlayerCount);
 
-      setSelectedPlayers(
-        sessionSelectedPlayers
-      );
+      setSelectedPlayers(sessionSelectedPlayers);
 
-      const nextReadiness =
-        buildLobbyReadinessMap(
-          sessionSelectedPlayers,
-          session.game_state
-            ?.playerReadiness
-        );
+      const nextReadiness = buildLobbyReadinessMap(
+        sessionSelectedPlayers,
+        session.game_state?.playerReadiness,
+      );
 
       setPlayerReadiness(nextReadiness);
 
-      const channel = subscribeToSession(
-        session.id,
-        (gameState) => {
-          applyOnlineGameState(gameState);
-        }
-      );
+      const channel = subscribeToSession(session.id, (gameState) => {
+        applyOnlineGameState(gameState);
+      });
 
       setOnlineChannel(channel);
 
@@ -6578,152 +4900,100 @@ const buildLobbyReadinessMap = (
       }
 
       if (session.game_state) {
-        applyOnlineGameState(
-          session.game_state
-        );
+        applyOnlineGameState(session.game_state);
       }
 
       return true;
     } catch (error) {
       console.error(error);
 
-      alert(
-        "Nepodařilo se připojit k online hře."
-      );
+      alert("Nepodařilo se připojit k online hře.");
 
       return false;
     }
   };
 
-  const handleStartOnlineGame =
-  async () => {
-    if (
-      !isOnlineGame ||
-      !onlineSessionId ||
-      !canStartOnlineGame
-    ) {
+  const handleStartOnlineGame = async () => {
+    if (!isOnlineGame || !onlineSessionId || !canStartOnlineGame) {
       return;
     }
 
-    if (
-      !isValidSelectedPlayersForCount(
-        selectedPlayers,
-        playerCount
-      )
-    ) {
-      alert(
-        "Vyber platný seznam hráčů před spuštěním online hry."
-      );
+    if (!isValidSelectedPlayersForCount(selectedPlayers, playerCount)) {
+      alert("Vyber platný seznam hráčů před spuštěním online hry.");
 
       return;
     }
 
-    let nextRuntimeRevision =
-      localRuntimeRevisionRef.current + 1;
-    let nextTurnVersion =
-      localTurnVersionRef.current + 1;
-    let startSelectedPlayers = [
-      ...selectedPlayers,
-    ];
+    let nextRuntimeRevision = localRuntimeRevisionRef.current + 1;
+    let nextTurnVersion = localTurnVersionRef.current + 1;
+    let startSelectedPlayers = [...selectedPlayers];
     let startPlayerCount = playerCount;
 
     try {
-      const latestSession =
-        await joinOnlineSession(
-          onlineSessionId
-        );
+      const latestSession = await joinOnlineSession(onlineSessionId);
 
-      const remoteSelectedPlayers =
-        Array.isArray(
-          latestSession.game_state
-            ?.selectedPlayers
-        )
-          ? latestSession.game_state.selectedPlayers.filter(
-              (candidate: unknown): candidate is string =>
-                typeof candidate === "string"
-            )
-          : [];
+      const remoteSelectedPlayers = Array.isArray(
+        latestSession.game_state?.selectedPlayers,
+      )
+        ? latestSession.game_state.selectedPlayers.filter(
+            (candidate: unknown): candidate is string =>
+              typeof candidate === "string",
+          )
+        : [];
 
       const remotePlayerCount =
-        typeof latestSession.game_state
-          ?.playerCount === "number"
-          ? latestSession.game_state
-              .playerCount
+        typeof latestSession.game_state?.playerCount === "number"
+          ? latestSession.game_state.playerCount
           : "";
 
       if (
         !isValidSelectedPlayersForCount(
           remoteSelectedPlayers,
-          remotePlayerCount
+          remotePlayerCount,
         )
       ) {
         setSelectedPlayers([]);
         setPlayerCount("");
         setPlayerReadiness({});
 
-        alert(
-          "Online session neobsahuje platný výběr hráčů."
-        );
+        alert("Online session neobsahuje platný výběr hráčů.");
 
         return;
       }
 
-      startSelectedPlayers =
-        remoteSelectedPlayers;
-      startPlayerCount =
-        remotePlayerCount;
+      startSelectedPlayers = remoteSelectedPlayers;
+      startPlayerCount = remotePlayerCount;
 
-      setSelectedPlayers(
-        remoteSelectedPlayers
-      );
-      setPlayerCount(
-        remotePlayerCount
+      setSelectedPlayers(remoteSelectedPlayers);
+      setPlayerCount(remotePlayerCount);
+
+      const remoteRuntimeRevision = Number(
+        latestSession.game_state?.runtimeRevision ?? 0,
       );
 
-      const remoteRuntimeRevision =
-        Number(
-          latestSession.game_state
-            ?.runtimeRevision ?? 0
-        );
-
-      const remoteTurnVersion =
-        Number(
-          latestSession.game_state
-            ?.turnVersion ?? 0
-        );
+      const remoteTurnVersion = Number(
+        latestSession.game_state?.turnVersion ?? 0,
+      );
 
       nextRuntimeRevision =
-        Math.max(
-          localRuntimeRevisionRef.current,
-          remoteRuntimeRevision
-        ) + 1;
+        Math.max(localRuntimeRevisionRef.current, remoteRuntimeRevision) + 1;
 
       nextTurnVersion =
-        Math.max(
-          localTurnVersionRef.current,
-          remoteTurnVersion
-        ) + 1;
+        Math.max(localTurnVersionRef.current, remoteTurnVersion) + 1;
     } catch (error) {
-      console.error(
-        "ONLINE START PREP ERROR:",
-        error
-      );
+      console.error("ONLINE START PREP ERROR:", error);
     }
 
-    localRuntimeRevisionRef.current =
-      nextRuntimeRevision;
-    localTurnVersionRef.current =
-      nextTurnVersion;
+    localRuntimeRevisionRef.current = nextRuntimeRevision;
+    localTurnVersionRef.current = nextTurnVersion;
 
     hasAutoOpenedOnlinePlayModeRef.current = true;
 
     if (isOnlineResumeLobbyMode) {
       const resumeGameState = {
         scores,
-        selectedPlayers:
-          startSelectedPlayers,
-        playerCount:
-          startPlayerCount,
+        selectedPlayers: startSelectedPlayers,
+        playerCount: startPlayerCount,
         playModeRolls,
         playModeAllowRewrite,
         playModeBonusMode,
@@ -6740,13 +5010,10 @@ const buildLobbyReadinessMap = (
         gameStarted: true,
         isPlayModeActive: true,
         hasStartedPlayMode: true,
-        turnVersion:
-          nextTurnVersion,
-        updatedByPlayerId:
-          localOnlinePlayerId,
+        turnVersion: nextTurnVersion,
+        updatedByPlayerId: localOnlinePlayerId,
         updatedAt: Date.now(),
-        runtimeRevision:
-          nextRuntimeRevision,
+        runtimeRevision: nextRuntimeRevision,
         resume_started_at: Date.now(),
       };
 
@@ -6754,21 +5021,13 @@ const buildLobbyReadinessMap = (
       debugSetHasStartedPlayMode(true);
 
       try {
-        await updateOnlineState(
-          onlineSessionId,
-          resumeGameState
-        );
+        await updateOnlineState(onlineSessionId, resumeGameState);
 
         debugSetScreen("game");
       } catch (error) {
-        console.error(
-          "RESUME ONLINE GAME ERROR:",
-          error
-        );
+        console.error("RESUME ONLINE GAME ERROR:", error);
 
-        alert(
-          "Nepodařilo se pokračovat v online hře."
-        );
+        alert("Nepodařilo se pokračovat v online hře.");
       }
 
       return;
@@ -6776,10 +5035,8 @@ const buildLobbyReadinessMap = (
 
     const initialGameState = {
       scores,
-      selectedPlayers:
-        startSelectedPlayers,
-      playerCount:
-        startPlayerCount,
+      selectedPlayers: startSelectedPlayers,
+      playerCount: startPlayerCount,
       playModeRolls,
       playModeAllowRewrite,
       playModeBonusMode,
@@ -6796,13 +5053,10 @@ const buildLobbyReadinessMap = (
       gameStarted: true,
       isPlayModeActive: true,
       hasStartedPlayMode: true,
-      turnVersion:
-        nextTurnVersion,
-      updatedByPlayerId:
-        localOnlinePlayerId,
+      turnVersion: nextTurnVersion,
+      updatedByPlayerId: localOnlinePlayerId,
       updatedAt: Date.now(),
-      runtimeRevision:
-        nextRuntimeRevision,
+      runtimeRevision: nextRuntimeRevision,
       resume_started_at: Date.now(),
     };
 
@@ -6820,18 +5074,13 @@ const buildLobbyReadinessMap = (
     debugSetHasStartedPlayMode(true);
 
     try {
-      await updateOnlineState(
-        onlineSessionId,
-        initialGameState
-      );
+      await updateOnlineState(onlineSessionId, initialGameState);
 
       debugSetScreen("game");
     } catch (error) {
       console.error("START ONLINE GAME ERROR:", error);
 
-      alert(
-        "Nepodařilo se spustit online hru."
-      );
+      alert("Nepodařilo se spustit online hru.");
     }
   };
 
@@ -6852,105 +5101,69 @@ const buildLobbyReadinessMap = (
     debugSetScreen("home");
   };
 
-  const buildSavedGamePayload = (
-    savedGame?: {
-      gameId?: string;
-      playerCount?: number | "";
-      selectedPlayers?: string[];
-      scores?: ScoreMap;
-      gameStarted?: boolean;
-      gameFinished?: boolean;
-      isPlayModeActive?: boolean;
-      hasStartedPlayMode?: boolean;
-      playModeRolls?: number;
-      playModeAllowRewrite?: boolean;
-      playModeBonusMode?: "general-only" | "all";
-      playModeBonusRolls?: number;
-      currentPlayPlayerIndex?: number;
-      playModeDice?: number[];
-      lockedDice?: boolean[];
-      confirmedLockedDice?: boolean[];
-      remainingRolls?: number;
-      bonusUsed?: boolean;
-      selectedGeneralValue?: number | null;
-      hasRolledDice?: boolean;
-      gameMode?: "offline" | "online";
-      onlineSessionId?: string | null;
-      localOnlinePlayerId?: string | null;
-    }
-  ) => ({
+  const buildSavedGamePayload = (savedGame?: {
+    gameId?: string;
+    playerCount?: number | "";
+    selectedPlayers?: string[];
+    scores?: ScoreMap;
+    gameStarted?: boolean;
+    gameFinished?: boolean;
+    isPlayModeActive?: boolean;
+    hasStartedPlayMode?: boolean;
+    playModeRolls?: number;
+    playModeAllowRewrite?: boolean;
+    playModeBonusMode?: "general-only" | "all";
+    playModeBonusRolls?: number;
+    currentPlayPlayerIndex?: number;
+    playModeDice?: number[];
+    lockedDice?: boolean[];
+    confirmedLockedDice?: boolean[];
+    remainingRolls?: number;
+    bonusUsed?: boolean;
+    selectedGeneralValue?: number | null;
+    hasRolledDice?: boolean;
+    gameMode?: "offline" | "online";
+    onlineSessionId?: string | null;
+    localOnlinePlayerId?: string | null;
+  }) => ({
     gameId: savedGame?.gameId ?? gameId,
     playerCount: savedGame?.playerCount ?? playerCount,
-    selectedPlayers:
-      savedGame?.selectedPlayers ?? selectedPlayers,
+    selectedPlayers: savedGame?.selectedPlayers ?? selectedPlayers,
     scores: savedGame?.scores ?? scores,
     gameStarted: savedGame?.gameStarted ?? gameStarted,
-    gameFinished:
-      savedGame?.gameFinished ?? gameFinished,
-    isPlayModeActive:
-      savedGame?.isPlayModeActive ??
-      isPlayModeActive,
-    hasStartedPlayMode:
-      savedGame?.hasStartedPlayMode ??
-      hasStartedPlayMode,
-    playModeRolls:
-      savedGame?.playModeRolls ?? playModeRolls,
+    gameFinished: savedGame?.gameFinished ?? gameFinished,
+    isPlayModeActive: savedGame?.isPlayModeActive ?? isPlayModeActive,
+    hasStartedPlayMode: savedGame?.hasStartedPlayMode ?? hasStartedPlayMode,
+    playModeRolls: savedGame?.playModeRolls ?? playModeRolls,
     playModeAllowRewrite:
-      savedGame?.playModeAllowRewrite ??
-      playModeAllowRewrite,
-    playModeBonusMode:
-      savedGame?.playModeBonusMode ??
-      playModeBonusMode,
-    playModeBonusRolls:
-      savedGame?.playModeBonusRolls ??
-      playModeBonusRolls,
+      savedGame?.playModeAllowRewrite ?? playModeAllowRewrite,
+    playModeBonusMode: savedGame?.playModeBonusMode ?? playModeBonusMode,
+    playModeBonusRolls: savedGame?.playModeBonusRolls ?? playModeBonusRolls,
     currentPlayPlayerIndex:
-      savedGame?.currentPlayPlayerIndex ??
-      currentPlayPlayerIndex,
-    playModeDice:
-      savedGame?.playModeDice ?? playModeDice,
-    lockedDice:
-      savedGame?.lockedDice ?? lockedDice,
-    confirmedLockedDice:
-      savedGame?.confirmedLockedDice ??
-      confirmedLockedDice,
-    remainingRolls:
-      savedGame?.remainingRolls ??
-      remainingRolls,
-    bonusUsed:
-      savedGame?.bonusUsed ?? bonusUsed,
+      savedGame?.currentPlayPlayerIndex ?? currentPlayPlayerIndex,
+    playModeDice: savedGame?.playModeDice ?? playModeDice,
+    lockedDice: savedGame?.lockedDice ?? lockedDice,
+    confirmedLockedDice: savedGame?.confirmedLockedDice ?? confirmedLockedDice,
+    remainingRolls: savedGame?.remainingRolls ?? remainingRolls,
+    bonusUsed: savedGame?.bonusUsed ?? bonusUsed,
     selectedGeneralValue:
-      savedGame?.selectedGeneralValue ??
-      selectedGeneralValue,
-    hasRolledDice:
-      savedGame?.hasRolledDice ??
-      hasRolledDice,
-    gameMode:
-      savedGame?.gameMode ??
-      gameMode,
+      savedGame?.selectedGeneralValue ?? selectedGeneralValue,
+    hasRolledDice: savedGame?.hasRolledDice ?? hasRolledDice,
+    gameMode: savedGame?.gameMode ?? gameMode,
     onlineSessionId:
       savedGame?.onlineSessionId ??
-      (gameMode === "online"
-        ? onlineSessionId
-        : null),
+      (gameMode === "online" ? onlineSessionId : null),
     localOnlinePlayerId:
       savedGame?.localOnlinePlayerId ??
-      (gameMode === "online"
-        ? localOnlinePlayerId
-        : null),
+      (gameMode === "online" ? localOnlinePlayerId : null),
   });
 
   const openSavedGame = async (
-    savedGame: ReturnType<
-      typeof buildSavedGamePayload
-    >
+    savedGame: ReturnType<typeof buildSavedGamePayload>,
   ) => {
-    const savedGameMode =
-      savedGame.gameMode ?? "offline";
-    const isOnlineSavedGame =
-      savedGameMode === "online";
-    const resolvedGameId =
-      resolveGameId(savedGame.gameId);
+    const savedGameMode = savedGame.gameMode ?? "offline";
+    const isOnlineSavedGame = savedGameMode === "online";
+    const resolvedGameId = resolveGameId(savedGame.gameId);
 
     setGameMode(savedGameMode);
     setSelectedGameMode(savedGameMode);
@@ -6963,7 +5176,7 @@ const buildLobbyReadinessMap = (
         JSON.stringify({
           ...savedGame,
           gameId: resolvedGameId,
-        })
+        }),
       );
     }
 
@@ -6973,87 +5186,41 @@ const buildLobbyReadinessMap = (
     debugSetGameStarted(savedGame.gameStarted);
     setGameFinished(savedGame.gameFinished);
     debugSetIsPlayModeActive(
-      isOnlineSavedGame
-        ? false
-        : savedGame.isPlayModeActive ?? false
+      isOnlineSavedGame ? false : (savedGame.isPlayModeActive ?? false),
     );
-    debugSetHasStartedPlayMode(
-      savedGame.hasStartedPlayMode ?? false
-    );
+    debugSetHasStartedPlayMode(savedGame.hasStartedPlayMode ?? false);
     setShowPlayModeResult(false);
     setPlayModeRolls(savedGame.playModeRolls ?? 4);
-    setPlayModeAllowRewrite(
-      savedGame.playModeAllowRewrite ?? false
-    );
-    setPlayModeBonusMode(
-      savedGame.playModeBonusMode ??
-        "general-only"
-    );
-    setPlayModeBonusRolls(
-      savedGame.playModeBonusRolls ?? 2
-    );
+    setPlayModeAllowRewrite(savedGame.playModeAllowRewrite ?? false);
+    setPlayModeBonusMode(savedGame.playModeBonusMode ?? "general-only");
+    setPlayModeBonusRolls(savedGame.playModeBonusRolls ?? 2);
 
-    const offlineDefaultDice = [
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-    ];
+    const offlineDefaultDice = [1, 1, 1, 1, 1, 1];
 
-    const offlineDefaultLocks = [
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-    ];
+    const offlineDefaultLocks = [false, false, false, false, false, false];
 
     if (isOnlineSavedGame) {
       setCurrentPlayPlayerIndex(0);
       setPlayModeDice(offlineDefaultDice);
       setLockedDice(offlineDefaultLocks);
-      setConfirmedLockedDice(
-        offlineDefaultLocks
-      );
-      setRemainingRolls(
-        savedGame.playModeRolls ?? 4
-      );
+      setConfirmedLockedDice(offlineDefaultLocks);
+      setRemainingRolls(savedGame.playModeRolls ?? 4);
       setBonusUsed(false);
       setSelectedGeneralValue(null);
       setHasRolledDice(false);
     } else {
-      setCurrentPlayPlayerIndex(
-        savedGame.currentPlayPlayerIndex ?? 0
-      );
-      setPlayModeDice(
-        savedGame.playModeDice ??
-          offlineDefaultDice
-      );
-      setLockedDice(
-        savedGame.lockedDice ??
-          offlineDefaultLocks
-      );
+      setCurrentPlayPlayerIndex(savedGame.currentPlayPlayerIndex ?? 0);
+      setPlayModeDice(savedGame.playModeDice ?? offlineDefaultDice);
+      setLockedDice(savedGame.lockedDice ?? offlineDefaultLocks);
       setConfirmedLockedDice(
-        savedGame.confirmedLockedDice ??
-          offlineDefaultLocks
+        savedGame.confirmedLockedDice ?? offlineDefaultLocks,
       );
       setRemainingRolls(
-        savedGame.remainingRolls ??
-          (savedGame.playModeRolls ?? 4)
+        savedGame.remainingRolls ?? savedGame.playModeRolls ?? 4,
       );
-      setBonusUsed(
-        savedGame.bonusUsed ?? false
-      );
-      setSelectedGeneralValue(
-        savedGame.selectedGeneralValue ??
-          null
-      );
-      setHasRolledDice(
-        savedGame.hasRolledDice ?? false
-      );
+      setBonusUsed(savedGame.bonusUsed ?? false);
+      setSelectedGeneralValue(savedGame.selectedGeneralValue ?? null);
+      setHasRolledDice(savedGame.hasRolledDice ?? false);
     }
 
     if (onlineChannel) {
@@ -7064,13 +5231,10 @@ const buildLobbyReadinessMap = (
     setJoinSessionId("");
 
     if (isOnlineSavedGame) {
-      const resumeSessionId =
-        savedGame.onlineSessionId ?? null;
+      const resumeSessionId = savedGame.onlineSessionId ?? null;
 
       if (!resumeSessionId) {
-        alert(
-          "Uložená online hra neobsahuje platné session ID."
-        );
+        alert("Uložená online hra neobsahuje platné session ID.");
 
         setOnlineSessionId(null);
         setLocalOnlinePlayerId(null);
@@ -7087,31 +5251,26 @@ const buildLobbyReadinessMap = (
         localTurnVersionRef.current = 0;
         hasAutoOpenedOnlinePlayModeRef.current = false;
 
-        const session =
-          await joinOnlineSession(
-            resumeSessionId
-          );
+        const session = await joinOnlineSession(resumeSessionId);
 
-        const sessionSelectedPlayers: string[] =
-          Array.isArray(
-            session.game_state?.selectedPlayers
-          )
-            ? session.game_state.selectedPlayers.filter(
-                (candidate: unknown): candidate is string =>
-                  typeof candidate === "string"
-              )
-            : [];
+        const sessionSelectedPlayers: string[] = Array.isArray(
+          session.game_state?.selectedPlayers,
+        )
+          ? session.game_state.selectedPlayers.filter(
+              (candidate: unknown): candidate is string =>
+                typeof candidate === "string",
+            )
+          : [];
 
         const sessionPlayerCount =
-          typeof session.game_state?.playerCount ===
-          "number"
+          typeof session.game_state?.playerCount === "number"
             ? session.game_state.playerCount
             : "";
 
         if (
           !isValidSelectedPlayersForCount(
             sessionSelectedPlayers,
-            sessionPlayerCount
+            sessionPlayerCount,
           )
         ) {
           setSelectedPlayers([]);
@@ -7123,56 +5282,38 @@ const buildLobbyReadinessMap = (
           setGameMode("offline");
           setSelectedGameMode("offline");
 
-          alert(
-            "Online session neobsahuje platný výběr hráčů."
-          );
+          alert("Online session neobsahuje platný výběr hráčů.");
 
           debugSetScreen("home");
 
           return;
         }
 
-        const isResumeLobbyJoin =
-          Boolean(
-            session.game_state?.gameStarted &&
-            session.game_state?.hasStartedPlayMode
-          );
+        const isResumeLobbyJoin = Boolean(
+          session.game_state?.gameStarted &&
+          session.game_state?.hasStartedPlayMode,
+        );
 
-        forceOnlineLobbyUntilHostStartRef.current =
-          isResumeLobbyJoin;
+        forceOnlineLobbyUntilHostStartRef.current = isResumeLobbyJoin;
 
         setOnlineSessionId(session.id);
         setIsOnlineGame(true);
-        setLocalOnlinePlayerId(
-          savedGame.localOnlinePlayerId ??
-            null
+        setLocalOnlinePlayerId(savedGame.localOnlinePlayerId ?? null);
+
+        setPlayerCount(sessionPlayerCount);
+
+        setSelectedPlayers(sessionSelectedPlayers);
+
+        const nextReadiness = buildLobbyReadinessMap(
+          sessionSelectedPlayers,
+          session.game_state?.playerReadiness,
         );
 
-        setPlayerCount(
-          sessionPlayerCount
-        );
+        setPlayerReadiness(nextReadiness);
 
-        setSelectedPlayers(
-          sessionSelectedPlayers
-        );
-
-        const nextReadiness =
-          buildLobbyReadinessMap(
-            sessionSelectedPlayers,
-            session.game_state
-              ?.playerReadiness
-          );
-
-        setPlayerReadiness(
-          nextReadiness
-        );
-
-        const channel = subscribeToSession(
-          session.id,
-          (gameState) => {
-            applyOnlineGameState(gameState);
-          }
-        );
+        const channel = subscribeToSession(session.id, (gameState) => {
+          applyOnlineGameState(gameState);
+        });
 
         setOnlineChannel(channel);
 
@@ -7180,10 +5321,7 @@ const buildLobbyReadinessMap = (
           try {
             await loadPlayersFromSupabase();
           } catch (err) {
-            console.error(
-              "LOAD PLAYERS FOR RESUME LOBBY ERROR:",
-              err
-            );
+            console.error("LOAD PLAYERS FOR RESUME LOBBY ERROR:", err);
           }
         }
 
@@ -7196,19 +5334,12 @@ const buildLobbyReadinessMap = (
         }
 
         if (session.game_state) {
-          applyOnlineGameState(
-            session.game_state
-          );
+          applyOnlineGameState(session.game_state);
         }
       } catch (error) {
-        console.error(
-          "OPEN SAVED ONLINE RESUME ERROR:",
-          error
-        );
+        console.error("OPEN SAVED ONLINE RESUME ERROR:", error);
 
-        alert(
-          "Nepodařilo se obnovit online session."
-        );
+        alert("Nepodařilo se obnovit online session.");
 
         setOnlineSessionId(null);
         setLocalOnlinePlayerId(null);
@@ -7223,150 +5354,104 @@ const buildLobbyReadinessMap = (
     }
 
     setOnlineSessionId(null);
-    setLocalOnlinePlayerId(
-      savedGame.localOnlinePlayerId ?? null
-    );
+    setLocalOnlinePlayerId(savedGame.localOnlinePlayerId ?? null);
     setPlayerReadiness({});
     setIsOnlineGame(false);
     debugSetScreen("game");
   };
-  
-  const startNewGame = (
-  skipRestoreCheck = false
-) => {
-debugSetHasStartedPlayMode(
-  false
-);
 
-debugSetIsPlayModeActive(
-  false
-);
+  const startNewGame = (skipRestoreCheck = false) => {
+    debugSetHasStartedPlayMode(false);
 
-  if (!isOnlineGame && !skipRestoreCheck) {
-    const savedGame =
-      localStorage.getItem(
-        "heroDiceCurrentGame"
-      );
+    debugSetIsPlayModeActive(false);
 
-    if (savedGame) {
-      try {
-        const parsed =
-          JSON.parse(savedGame);
+    if (!isOnlineGame && !skipRestoreCheck) {
+      const savedGame = localStorage.getItem("heroDiceCurrentGame");
 
-        if (!parsed.gameFinished) {
-          setShowHomeRestoreModal(
-            true
-          );
-          return;
-        }
-      } catch {}
+      if (savedGame) {
+        try {
+          const parsed = JSON.parse(savedGame);
+
+          if (!parsed.gameFinished) {
+            setShowHomeRestoreModal(true);
+            return;
+          }
+        } catch {}
+      }
     }
-  }
 
-  if (!isOnlineGame) {
-    localStorage.removeItem(
-      "heroDiceCurrentGame"
-    );
-  }
+    if (!isOnlineGame) {
+      localStorage.removeItem("heroDiceCurrentGame");
+    }
 
-  setPlayerCount("");
+    setPlayerCount("");
 
-  setSelectedPlayers([]);
+    setSelectedPlayers([]);
 
-  setSelectedPlayerTypes([]);
+    setSelectedPlayerTypes([]);
 
-  setLocalOnlinePlayerId(null);
+    setLocalOnlinePlayerId(null);
 
-  setGameMode("offline");
-  setSelectedGameMode("offline");
+    setGameMode("offline");
+    setSelectedGameMode("offline");
 
-  debugSetGameStarted(false);
+    debugSetGameStarted(false);
 
-  setGameFinished(false);
+    setGameFinished(false);
 
-  setWinner("");
+    setWinner("");
 
-  setWinnerScore(0);
+    setWinnerScore(0);
 
-  setShowFinishedGame(false);
+    setShowFinishedGame(false);
 
-  setScores({});
+    setScores({});
 
-setGameId(
-  crypto.randomUUID()
-);
+    setGameId(crypto.randomUUID());
 
-  debugSetScreen("game");
-};
+    debugSetScreen("game");
+  };
 
-  const canStartGame =
-    isValidSelectedPlayersForCount(
-      selectedPlayers,
-      playerCount
-    );
+  const canStartGame = isValidSelectedPlayersForCount(
+    selectedPlayers,
+    playerCount,
+  );
 
   const lobbyReadiness = useMemo(
-    () =>
-      buildLobbyReadinessMap(
-        selectedPlayers,
-        playerReadiness
-      ),
-    [selectedPlayers, playerReadiness]
+    () => buildLobbyReadinessMap(selectedPlayers, playerReadiness),
+    [selectedPlayers, playerReadiness],
   );
 
   const allPlayersReady =
     selectedPlayers.length > 0 &&
-    selectedPlayers.every(
-      (playerId) =>
-        lobbyReadiness[playerId] === true
-    );
+    selectedPlayers.every((playerId) => lobbyReadiness[playerId] === true);
 
   const canStartOnlineGame =
-    isValidSelectedPlayersForCount(
-      selectedPlayers,
-      playerCount
-    ) &&
-    selectedPlayers.every(
-      (playerId) =>
-        playerReadiness[playerId] === true
-    );
+    isValidSelectedPlayersForCount(selectedPlayers, playerCount) &&
+    selectedPlayers.every((playerId) => playerReadiness[playerId] === true);
 
   const isOnlineResumeLobbyMode =
-    isOnlineGame &&
-    gameStarted &&
-    hasStartedPlayMode;
+    isOnlineGame && gameStarted && hasStartedPlayMode;
 
-  const isOnlineHost =
-    joinSessionId === "";
+  const isOnlineHost = joinSessionId === "";
 
-  const activePlayerId =
-    selectedPlayers[currentPlayPlayerIndex] ??
-    null;
+  const activePlayerId = selectedPlayers[currentPlayPlayerIndex] ?? null;
 
   const isCurrentPlayer =
     !isOnlineGame ||
-    (localOnlinePlayerId !== null &&
-      localOnlinePlayerId === activePlayerId);
+    (localOnlinePlayerId !== null && localOnlinePlayerId === activePlayerId);
 
-  const canControlOnlinePlayMode =
-    !isOnlineGame || isCurrentPlayer;
+  const canControlOnlinePlayMode = !isOnlineGame || isCurrentPlayer;
 
-  const canShowOnlineChat =
-    isOnlineGame &&
-    Boolean(onlineSessionId);
+  const canShowOnlineChat = isOnlineGame && Boolean(onlineSessionId);
 
   const canSubmitOnlineChat =
     canShowOnlineChat &&
     Boolean(localOnlinePlayerId) &&
     onlineChatInput.trim().length > 0;
 
-  const getSupabaseErrorMessage = (
-    error: unknown
-  ) => {
-    if (
-      typeof error === "object" &&
-      error !== null
-    ) {
+  const getSupabaseErrorMessage = (error: unknown) => {
+    if (typeof error === "object" && error !== null) {
       const record = error as {
         message?: unknown;
         details?: unknown;
@@ -7375,26 +5460,11 @@ setGameId(
       };
 
       const pieces = [
-        typeof record.code === "string"
-          ? `code=${record.code}`
-          : null,
-        typeof record.message ===
-        "string"
-          ? `message=${record.message}`
-          : null,
-        typeof record.details ===
-        "string"
-          ? `details=${record.details}`
-          : null,
-        typeof record.hint === "string"
-          ? `hint=${record.hint}`
-          : null,
-      ].filter(
-        (
-          value
-        ): value is string =>
-          value !== null
-      );
+        typeof record.code === "string" ? `code=${record.code}` : null,
+        typeof record.message === "string" ? `message=${record.message}` : null,
+        typeof record.details === "string" ? `details=${record.details}` : null,
+        typeof record.hint === "string" ? `hint=${record.hint}` : null,
+      ].filter((value): value is string => value !== null);
 
       if (pieces.length > 0) {
         return pieces.join(" | ");
@@ -7408,201 +5478,134 @@ setGameId(
     return "Neznámá chyba";
   };
 
-  const sendOnlineChatMessageNow =
-    async () => {
-      if (
-        !canShowOnlineChat ||
-        !onlineSessionId ||
-        !localOnlinePlayerId
-      ) {
-        return;
-      }
+  const sendOnlineChatMessageNow = async () => {
+    if (!canShowOnlineChat || !onlineSessionId || !localOnlinePlayerId) {
+      return;
+    }
 
-      const trimmedMessage =
-        onlineChatInput.trim();
+    const trimmedMessage = onlineChatInput.trim();
 
-      if (!trimmedMessage) {
-        return;
-      }
+    if (!trimmedMessage) {
+      return;
+    }
+
+    try {
+      await sendGameMessage({
+        gameId: onlineSessionId,
+        playerId: localOnlinePlayerId,
+        playerName: getPlayerDisplayName(localOnlinePlayerId),
+        message: trimmedMessage,
+      });
+
+      setOnlineChatInput("");
+      setOnlineChatError(null);
 
       try {
-        await sendGameMessage({
-          gameId: onlineSessionId,
-          playerId: localOnlinePlayerId,
-          playerName:
-            getPlayerDisplayName(
-              localOnlinePlayerId
-            ),
-          message: trimmedMessage,
-        });
+        const refreshedMessages = await fetchGameMessages(onlineSessionId);
 
-        setOnlineChatInput("");
-        setOnlineChatError(null);
-
-        try {
-          const refreshedMessages =
-            await fetchGameMessages(
-              onlineSessionId
-            );
-
-          setOnlineChatMessages(
-            refreshedMessages
-          );
-        } catch (refreshError) {
-          console.error(
-            "ONLINE CHAT REFRESH ERROR:",
-            getSupabaseErrorMessage(
-              refreshError
-            ),
-            refreshError
-          );
-        }
-      } catch (error) {
-        const detailedError =
-          getSupabaseErrorMessage(
-            error
-          );
-
+        setOnlineChatMessages(refreshedMessages);
+      } catch (refreshError) {
         console.error(
-          "ONLINE CHAT SEND ERROR:",
-          detailedError,
-          error
-        );
-
-        setOnlineChatError(
-          detailedError
-        );
-
-        alert(
-          "Nepodařilo se odeslat zprávu do chatu."
+          "ONLINE CHAT REFRESH ERROR:",
+          getSupabaseErrorMessage(refreshError),
+          refreshError,
         );
       }
-    };
+    } catch (error) {
+      const detailedError = getSupabaseErrorMessage(error);
 
-  const formatChatMessageTime = (
-    rawValue: string
-  ) => {
+      console.error("ONLINE CHAT SEND ERROR:", detailedError, error);
+
+      setOnlineChatError(detailedError);
+
+      alert("Nepodařilo se odeslat zprávu do chatu.");
+    }
+  };
+
+  const formatChatMessageTime = (rawValue: string) => {
     const date = new Date(rawValue);
 
-    if (
-      Number.isNaN(
-        date.getTime()
-      )
-    ) {
+    if (Number.isNaN(date.getTime())) {
       return "--:--";
     }
 
-    return date.toLocaleTimeString(
-      "cs-CZ",
-      {
-        hour: "2-digit",
-        minute: "2-digit",
-      }
-    );
+    return date.toLocaleTimeString("cs-CZ", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
-useEffect(() => {
-  if (
-    selectablePlayers.length ===
-      2 &&
-    !gameStarted &&
-    playerCount !== 2
-  ) {
-    setPlayerCount(2);
+  useEffect(() => {
+    if (selectablePlayers.length === 2 && !gameStarted && playerCount !== 2) {
+      setPlayerCount(2);
 
-    setSelectedPlayers([]);
-  }
-}, [
-  selectablePlayers.length,
-  gameStarted,
-  playerCount,
-]);
-    
-useEffect(() => {
-  if (isOnlineGame) {
-    setShowRestoreGame(false);
-    return;
-  }
-
-  const savedGame =
-    localStorage.getItem(
-      "heroDiceCurrentGame"
-    );
-
-  if (!savedGame) return;
-
-  try {
-    const parsed =
-      JSON.parse(savedGame);
-
-    if (!parsed.gameFinished) {
-      setShowRestoreGame(true);
+      setSelectedPlayers([]);
     }
-  } catch {
-    localStorage.removeItem(
-      "heroDiceCurrentGame"
-    );
-  }
-}, [isOnlineGame]);
+  }, [selectablePlayers.length, gameStarted, playerCount]);
 
-useEffect(() => {
-  if (
-    !canShowOnlineChat ||
-    !onlineSessionId
-  ) {
-    setOnlineChatMessages([]);
-    setOnlineChatInput("");
-    setIsOnlineChatCollapsed(false);
-    setIsMobileChatOpen(false);
-    setIsOnlineChatLoading(false);
-    setOnlineChatError(null);
+  useEffect(() => {
+    if (isOnlineGame) {
+      setShowRestoreGame(false);
+      return;
+    }
 
-    return;
-  }
+    const savedGame = localStorage.getItem("heroDiceCurrentGame");
 
-  let isMounted = true;
-
-  const loadMessages = async () => {
-    setIsOnlineChatLoading(true);
+    if (!savedGame) return;
 
     try {
-      const data =
-        await fetchGameMessages(
-          onlineSessionId
-        );
+      const parsed = JSON.parse(savedGame);
 
-      if (isMounted) {
-        setOnlineChatMessages(data);
-        setOnlineChatError(null);
+      if (!parsed.gameFinished) {
+        setShowRestoreGame(true);
       }
-    } catch (error) {
-      const detailedError =
-        getSupabaseErrorMessage(
-          error
-        );
-
-      console.error(
-        "ONLINE CHAT LOAD ERROR:",
-        detailedError,
-        error
-      );
-
-      if (isMounted) {
-        setOnlineChatError(
-          detailedError
-        );
-      }
-    } finally {
-      if (isMounted) {
-        setIsOnlineChatLoading(false);
-      }
+    } catch {
+      localStorage.removeItem("heroDiceCurrentGame");
     }
-  };
+  }, [isOnlineGame]);
 
-  loadMessages();
+  useEffect(() => {
+    if (!canShowOnlineChat || !onlineSessionId) {
+      setOnlineChatMessages([]);
+      setOnlineChatInput("");
+      setIsOnlineChatCollapsed(false);
+      setIsMobileChatOpen(false);
+      setIsOnlineChatLoading(false);
+      setOnlineChatError(null);
 
-  const channel =
-    subscribeToGameMessages(
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadMessages = async () => {
+      setIsOnlineChatLoading(true);
+
+      try {
+        const data = await fetchGameMessages(onlineSessionId);
+
+        if (isMounted) {
+          setOnlineChatMessages(data);
+          setOnlineChatError(null);
+        }
+      } catch (error) {
+        const detailedError = getSupabaseErrorMessage(error);
+
+        console.error("ONLINE CHAT LOAD ERROR:", detailedError, error);
+
+        if (isMounted) {
+          setOnlineChatError(detailedError);
+        }
+      } finally {
+        if (isMounted) {
+          setIsOnlineChatLoading(false);
+        }
+      }
+    };
+
+    loadMessages();
+
+    const channel = subscribeToGameMessages(
       onlineSessionId,
       (incomingMessage) => {
         if (!isMounted) {
@@ -7610,687 +5613,512 @@ useEffect(() => {
         }
 
         setOnlineChatMessages((prev) => {
-          if (
-            prev.some(
-              (message) =>
-                message.id ===
-                incomingMessage.id
-            )
-          ) {
+          if (prev.some((message) => message.id === incomingMessage.id)) {
             return prev;
           }
 
-          return [
-            ...prev,
-            incomingMessage,
-          ].sort(
+          return [...prev, incomingMessage].sort(
             (left, right) =>
-              new Date(
-                left.created_at
-              ).getTime() -
-              new Date(
-                right.created_at
-              ).getTime()
+              new Date(left.created_at).getTime() -
+              new Date(right.created_at).getTime(),
           );
         });
-      }
+      },
     );
 
-  return () => {
-    isMounted = false;
-    leaveOnlineSession(channel);
-  };
-}, [canShowOnlineChat, onlineSessionId]);
+    return () => {
+      isMounted = false;
+      leaveOnlineSession(channel);
+    };
+  }, [canShowOnlineChat, onlineSessionId]);
 
-useEffect(() => {
-  if (
-    !canShowOnlineChat ||
-    isOnlineChatCollapsed
-  ) {
-    return;
-  }
+  useEffect(() => {
+    if (!canShowOnlineChat || isOnlineChatCollapsed) {
+      return;
+    }
 
-  onlineChatBottomRef.current?.scrollIntoView(
-    {
+    onlineChatBottomRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "end",
+    });
+  }, [
+    canShowOnlineChat,
+    isOnlineChatCollapsed,
+    isMobileChatOpen,
+    onlineChatMessages,
+  ]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (gameStarted && !gameFinished) {
+        event.preventDefault();
+
+        event.returnValue = "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [gameStarted, gameFinished]);
+
+  useEffect(() => {
+    if (isOnlineGame) {
+      return;
     }
-  );
-}, [
-  canShowOnlineChat,
-  isOnlineChatCollapsed,
-  isMobileChatOpen,
-  onlineChatMessages,
-]);
 
-useEffect(() => {
-  const handleBeforeUnload = (
-    event: BeforeUnloadEvent
-  ) => {
-    if (
-      gameStarted &&
-      !gameFinished
-    ) {
-      event.preventDefault();
-
-      event.returnValue = "";
-    }
-  };
-
-  window.addEventListener(
-    "beforeunload",
-    handleBeforeUnload
-  );
-
-  return () => {
-    window.removeEventListener(
-      "beforeunload",
-      handleBeforeUnload
-    );
-  };
-}, [gameStarted, gameFinished]);
-
-useEffect(() => {
-  if (isOnlineGame) {
-    return;
-  }
-
-  if (
-    gameStarted &&
-    !gameFinished
-  ) {
-    const savedGamePayload =
-      buildSavedGamePayload({
+    if (gameStarted && !gameFinished) {
+      const savedGamePayload = buildSavedGamePayload({
         gameMode: "offline",
         onlineSessionId: null,
         localOnlinePlayerId: null,
       });
 
-    localStorage.setItem(
-  "heroDiceCurrentGame",
-  JSON.stringify(savedGamePayload)
-);
-  }
-}, [
-  isOnlineGame,
-  playerCount,
-  selectedPlayers,
-  scores,
-  gameStarted,
-  gameFinished,
-gameId,
-  isPlayModeActive,
-  playModeRolls,
-  playModeAllowRewrite,
-  playModeBonusMode,
-  playModeBonusRolls,
-]);
-
-useEffect(() => {
-  if (
-    !isOnlineGame ||
-    !onlineSessionId ||
-    !gameStarted ||
-    !hasStartedPlayMode ||
-    isRolling ||
-    screen !== "game" ||
-    !isCurrentPlayer
-  ) {
-    return;
-  }
-
-  syncCurrentGameState();
-}, [
-  scores,
-  currentPlayPlayerIndex,
-  playModeDice,
-  lockedDice,
-  confirmedLockedDice,
-  remainingRolls,
-  bonusUsed,
-  selectedGeneralValue,
-  hasRolledDice,
-  playModeRolls,
-  playModeAllowRewrite,
-  playModeBonusMode,
-  playModeBonusRolls,
-  isRolling,
-  isOnlineGame,
-  onlineSessionId,
-  gameStarted,
-  hasStartedPlayMode,
-  isCurrentPlayer,
-  screen,
-]);  
-
-useEffect(() => {
-      const finishGame = async () => {
-
-    if (
-      !gameStarted ||
-      gameFinished
-    )
-      return;
-
-    const finishedPlayer =
-  selectedPlayers.find(
-    (playerId) => {
-      const playerScores =
-        scores[playerId] || {};
-
-      return (
-        Object.keys(playerScores)
-          .length ===
-        gameCategories.length
+      localStorage.setItem(
+        "heroDiceCurrentGame",
+        JSON.stringify(savedGamePayload),
       );
     }
-  );
-
-if (!finishedPlayer) return;
-
-let bestPlayer = "";
-let bestScore = -1;
-
-const gameResults =
-  selectedPlayers.map(
-    (playerId) => {
-      const playerScores =
-        scores[playerId] || {};
-
-      const total =
-        Object.values(
-          playerScores
-        ).reduce(
-          (sum, value) =>
-            sum + value,
-          0
-        );
-
-      let perfectCategories = 0;
-
-      gameCategories.forEach(
-        (category) => {
-          if (
-            playerScores[
-              category.id
-            ] === category.max
-          ) {
-            perfectCategories++;
-          }
-        }
-      );
-
-      if (total > bestScore) {
-        bestScore = total;
-
-        bestPlayer = playerId;
-      }
-
-      return {
-        playerId,
-
-        playerName:
-          getPlayerDisplayName(
-            playerId
-          ),
-
-        total,
-
-        perfectCategories,
-      };
-    }
-  );
-
-const winnerName =
-  getPlayerDisplayName(
-    bestPlayer
-  );
-
-setWinner(winnerName);
-
-setWinnerScore(bestScore);
-
-if (!hasStartedPlayMode) {
-  setPendingFinishedGame({
-    winner: bestPlayer,
-    winnerScore: bestScore,
-    players: selectedPlayers,
-    scores: gameResults,
-  });
-
-  setShowFinishGameConfirm(
-    true
-  );
-
-  return;
-}
-
-if (isLeaguePlayMode) {
-  const saveSuccess =
-    await saveFinishedGame({
-      date:
-        new Date().toISOString(),
-
-      winner:
-        bestPlayer,
-
-      winnerScore:
-        bestScore,
-
-      players:
-        selectedPlayers,
-
-      scores:
-        gameResults,
-
-      gameId,
-    });
-
-  if (!saveSuccess) {
-    setShowDuplicateGameMessage(
-      true
-    );
-  }
-} else {
-  const saveSuccess =
-    await saveFunGame({
-      winner:
-        bestPlayer,
-
-      winnerScore:
-        bestScore,
-
-      players:
-        selectedPlayers,
-
-      scores:
-        gameResults,
-    });
-
-  if (!saveSuccess) {
-    setShowDuplicateGameMessage(
-      true
-    );
-  }
-}
-
-setGameFinished(true);
-
-debugSetIsPlayModeActive(
-  false
-);
-
-setShowPlayModeResult(
-  false
-);
-
-localStorage.removeItem(
-  "heroDiceCurrentGame"
-);
-
-if (
-  celebrationSoundEnabled
-) {
-  const randomSound =
-    winSounds[
-      Math.floor(
-        Math.random() *
-          winSounds.length
-      )
-    ];
-
-  cleanupCelebrationAudio();
-
-  const audio =
-    new Audio(
-      randomSound
-    );
-
-  celebrationAudioRef.current =
-    audio;
-
-  audio.play().catch(
-    () => {}
-  );
-}
-
-setShowFinishedGame(true);
-
-const celebrationType =
-  Math.floor(
-    Math.random() * 3
-  );
-
-if (celebrationType === 0) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 333,
-            spread: 100,
-            startVelocity: 35,
-            zIndex: 9999,
-            origin: {
-              x: Math.random(),
-              y: 0.6,
-            },
-          });
-        },
-        i * 500
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-
-if (celebrationType === 1) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 333,
-            spread: 180,
-            startVelocity: 60,
-            zIndex: 9999,
-            origin: {
-              x: 0.5,
-              y: 0.6,
-            },
-          });
-        },
-        i * 500
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-
-if (celebrationType === 2) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 333,
-            angle: 60,
-            spread: 55,
-            zIndex: 9999,
-            origin: {
-              x: 0,
-              y: 0.7,
-            },
-          });
-
-          confetti({
-            particleCount: 333,
-            angle: 120,
-            spread: 55,
-            zIndex: 9999,
-            origin: {
-              x: 1,
-              y: 0.7,
-            },
-          });
-        },
-        i * 500
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-          };
-
-  finishGame();
   }, [
+    isOnlineGame,
+    playerCount,
+    selectedPlayers,
     scores,
     gameStarted,
     gameFinished,
-    selectedPlayers,
+    gameId,
+    isPlayModeActive,
+    playModeRolls,
+    playModeAllowRewrite,
+    playModeBonusMode,
+    playModeBonusRolls,
   ]);
 
-const renderOnlineChatMessages = () => (
-  <>
-    {onlineChatError && (
-      <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-bold text-red-300">
-        Chat error: {onlineChatError}
-      </div>
-    )}
+  useEffect(() => {
+    if (
+      !isOnlineGame ||
+      !onlineSessionId ||
+      !gameStarted ||
+      !hasStartedPlayMode ||
+      isRolling ||
+      screen !== "game" ||
+      !isCurrentPlayer
+    ) {
+      return;
+    }
 
-    <div className="mt-4 flex-1 overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3">
-      {isOnlineChatLoading && (
-        <div className="pt-6 text-center text-sm font-bold text-zinc-500">
-          Načítám chat...
+    syncCurrentGameState();
+  }, [
+    scores,
+    currentPlayPlayerIndex,
+    playModeDice,
+    lockedDice,
+    confirmedLockedDice,
+    remainingRolls,
+    bonusUsed,
+    selectedGeneralValue,
+    hasRolledDice,
+    playModeRolls,
+    playModeAllowRewrite,
+    playModeBonusMode,
+    playModeBonusRolls,
+    isRolling,
+    isOnlineGame,
+    onlineSessionId,
+    gameStarted,
+    hasStartedPlayMode,
+    isCurrentPlayer,
+    screen,
+  ]);
+
+  useEffect(() => {
+    const finishGame = async () => {
+      if (!gameStarted || gameFinished) return;
+
+      const finishedPlayer = selectedPlayers.find((playerId) => {
+        const playerScores = scores[playerId] || {};
+
+        return Object.keys(playerScores).length === gameCategories.length;
+      });
+
+      if (!finishedPlayer) return;
+
+      let bestPlayer = "";
+      let bestScore = -1;
+
+      const gameResults = selectedPlayers.map((playerId) => {
+        const playerScores = scores[playerId] || {};
+
+        const total = Object.values(playerScores).reduce(
+          (sum, value) => sum + value,
+          0,
+        );
+
+        let perfectCategories = 0;
+
+        gameCategories.forEach((category) => {
+          if (playerScores[category.id] === category.max) {
+            perfectCategories++;
+          }
+        });
+
+        if (total > bestScore) {
+          bestScore = total;
+
+          bestPlayer = playerId;
+        }
+
+        return {
+          playerId,
+
+          playerName: getPlayerDisplayName(playerId),
+
+          total,
+
+          perfectCategories,
+        };
+      });
+
+      const winnerName = getPlayerDisplayName(bestPlayer);
+
+      setWinner(winnerName);
+
+      setWinnerScore(bestScore);
+
+      if (!hasStartedPlayMode) {
+        setPendingFinishedGame({
+          winner: bestPlayer,
+          winnerScore: bestScore,
+          players: selectedPlayers,
+          scores: gameResults,
+        });
+
+        setShowFinishGameConfirm(true);
+
+        return;
+      }
+
+      if (isLeaguePlayMode) {
+        const saveSuccess = await saveFinishedGame({
+          date: new Date().toISOString(),
+
+          winner: bestPlayer,
+
+          winnerScore: bestScore,
+
+          players: selectedPlayers,
+
+          scores: gameResults,
+
+          gameId,
+        });
+
+        if (!saveSuccess) {
+          setShowDuplicateGameMessage(true);
+        }
+      } else {
+        const saveSuccess = await saveFunGame({
+          winner: bestPlayer,
+
+          winnerScore: bestScore,
+
+          players: selectedPlayers,
+
+          scores: gameResults,
+        });
+
+        if (!saveSuccess) {
+          setShowDuplicateGameMessage(true);
+        }
+      }
+
+      setGameFinished(true);
+
+      debugSetIsPlayModeActive(false);
+
+      setShowPlayModeResult(false);
+
+      localStorage.removeItem("heroDiceCurrentGame");
+
+      if (celebrationSoundEnabled) {
+        const randomSound =
+          winSounds[Math.floor(Math.random() * winSounds.length)];
+
+        cleanupCelebrationAudio();
+
+        const audio = new Audio(randomSound);
+
+        celebrationAudioRef.current = audio;
+
+        audio.play().catch(() => {});
+      }
+
+      setShowFinishedGame(true);
+
+      const celebrationType = Math.floor(Math.random() * 3);
+
+      if (celebrationType === 0) {
+        for (let i = 0; i < 18; i++) {
+          const timeoutId = window.setTimeout(() => {
+            confetti({
+              particleCount: 333,
+              spread: 100,
+              startVelocity: 35,
+              zIndex: 9999,
+              origin: {
+                x: Math.random(),
+                y: 0.6,
+              },
+            });
+          }, i * 500);
+
+          celebrationTimeoutsRef.current.push(timeoutId);
+        }
+      }
+
+      if (celebrationType === 1) {
+        for (let i = 0; i < 18; i++) {
+          const timeoutId = window.setTimeout(() => {
+            confetti({
+              particleCount: 333,
+              spread: 180,
+              startVelocity: 60,
+              zIndex: 9999,
+              origin: {
+                x: 0.5,
+                y: 0.6,
+              },
+            });
+          }, i * 500);
+
+          celebrationTimeoutsRef.current.push(timeoutId);
+        }
+      }
+
+      if (celebrationType === 2) {
+        for (let i = 0; i < 18; i++) {
+          const timeoutId = window.setTimeout(() => {
+            confetti({
+              particleCount: 333,
+              angle: 60,
+              spread: 55,
+              zIndex: 9999,
+              origin: {
+                x: 0,
+                y: 0.7,
+              },
+            });
+
+            confetti({
+              particleCount: 333,
+              angle: 120,
+              spread: 55,
+              zIndex: 9999,
+              origin: {
+                x: 1,
+                y: 0.7,
+              },
+            });
+          }, i * 500);
+
+          celebrationTimeoutsRef.current.push(timeoutId);
+        }
+      }
+    };
+
+    finishGame();
+  }, [scores, gameStarted, gameFinished, selectedPlayers]);
+
+  const renderOnlineChatMessages = () => (
+    <>
+      {onlineChatError && (
+        <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-bold text-red-300">
+          Chat error: {onlineChatError}
         </div>
       )}
 
-      {!isOnlineChatLoading &&
-        onlineChatMessages.length ===
-          0 && (
+      <div className="mt-4 flex-1 overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3">
+        {isOnlineChatLoading && (
+          <div className="pt-6 text-center text-sm font-bold text-zinc-500">
+            Načítám chat...
+          </div>
+        )}
+
+        {!isOnlineChatLoading && onlineChatMessages.length === 0 && (
           <div className="pt-6 text-center text-sm font-bold text-zinc-500">
             Zatím bez zpráv
           </div>
         )}
 
-      {!isOnlineChatLoading &&
-        onlineChatMessages.length >
-          0 && (
+        {!isOnlineChatLoading && onlineChatMessages.length > 0 && (
           <div className="space-y-3">
-            {onlineChatMessages.map(
-              (message) => {
-                const isOwnMessage =
-                  localOnlinePlayerId !==
-                    null &&
-                  message.player_id ===
-                    localOnlinePlayerId;
+            {onlineChatMessages.map((message) => {
+              const isOwnMessage =
+                localOnlinePlayerId !== null &&
+                message.player_id === localOnlinePlayerId;
 
-                return (
-                  <div
-                    key={message.id}
-                    className={`rounded-2xl border p-3 ${
-                      isOwnMessage
-                        ? "border-blue-400/40 bg-blue-500/10"
-                        : "border-zinc-700 bg-zinc-900/80"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="truncate text-sm font-black text-yellow-300">
-                        {
-                          message.player_name
-                        }
-                      </div>
-
-                      <div className="text-xs font-bold text-zinc-500">
-                        {formatChatMessageTime(
-                          message.created_at
-                        )}
-                      </div>
+              return (
+                <div
+                  key={message.id}
+                  className={`rounded-2xl border p-3 ${
+                    isOwnMessage
+                      ? "border-blue-400/40 bg-blue-500/10"
+                      : "border-zinc-700 bg-zinc-900/80"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="truncate text-sm font-black text-yellow-300">
+                      {message.player_name}
                     </div>
 
-                    <p className="mt-2 whitespace-pre-wrap break-words text-sm text-zinc-200">
-                      {message.message}
-                    </p>
+                    <div className="text-xs font-bold text-zinc-500">
+                      {formatChatMessageTime(message.created_at)}
+                    </div>
                   </div>
-                );
-              }
-            )}
+
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm text-zinc-200">
+                    {message.message}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         )}
 
-      <div ref={onlineChatBottomRef} />
-    </div>
-
-    <div className="mt-4 flex gap-2">
-      <input
-        value={onlineChatInput}
-        onChange={(event) =>
-          setOnlineChatInput(
-            event.target.value
-          )
-        }
-        onKeyDown={(event) => {
-          if (
-            event.key === "Enter" &&
-            !event.shiftKey
-          ) {
-            event.preventDefault();
-            sendOnlineChatMessageNow();
-          }
-        }}
-        maxLength={500}
-        placeholder={
-          localOnlinePlayerId
-            ? "Napiš zprávu..."
-            : "Vyber hráče v lobby"
-        }
-        className="h-12 flex-1 rounded-2xl border border-zinc-700 bg-black/60 px-4 text-sm font-bold text-white outline-none transition focus:border-blue-400"
-      />
-
-      <button
-        onClick={sendOnlineChatMessageNow}
-        disabled={!canSubmitOnlineChat}
-        className={`h-12 rounded-2xl px-4 text-sm font-black transition ${
-          canSubmitOnlineChat
-            ? "bg-blue-600 text-white hover:bg-blue-500"
-            : "cursor-not-allowed bg-zinc-700 text-zinc-400"
-        }`}
-      >
-        Odeslat
-      </button>
-    </div>
-  </>
-);
-
-    // 18. JSX
-    return (
-  <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
-    {!isUnlocked && (
-      <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black p-6">
-        <div className="w-full max-w-md rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center shadow-2xl">
-          <h1 className="mb-3 text-5xl font-black text-yellow-400 tracking-[0.14em]">
-            HERO DICE
-          </h1>
-
-          <p className="mb-8 text-zinc-400">
-            Zadej přístupový kód
-          </p>
-
-          <input
-            type="password"
-            value={accessCode}
-            onChange={(e) =>
-              setAccessCode(
-                e.target.value
-              )
-            }
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                submitAccessCode();
-              }
-            }}
-            className="mb-5 w-full rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-center text-2xl font-bold text-white outline-none transition focus:border-yellow-400"
-            autoFocus
-          />
-
-          <button
-            onClick={submitAccessCode}
-            className="w-full rounded-2xl bg-yellow-500 px-6 py-4 text-xl font-black text-black transition hover:bg-yellow-400"
-          >
-            Vstoupit
-          </button>
-        </div>
+        <div ref={onlineChatBottomRef} />
       </div>
-    )}
+
+      <div className="mt-4 flex gap-2">
+        <input
+          value={onlineChatInput}
+          onChange={(event) => setOnlineChatInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              sendOnlineChatMessageNow();
+            }
+          }}
+          maxLength={500}
+          placeholder={
+            localOnlinePlayerId ? "Napiš zprávu..." : "Vyber hráče v lobby"
+          }
+          className="h-12 flex-1 rounded-2xl border border-zinc-700 bg-black/60 px-4 text-sm font-bold text-white outline-none transition focus:border-blue-400"
+        />
+
+        <button
+          onClick={sendOnlineChatMessageNow}
+          disabled={!canSubmitOnlineChat}
+          className={`h-12 rounded-2xl px-4 text-sm font-black transition ${
+            canSubmitOnlineChat
+              ? "bg-blue-600 text-white hover:bg-blue-500"
+              : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+          }`}
+        >
+          Odeslat
+        </button>
+      </div>
+    </>
+  );
+
+  // 18. JSX
+  return (
+    <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
+      {!isUnlocked && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black p-6">
+          <div className="w-full max-w-md rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center shadow-2xl">
+            <h1 className="mb-3 text-5xl font-black text-yellow-400 tracking-[0.14em]">
+              HERO DICE
+            </h1>
+
+            <p className="mb-8 text-zinc-400">Zadej přístupový kód</p>
+
+            <input
+              type="password"
+              value={accessCode}
+              onChange={(e) => setAccessCode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submitAccessCode();
+                }
+              }}
+              className="mb-5 w-full rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-center text-2xl font-bold text-white outline-none transition focus:border-yellow-400"
+              autoFocus
+            />
+
+            <button
+              onClick={submitAccessCode}
+              className="w-full rounded-2xl bg-yellow-500 px-6 py-4 text-xl font-black text-black transition hover:bg-yellow-400"
+            >
+              Vstoupit
+            </button>
+          </div>
+        </div>
+      )}
       {/* HOME */}
-{screen === "home" && (
-  <div className="mx-auto flex w-full max-w-6xl flex-col">
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div className="flex items-center gap-3">
-  <h1 className="text-5xl font-black tracking-[0.14em] text-yellow-400 md:text-5xl">
-    HERO DICE
-  </h1>
+      {screen === "home" && (
+        <div className="mx-auto flex w-full max-w-6xl flex-col">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <h1 className="text-5xl font-black tracking-[0.14em] text-yellow-400 md:text-5xl">
+                HERO DICE
+              </h1>
 
-  <button
-    onClick={() =>
-      setShowHelp(true)
-    }
-    className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-lg font-black text-black transition hover:bg-green-400"
-  >
-    ?
-  </button>
-</div>
+              <button
+                onClick={() => setShowHelp(true)}
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-lg font-black text-black transition hover:bg-green-400"
+              >
+                ?
+              </button>
+            </div>
 
-      <AppMenu
-        isOpen={showHomeMenu}
-        onToggle={() =>
-          setShowHomeMenu(
-            (prev) => !prev
-          )
-        }
-        items={[
-          {
-            label: "Načíst hru",
-            onClick: () => {
-              loadSavedGames();
-              setShowHomeMenu(false);
-            },
-          },
-          {
-            label: "Připojit se",
-            onClick: () => {
-              setShowJoinSessionModal(
-                true
-              );
-              setShowHomeMenu(false);
-            },
-          },
-          {
-            label: "Admin",
-            onClick: () => {
-              setShowAdmin(true);
-              setShowHomeMenu(false);
-            },
-          },
-          {
-            label: "Statistiky",
-            onClick: () => {
-              setShowStatistics(true);
-              setShowHomeMenu(false);
-            },
-          },
-        ]}
-      />
-    </div>
+            <AppMenu
+              isOpen={showHomeMenu}
+              onToggle={() => setShowHomeMenu((prev) => !prev)}
+              items={[
+                {
+                  label: "Načíst hru",
+                  onClick: () => {
+                    loadSavedGames();
+                    setShowHomeMenu(false);
+                  },
+                },
+                {
+                  label: "Připojit se",
+                  onClick: () => {
+                    setShowJoinSessionModal(true);
+                    setShowHomeMenu(false);
+                  },
+                },
+                {
+                  label: "Admin",
+                  onClick: () => {
+                    setShowAdmin(true);
+                    setShowHomeMenu(false);
+                  },
+                },
+                {
+                  label: "Statistiky",
+                  onClick: () => {
+                    setShowStatistics(true);
+                    setShowHomeMenu(false);
+                  },
+                },
+              ]}
+            />
+          </div>
 
           <div className="mt-8 md:mt-10">
             <div className="flex flex-wrap items-center gap-3">
-  <button
-    onClick={() => startNewGame()}
-    className="rounded-3xl border border-zinc-600 bg-yellow-500 px-8 py-5 text-2xl font-black text-black transition hover:scale-[1.02] hover:brightness-110 md:px-10 md:text-3xl"
-  >
-    ▶ Nová hra
-  </button>
-</div>
+              <button
+                onClick={() => startNewGame()}
+                className="rounded-3xl border border-zinc-600 bg-yellow-500 px-8 py-5 text-2xl font-black text-black transition hover:scale-[1.02] hover:brightness-110 md:px-10 md:text-3xl"
+              >
+                ▶ Nová hra
+              </button>
+            </div>
           </div>
 
           <div className="mt-10 md:mt-12">
@@ -8300,20 +6128,14 @@ const renderOnlineChatMessages = () => (
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
               <div className="rounded-3xl bg-zinc-900 p-6">
-                <div className="text-yellow-400 tracking-[0.14em]">
-                  Výhry
-                </div>
+                <div className="text-yellow-400 tracking-[0.14em]">Výhry</div>
 
                 <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
-                  {mounted
-                    ? topWins.name
-                    : "-"}
+                  {mounted ? topWins.name : "-"}
                 </div>
 
                 <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.12em] ">
-                  {mounted
-                    ? topWins.value
-                    : "-"}
+                  {mounted ? topWins.value : "-"}
                 </div>
               </div>
 
@@ -8323,15 +6145,11 @@ const renderOnlineChatMessages = () => (
                 </div>
 
                 <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
-                  {mounted
-                    ? topScore.name
-                    : "-"}
+                  {mounted ? topScore.name : "-"}
                 </div>
 
                 <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.12em]">
-                  {mounted
-                    ? topScore.value
-                    : "-"}
+                  {mounted ? topScore.value : "-"}
                 </div>
               </div>
 
@@ -8341,15 +6159,11 @@ const renderOnlineChatMessages = () => (
                 </div>
 
                 <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
-                  {mounted
-                    ? topGamesPlayed.name
-                    : "-"}
+                  {mounted ? topGamesPlayed.name : "-"}
                 </div>
 
                 <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.12em]">
-                  {mounted
-                    ? topGamesPlayed.value
-                    : "-"}
+                  {mounted ? topGamesPlayed.value : "-"}
                 </div>
               </div>
 
@@ -8359,15 +6173,11 @@ const renderOnlineChatMessages = () => (
                 </div>
 
                 <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
-                  {mounted
-                    ? topAverage.name
-                    : "-"}
+                  {mounted ? topAverage.name : "-"}
                 </div>
 
                 <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.12em]">
-                  {mounted
-                    ? topAverage.value
-                    : "-"}
+                  {mounted ? topAverage.value : "-"}
                 </div>
               </div>
 
@@ -8377,15 +6187,11 @@ const renderOnlineChatMessages = () => (
                 </div>
 
                 <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
-                  {mounted
-                    ? topPerfects.name
-                    : "-"}
+                  {mounted ? topPerfects.name : "-"}
                 </div>
 
                 <div className="mt-2 text-2xl font-black text-yellow-400 tracking-[0.12em]">
-                  {mounted
-                    ? topPerfects.value
-                    : "-"}
+                  {mounted ? topPerfects.value : "-"}
                 </div>
               </div>
 
@@ -8395,15 +6201,11 @@ const renderOnlineChatMessages = () => (
                 </div>
 
                 <div className="mt-3 text-3xl font-black text-white tracking-[0.07em]">
-                  {mounted
-                    ? topAveragePerfects.name
-                    : "-"}
+                  {mounted ? topAveragePerfects.name : "-"}
                 </div>
 
                 <div className="mt-2 text-2xl font-black text-yellow-400  tracking-[0.12em]">
-                  {mounted
-                    ? topAveragePerfects.value
-                    : "-"}
+                  {mounted ? topAveragePerfects.value : "-"}
                 </div>
               </div>
             </div>
@@ -8435,14 +6237,12 @@ const renderOnlineChatMessages = () => (
               </div>
             ) : (
               <>
-                <div className={`text-sm font-bold uppercase tracking-[0.2em] mb-2 ${
-                  isOnlineHost
-                    ? "text-green-400"
-                    : "text-blue-400"
-                }`}>
-                  {isOnlineHost
-                    ? "Host Mode"
-                    : "Client Mode"}
+                <div
+                  className={`text-sm font-bold uppercase tracking-[0.2em] mb-2 ${
+                    isOnlineHost ? "text-green-400" : "text-blue-400"
+                  }`}
+                >
+                  {isOnlineHost ? "Host Mode" : "Client Mode"}
                 </div>
 
                 <div className="text-2xl font-black text-white mb-6">
@@ -8493,11 +6293,9 @@ const renderOnlineChatMessages = () => (
                       <div className="mt-5 space-y-3">
                         {selectedPlayers.map((playerId, index) => {
                           const player = playersState.find(
-                            (entry) => entry.id === playerId
+                            (entry) => entry.id === playerId,
                           );
-                          const ready = Boolean(
-                            lobbyReadiness[playerId]
-                          );
+                          const ready = Boolean(lobbyReadiness[playerId]);
                           const isLocalPlayer =
                             localOnlinePlayerId === playerId;
 
@@ -8528,12 +6326,8 @@ const renderOnlineChatMessages = () => (
 
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    claimOnlinePlayer(playerId)
-                                  }
-                                  disabled={
-                                    isLocalPlayer && ready
-                                  }
+                                  onClick={() => claimOnlinePlayer(playerId)}
+                                  disabled={isLocalPlayer && ready}
                                   className={`rounded-2xl px-4 py-3 text-sm font-black transition ${
                                     isLocalPlayer
                                       ? "cursor-default bg-green-600 text-white"
@@ -8563,12 +6357,14 @@ const renderOnlineChatMessages = () => (
                       </div>
 
                       <div className="mt-4 text-sm text-zinc-400">
-                        Každé zařízení si zvolí svého hráče. Host může hru spustit až ve chvíli, kdy jsou všichni připraveni.
+                        Každé zařízení si zvolí svého hráče. Host může hru
+                        spustit až ve chvíli, kdy jsou všichni připraveni.
                       </div>
 
                       {localOnlinePlayerId && (
                         <div className="mt-4 rounded-2xl border border-green-500/20 bg-zinc-950/70 px-4 py-3 text-sm font-bold text-green-400">
-                          Toto zařízení ovládá hráče: {getPlayerDisplayName(localOnlinePlayerId)}
+                          Toto zařízení ovládá hráče:{" "}
+                          {getPlayerDisplayName(localOnlinePlayerId)}
                         </div>
                       )}
 
@@ -8591,13 +6387,15 @@ const renderOnlineChatMessages = () => (
 
                           {!allPlayersReady && (
                             <div className="mt-3 text-sm text-zinc-500">
-                              Host může spustit hru pouze, když jsou všichni připraveni.
+                              Host může spustit hru pouze, když jsou všichni
+                              připraveni.
                             </div>
                           )}
                         </>
                       ) : (
                         <div className="mt-8 rounded-2xl bg-zinc-900 px-4 py-4 text-sm font-bold text-zinc-400">
-                          Po výběru svého hráče zůstává klient v lobby a čeká na spuštění hry hostem.
+                          Po výběru svého hráče zůstává klient v lobby a čeká na
+                          spuštění hry hostem.
                         </div>
                       )}
                     </div>
@@ -8613,155 +6411,128 @@ const renderOnlineChatMessages = () => (
         <div className="mx-auto flex w-full max-w-6xl flex-col">
           <div
             className={`relative mb-8 flex w-full flex-col gap-4 md:flex-row md:items-center md:justify-between ${
-              !gameStarted
-                ? "mx-auto max-w-5xl"
-                : ""
+              !gameStarted ? "mx-auto max-w-5xl" : ""
             }`}
           >
-  <div className="flex items-center gap-3">
-  <h1 className="text-5xl font-black tracking-[0.14em] text-yellow-400">
-    HERO DICE
-  </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-5xl font-black tracking-[0.14em] text-yellow-400">
+                HERO DICE
+              </h1>
 
-  <button
-    onClick={() =>
-      setShowHelp(true)
-    }
-    className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-lg font-black text-black transition hover:bg-greem-400"
-  >
-    ?
-  </button>
-</div>
+              <button
+                onClick={() => setShowHelp(true)}
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-lg font-black text-black transition hover:bg-greem-400"
+              >
+                ?
+              </button>
+            </div>
 
-  <div className="flex flex-wrap gap-3">
-  {gameStarted ? (
-  <>
-    
-    <button
-  onClick={() => {
-    if (
-      hasStartedPlayMode
-    ) {
-      debugSetIsPlayModeActive(
-        true
-      );
+            <div className="flex flex-wrap gap-3">
+              {gameStarted ? (
+                <>
+                  <button
+                    onClick={() => {
+                      if (hasStartedPlayMode) {
+                        debugSetIsPlayModeActive(true);
 
-      debugSetHasStartedPlayMode(
-        true
-      );
+                        debugSetHasStartedPlayMode(true);
 
-      return;
-    }
+                        return;
+                      }
 
-    setShowPlayModeSetup(
-      true
-    );
-  }}
-  disabled={!canStartPlayMode}
-  className={`rounded-2xl border border-zinc-600 px-6 py-3 text-lg font-black transition ${
-    canStartPlayMode
-      ? "bg-purple-600 hover:scale-[1.02] hover:brightness-110"
-      : "cursor-not-allowed bg-zinc-700 text-zinc-400"
-  }`}
->
-  ▶ Play Mode
-</button>
+                      setShowPlayModeSetup(true);
+                    }}
+                    disabled={!canStartPlayMode}
+                    className={`rounded-2xl border border-zinc-600 px-6 py-3 text-lg font-black transition ${
+                      canStartPlayMode
+                        ? "bg-purple-600 hover:scale-[1.02] hover:brightness-110"
+                        : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                    }`}
+                  >
+                    ▶ Play Mode
+                  </button>
 
-    <AppMenu
-      label="MENU"
-      isOpen={showGameMenu}
-      onToggle={() =>
-        setShowGameMenu(
-          (prev) => !prev
-        )
-      }
-      items={[
-        {
-          label: "Zvuk",
-          onClick: () => {
-            setShowSettings(true);
-            setShowGameMenu(false);
-          },
-        },
-        {
-          label: "Načíst hru",
-          onClick: () => {
-            loadSavedGames();
-            setShowGameMenu(false);
-          },
-        },
-        {
-          label: "Uložit hru",
-          onClick: () => {
-            setShowSaveGameConfirm(
-              true
-            );
-            setShowGameMenu(false);
-          },
-        },
-        {
-          label: "Nová hra",
-          onClick: () => {
-            setShowHomeRestoreModal(
-              true
-            );
-            setShowGameMenu(false);
-          },
-        },
-        {
-          label: "Ukončit hru",
-          onClick: () => {
-            setShowLeaveConfirm(
-              true
-            );
-            setShowGameMenu(false);
-          },
-        },
-      ]}
-    />
-  </>
-) : (
-    <AppMenu
-      isOpen={showSetupMenu}
-      onToggle={() =>
-        setShowSetupMenu(
-          (prev) => !prev
-        )
-      }
-      items={[
-        {
-          label: "Načíst hru",
-          onClick: () => {
-            loadSavedGames();
-            setShowSetupMenu(false);
-          },
-        },
-        {
-          label: "Admin",
-          onClick: () => {
-            setShowAdmin(true);
-            setShowSetupMenu(false);
-          },
-        },
-        {
-          label: "Statistiky",
-          onClick: () => {
-            setShowStatistics(true);
-            setShowSetupMenu(false);
-          },
-        },
-        {
-          label: "Domů",
-          onClick: () => {
-            debugSetScreen("home");
-            setShowSetupMenu(false);
-          },
-        },
-      ]}
-    />
-  )}
-</div>
-</div>
+                  <AppMenu
+                    label="MENU"
+                    isOpen={showGameMenu}
+                    onToggle={() => setShowGameMenu((prev) => !prev)}
+                    items={[
+                      {
+                        label: "Zvuk",
+                        onClick: () => {
+                          setShowSettings(true);
+                          setShowGameMenu(false);
+                        },
+                      },
+                      {
+                        label: "Načíst hru",
+                        onClick: () => {
+                          loadSavedGames();
+                          setShowGameMenu(false);
+                        },
+                      },
+                      {
+                        label: "Uložit hru",
+                        onClick: () => {
+                          setShowSaveGameConfirm(true);
+                          setShowGameMenu(false);
+                        },
+                      },
+                      {
+                        label: "Nová hra",
+                        onClick: () => {
+                          setShowHomeRestoreModal(true);
+                          setShowGameMenu(false);
+                        },
+                      },
+                      {
+                        label: "Ukončit hru",
+                        onClick: () => {
+                          setShowLeaveConfirm(true);
+                          setShowGameMenu(false);
+                        },
+                      },
+                    ]}
+                  />
+                </>
+              ) : (
+                <AppMenu
+                  isOpen={showSetupMenu}
+                  onToggle={() => setShowSetupMenu((prev) => !prev)}
+                  items={[
+                    {
+                      label: "Načíst hru",
+                      onClick: () => {
+                        loadSavedGames();
+                        setShowSetupMenu(false);
+                      },
+                    },
+                    {
+                      label: "Admin",
+                      onClick: () => {
+                        setShowAdmin(true);
+                        setShowSetupMenu(false);
+                      },
+                    },
+                    {
+                      label: "Statistiky",
+                      onClick: () => {
+                        setShowStatistics(true);
+                        setShowSetupMenu(false);
+                      },
+                    },
+                    {
+                      label: "Domů",
+                      onClick: () => {
+                        debugSetScreen("home");
+                        setShowSetupMenu(false);
+                      },
+                    },
+                  ]}
+                />
+              )}
+            </div>
+          </div>
 
           {!gameStarted && (
             <div className="mx-auto mb-12 mt-6 w-full max-w-5xl rounded-3xl bg-zinc-900/40 p-6 backdrop-blur-sm md:p-8">
@@ -8781,54 +6552,36 @@ const renderOnlineChatMessages = () => (
                     Počet hráčů
                   </label>
 
-<div className="text-sm text-zinc-500 tracking-[0.08em]">
-  Aktuálně: 
-  {" "}
-  {maxPlayers}
-  {" "}
-  aktivní
-  {maxPlayers === 1
-    ? " hráč"
-    : maxPlayers >= 2 &&
-      maxPlayers <= 4
-    ? " hráči"
-    : " hráčů"}
-</div>
+                  <div className="text-sm text-zinc-500 tracking-[0.08em]">
+                    Aktuálně: {maxPlayers} aktivní
+                    {maxPlayers === 1
+                      ? " hráč"
+                      : maxPlayers >= 2 && maxPlayers <= 4
+                        ? " hráči"
+                        : " hráčů"}
+                  </div>
 
                   <select
                     value={playerCount}
                     onChange={(e) =>
                       handlePlayerCountChange(
-                        e.target.value === ""
-                          ? ""
-                          : Number(
-                              e.target.value
-                            )
+                        e.target.value === "" ? "" : Number(e.target.value),
                       )
                     }
                     className="min-w-[220px] rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-lg font-bold text-white outline-none transition focus:border-yellow-400"
                   >
-                    <option value="">
-                      Vyber počet hráčů
-                    </option>
+                    <option value="">Vyber počet hráčů</option>
 
                     {Array.from(
-  {
-    length:
-      maxPlayers >= 2
-        ? maxPlayers - 1
-        : 0,
-  },
-  (_, index) => index + 2
-).map((count) => (
-                        <option
-                          key={count}
-                          value={count}
-                        >
-                          {count}
-                        </option>
-                      )
-                    )}
+                      {
+                        length: maxPlayers >= 2 ? maxPlayers - 1 : 0,
+                      },
+                      (_, index) => index + 2,
+                    ).map((count) => (
+                      <option key={count} value={count}>
+                        {count}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -8847,92 +6600,47 @@ const renderOnlineChatMessages = () => (
                       </label>
 
                       <select
-                        value={
-                          selectedPlayerTypes[
-                            index
-                          ] || "human"
-                        }
+                        value={selectedPlayerTypes[index] || "human"}
                         onChange={(e) =>
                           handlePlayerTypeChange(
                             index,
-                            e.target
-                              .value as PlayerSelectionType
+                            e.target.value as PlayerSelectionType,
                           )
                         }
                         className="mb-3 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-base font-bold text-white outline-none transition focus:border-yellow-400"
                       >
-                        <option value="human">
-                          Human
-                        </option>
-                        <option value="computer">
-                          Computer
-                        </option>
+                        <option value="human">Human</option>
+                        <option value="computer">Computer</option>
                       </select>
 
                       <select
-                        value={
-                          selectedPlayers[
-                            index
-                          ] || ""
-                        }
+                        value={selectedPlayers[index] || ""}
                         onChange={(e) =>
-                          handlePlayerChange(
-                            index,
-                            e.target.value
-                          )
+                          handlePlayerChange(index, e.target.value)
                         }
                         className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-4 text-lg font-bold text-white outline-none transition focus:border-yellow-400"
                       >
                         <option value="">
-                          {(
-                            selectedPlayerTypes[
-                              index
-                            ] || "human"
-                          ) === "computer"
+                          {(selectedPlayerTypes[index] || "human") ===
+                          "computer"
                             ? "Vyber Computer hráče"
                             : "Vyber hráče"}
                         </option>
 
-                        {(selectedPlayerTypes[
-                          index
-                        ] || "human") ===
-                        "computer"
-                          ? computerPlayers.map(
-                              (
-                                computerPlayer
-                              ) => (
-                                <option
-                                  key={
-                                    computerPlayer.id
-                                  }
-                                  value={
-                                    computerPlayer.id
-                                  }
-                                >
-                                  {
-                                    computerPlayer.name
-                                  }
-                                </option>
-                              )
-                            )
-                          : selectablePlayers.map(
-                              (
-                                player
-                              ) => (
-                                <option
-                                  key={
-                                    player.id
-                                  }
-                                  value={
-                                    player.id
-                                  }
-                                >
-                                  {
-                                    player.name
-                                  }
-                                </option>
-                              )
-                            )}
+                        {(selectedPlayerTypes[index] || "human") === "computer"
+                          ? computerPlayers.map((computerPlayer) => (
+                              <option
+                                key={computerPlayer.id}
+                                value={computerPlayer.id}
+                              >
+                                {computerPlayer.name}
+                              </option>
+                            ))
+                          : selectablePlayers.map((player) => (
+                              <option key={player.id} value={player.id}>
+                                {player.name}
+                              </option>
+                            ))}
                       </select>
                     </div>
                   ))}
@@ -8940,80 +6648,70 @@ const renderOnlineChatMessages = () => (
               )}
 
               <div className="flex justify-end">
-              <button
-              onClick={() => {
-                if (!canStartGame) {
-                  alert(
-                    "Vyber platný seznam hráčů."
-                  );
+                <button
+                  onClick={() => {
+                    if (!canStartGame) {
+                      alert("Vyber platný seznam hráčů.");
 
-                  return;
-                }
+                      return;
+                    }
 
-                // Do not start the game yet; open Play Mode setup first.
-                debugSetGameStarted(false, 'GameSetup');
-                setShowPlayModeSetup(true);
-              }}
-  disabled={!canStartGame}
-  className={`rounded-2xl px-8 py-4 text-xl font-black transition ${
-    canStartGame
-      ? "border border-zinc-600 bg-gradient-to-r from-violet-600 to-green-500 text-zinc-100 hover:scale-[1.02] hover:brightness-110 hover:text-white"
-: "cursor-not-allowed border border-zinc-600 bg-zinc-700 text-zinc-400"
-  }`}
->
-  ▶ Nastavit hru
-</button>
-</div>
+                    // Do not start the game yet; open Play Mode setup first.
+                    debugSetGameStarted(false, "GameSetup");
+                    setShowPlayModeSetup(true);
+                  }}
+                  disabled={!canStartGame}
+                  className={`rounded-2xl px-8 py-4 text-xl font-black transition ${
+                    canStartGame
+                      ? "border border-zinc-600 bg-gradient-to-r from-violet-600 to-green-500 text-zinc-100 hover:scale-[1.02] hover:brightness-110 hover:text-white"
+                      : "cursor-not-allowed border border-zinc-600 bg-zinc-700 text-zinc-400"
+                  }`}
+                >
+                  ▶ Nastavit hru
+                </button>
+              </div>
             </div>
           )}
 
           {gameStarted && (
             <>
-            
-
               <div className="w-full overflow-x-auto rounded-2xl border border-zinc-700 bg-zinc-950 tracking-[0.14em]">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-green-800">
-                    <th className="w-[21%] border border-white p-3 text-left">
-                    KOMBINACE
-                    </th>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-green-800">
+                      <th className="w-[21%] border border-white p-3 text-left">
+                        KOMBINACE
+                      </th>
 
-                    <th className="w-[9%] border border-white p-3 text-center text-zinc-300">
-  min
-</th>
+                      <th className="w-[9%] border border-white p-3 text-center text-zinc-300">
+                        min
+                      </th>
 
-<th className="w-[9%] border border-white p-3 text-center text-zinc-300">
-  max
-</th>
+                      <th className="w-[9%] border border-white p-3 text-center text-zinc-300">
+                        max
+                      </th>
 
-                    {selectedPlayers.map(
-                      (playerId, index) => (
+                      {selectedPlayers.map((playerId, index) => (
                         <th
-  key={index}
-  className="border border-white p-3 text-center text-xl font-bold"
->
+                          key={index}
+                          className="border border-white p-3 text-center text-xl font-bold"
+                        >
                           <span
                             className={`inline-block transition-all duration-500 ${
-                              index ===
-                              currentPlayPlayerIndex
+                              index === currentPlayPlayerIndex
                                 ? "active-player-name"
                                 : ""
                             }`}
                           >
-                            {getPlayerDisplayName(
-                              playerId
-                            )}
+                            {getPlayerDisplayName(playerId)}
                           </span>
                         </th>
-                      )
-                    )}
-                  </tr>
-                </thead>
+                      ))}
+                    </tr>
+                  </thead>
 
-                <tbody>
-                  {gameCategories.map(
-                    (category) => (
+                  <tbody>
+                    {gameCategories.map((category) => (
                       <tr
                         key={category.id}
                         className="transition hover:bg-zinc-900"
@@ -9021,2117 +6719,1615 @@ const renderOnlineChatMessages = () => (
                         <td className="border border-white p-3">
                           <button
                             onClick={() => {
-                              setSelectedHelpImageSource(
-                                "scoreboard"
-                              );
+                              setSelectedHelpImageSource("scoreboard");
 
-                              setSelectedHelpImage(
-                                `/help/${category.id}.png`
-                              );
+                              setSelectedHelpImage(`/help/${category.id}.png`);
                             }}
                             className="transition hover:text-yellow-300"
                           >
-                            {
-                              category.name
-                            }
+                            {category.name}
                           </button>
                         </td>
 
                         <td className="border border-white p-3 text-center text-zinc-300">
-  {category.min}
-</td>
+                          {category.min}
+                        </td>
 
-<td className="border border-white p-3 text-center text-zinc-300">
-  {category.max}
-</td>
+                        <td className="border border-white p-3 text-center text-zinc-300">
+                          {category.max}
+                        </td>
 
-                        {selectedPlayers.map(
-                          (
-                            playerId,
-                            index
-                          ) => {
-                            const value =
-                              scores[playerId]?.[
-                                category.id
-                              ];
+                        {selectedPlayers.map((playerId, index) => {
+                          const value = scores[playerId]?.[category.id];
 
-                            const isPerfect =
-                              value ===
-                              category.max;
+                          const isPerfect = value === category.max;
 
-                            return (
-                              <td
-                                key={index}
-                                className={`border border-white p-3 text-center text-xl font-black transition ${
-                                  gameFinished
-                                    ? "cursor-default"
-                                    : "cursor-pointer hover:bg-green-800"
-                                }`}
-                                onClick={() =>
-                                  openScoreModal(
-                                    playerId,
-                                    category.id,
-                                    category.min,
-                                    category.max
-                                  )
+                          return (
+                            <td
+                              key={index}
+                              className={`border border-white p-3 text-center text-xl font-black transition ${
+                                gameFinished
+                                  ? "cursor-default"
+                                  : "cursor-pointer hover:bg-green-800"
+                              }`}
+                              onClick={() =>
+                                openScoreModal(
+                                  playerId,
+                                  category.id,
+                                  category.min,
+                                  category.max,
+                                )
+                              }
+                            >
+                              <span
+                                className={
+                                  isPerfect ? "text-red-500" : "text-yellow-400"
                                 }
                               >
-                                <span
-                                  className={
-  isPerfect
-    ? "text-red-500"
-    : "text-yellow-400"
-}
-                                >
-                                  {value ?? ""}
-                                </span>
-                              </td>
-                            );
-                          }
-                        )}
+                                {value ?? ""}
+                              </span>
+                            </td>
+                          );
+                        })}
                       </tr>
-                    )
-                  )}
+                    ))}
 
-                  <tr className="bg-green-950 text-xl font-bold text-yellow-400">
-                    <td className="border border-white p-3">
-                      SKÓRE
-                    </td>
+                    <tr className="bg-green-950 text-xl font-bold text-yellow-400">
+                      <td className="border border-white p-3">SKÓRE</td>
 
-                    <td className="border border-white p-3"></td>
+                      <td className="border border-white p-3"></td>
 
-                    <td className="border border-white p-3"></td>
+                      <td className="border border-white p-3"></td>
 
-                    {selectedPlayers.map(
-  (
-    playerId,
-    index
-  ) => {
-    const playerTotal =
-      getPlayerTotal(
-        playerId
-      );
+                      {selectedPlayers.map((playerId, index) => {
+                        const playerTotal = getPlayerTotal(playerId);
 
-    const highestScore =
-      Math.max(
-        ...selectedPlayers.map(
-          (id) =>
-            getPlayerTotal(id)
-        )
-      );
+                        const highestScore = Math.max(
+                          ...selectedPlayers.map((id) => getPlayerTotal(id)),
+                        );
 
-    return (
-      <td
-        key={index}
-        className={`border border-white p-3 text-center ${
-          playerTotal ===
-          highestScore
-            ? "text-red-500"
-            : "text-yellow-400"
-        }`}
-      >
-        {playerTotal}
-      </td>
-    );
-  }
-)}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            {hasStartedPlayMode && (
-  <div
-    className={`mt-4 text-center text-sm font-black ${
-      isLeaguePlayMode
-        ? "text-green-400"
-        : "text-purple-400"
-    }`}
-  >
-    {isLeaguePlayMode
-  ? "Ligová hra"
-  : "Fun hra"}
-:{" "}
-{playModeConfigInfoText}
-  </div>
-)}
+                        return (
+                          <td
+                            key={index}
+                            className={`border border-white p-3 text-center ${
+                              playerTotal === highestScore
+                                ? "text-red-500"
+                                : "text-yellow-400"
+                            }`}
+                          >
+                            {playerTotal}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              {hasStartedPlayMode && (
+                <div
+                  className={`mt-4 text-center text-sm font-black ${
+                    isLeaguePlayMode ? "text-green-400" : "text-purple-400"
+                  }`}
+                >
+                  {isLeaguePlayMode ? "Ligová hra" : "Fun hra"}:{" "}
+                  {playModeConfigInfoText}
+                </div>
+              )}
             </>
           )}
         </div>
       )}
 
-{/* EDIT CONFIRM MODAL */}
-{showEditConfirm &&
-  scoreModal &&
-  hasStartedPlayMode &&
-  !playModeAllowRewrite && (
-  <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
-    <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/30 bg-zinc-900 p-8 text-center text-white shadow-2xl">
-      <h2 className="mb-5 text-3xl font-black text-yellow-400">
-        Přepis není povolen
-      </h2>
-
-      <p className="mb-8 text-lg text-zinc-300">
-        Nastavení hry neumožňuje
-        přepsat skóre.
-      </p>
-
-      <button
-        onClick={() => {
-          setShowEditConfirm(
-            false
-          );
-
-          setScoreModal(null);
-        }}
-        className="w-full rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
-      >
-        Zavřít
-      </button>
-    </div>
-  </div>
-)}
-
-{showEditConfirm &&
-  scoreModal &&
-  (!hasStartedPlayMode ||
-    playModeAllowRewrite) && (
-  <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
-    <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/30 bg-zinc-900 p-8 text-center text-white shadow-2xl">
-      <h2 className="mb-5 text-3xl font-black text-yellow-400">
-        Upravit skóre?
-      </h2>
-
-      <p className="mb-8 text-lg text-zinc-300">
-        Tato kombinace už má zadané skóre.
-        <br />
-        Chceš jej upravit?
-      </p>
-
-      <div className="flex gap-4">
-        <button
-          onClick={() => {
-            setShowEditConfirm(
-              false
-            );
-
-            setScoreModal(null);
-          }}
-          className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
-        >
-          Nechat hodnotu
-        </button>
-
-        <button
-          onClick={() =>
-            setShowEditConfirm(
-              false
-            )
-          }
-          className="flex-1 rounded-2xl bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:bg-yellow-400"
-        >
-          Opravit
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-{/* HOME RESTORE MODAL */}
-{!isOnlineGame && showHomeRestoreModal && (
-  <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
-      <h2 className="mb-5 text-3xl font-black text-yellow-400">
-        Obnovit hru?
-      </h2>
-
-      <p className="mb-8 text-lg text-zinc-300">
-        Byla nalezena rozehraná hra.
-      </p>
-
-      <div className="flex gap-4">
-        <button
-          onClick={() => {
-            setShowHomeRestoreModal(
-              false
-            );
-
-            startNewGame(true);
-          }}
-          className="flex-1 rounded-2xl border border-zinc-600 bg-yellow-500 px-5 py-4 text-lg font-bold text-black transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Nová hra
-        </button>
-
-        <button
-          onClick={() => {
-            const savedGame =
-              localStorage.getItem(
-                "heroDiceCurrentGame"
-              );
-
-            if (!savedGame)
-              return;
-
-            const parsed =
-              JSON.parse(savedGame);
-
-            openSavedGame(parsed);
-
-            setShowHomeRestoreModal(
-              false
-            );
-          }}
-          className="flex-1 rounded-2xl border border-zinc-600 bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Skóre board
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-{/* LOAD GAMES MODAL */}
-{!isOnlineGame && showLoadGames && (
-  <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-2xl rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-white">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-3xl font-black text-yellow-400">
-          Načíst hru
-        </h2>
-
-        <button
-          onClick={() =>
-            setShowLoadGames(
-              false
-            )
-          }
-          className="rounded-xl border border-zinc-600 bg-zinc-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Zavřít
-        </button>
-      </div>
-
-      <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-2">
-        {savedGames.length ===
-        0 ? (
-          <div className="rounded-2xl bg-black/40 p-6 text-center text-zinc-400">
-            Žádné uložené hry.
-          </div>
-        ) : (
-          savedGames.map((game) => (
-            <div
-              key={game.id}
-              className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/40 p-5"
-            >
-              <div>
-                <div className="text-xl font-black text-white">
-                  {game.name}
-                </div>
-
-                <div className="mt-1 text-sm text-zinc-400">
-                  {new Date(
-                    game.created_at
-                  ).toLocaleString(
-                    "cs-CZ"
-                  )}
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.16em]">
-                  <span
-                    className={`rounded-full px-3 py-1 ${
-                      (game.game_mode ?? "offline") ===
-                      "online"
-                        ? "bg-green-600/20 text-green-400"
-                        : "bg-blue-600/20 text-blue-400"
-                    }`}
-                  >
-                    {(game.game_mode ?? "offline") ===
-                    "online"
-                      ? "Online hra"
-                      : "Offline hra"}
-                  </span>
-
-                  <span
-                    className={`rounded-full px-3 py-1 ${
-                      Array.isArray(
-                        game.selected_players
-                      ) &&
-                      game.selected_players.some(
-                        (playerId: unknown) =>
-                          typeof playerId ===
-                            "string" &&
-                          isComputerPlayerId(
-                            playerId
-                          )
-                      )
-                        ? "bg-purple-600/20 text-purple-300"
-                        : game.play_mode_rolls ===
-                            4 &&
-                          !game.play_mode_allow_rewrite &&
-                          game.play_mode_bonus_mode ===
-                            "general-only" &&
-                          game.play_mode_bonus_rolls ===
-                            2
-                        ? "bg-green-600/20 text-green-400"
-                        : "bg-purple-600/20 text-purple-300"
-                    }`}
-                  >
-                    {Array.isArray(
-                      game.selected_players
-                    ) &&
-                    game.selected_players.some(
-                      (playerId: unknown) =>
-                        typeof playerId ===
-                          "string" &&
-                        isComputerPlayerId(
-                          playerId
-                        )
-                    )
-                      ? "Fun hra"
-                      : game.play_mode_rolls ===
-                          4 &&
-                        !game.play_mode_allow_rewrite &&
-                        game.play_mode_bonus_mode ===
-                          "general-only" &&
-                        game.play_mode_bonus_rolls ===
-                          2
-                      ? "Ligová hra"
-                      : "Fun hra"}
-                  </span>
-                </div>
-
-                <div className="mt-2 text-xs text-zinc-500">
-                  {`${game.play_mode_rolls ?? 4} hodů / Přepis: ${
-                    game.play_mode_allow_rewrite
-                      ? "Ano"
-                      : "Ne"
-                  } / Bonus: ${
-                    game.play_mode_bonus_mode ===
-                    "all"
-                      ? "Všechny kombinace"
-                      : "Hero"
-                  } +${
-                    Math.max(
-                      (game.play_mode_bonus_rolls ?? 2) -
-                        (game.play_mode_rolls ?? 4),
-                      0
-                    )
-                  }`}
-                </div>
-
-                {(game.game_mode ?? "offline") ===
-                  "online" &&
-                  game.online_session_id && (
-                  <div className="mt-2 text-xs font-bold text-green-400">
-                    Session: {game.online_session_id}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-3">
-  <button
-    onClick={() => {
-      if (isOnlineGame) {
-        return;
-      }
-
-      const savedGamePayload =
-        buildSavedGamePayload({
-          gameId:
-            resolveGameId(
-              game.game_id
-            ),
-          playerCount: game.player_count,
-          selectedPlayers:
-            game.selected_players ?? [],
-          scores: game.scores ?? {},
-          gameStarted: game.game_started,
-          gameFinished: game.game_finished,
-          isPlayModeActive:
-            game.is_play_mode_active ?? false,
-          hasStartedPlayMode:
-            game.has_started_play_mode ??
-            game.is_play_mode_active ??
-            false,
-          playModeRolls:
-            game.play_mode_rolls ?? 4,
-          playModeAllowRewrite:
-            game.play_mode_allow_rewrite ?? false,
-          playModeBonusMode:
-            game.play_mode_bonus_mode ??
-            "general-only",
-          playModeBonusRolls:
-            game.play_mode_bonus_rolls ?? 2,
-          currentPlayPlayerIndex:
-            game.current_play_player_index ?? 0,
-          playModeDice:
-            game.play_mode_dice ?? [
-              1,
-              1,
-              1,
-              1,
-              1,
-              1,
-            ],
-          lockedDice:
-            game.locked_dice ?? [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-            ],
-          confirmedLockedDice:
-            game.confirmed_locked_dice ?? [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-            ],
-          remainingRolls:
-            game.remaining_rolls ??
-            (game.play_mode_rolls ?? 4),
-          bonusUsed:
-            game.bonus_used ?? false,
-          selectedGeneralValue:
-            game.selected_general_value ?? null,
-          hasRolledDice:
-            game.has_rolled_dice ?? false,
-          gameMode:
-            game.game_mode ?? "offline",
-          onlineSessionId:
-            game.online_session_id ?? null,
-          localOnlinePlayerId:
-            game.local_online_player_id ?? null,
-        });
-
-      localStorage.setItem(
-  "heroDiceCurrentGame",
-  JSON.stringify(savedGamePayload)
-);
-
-      setShowLoadGames(
-  false
-);
-
-      openSavedGame(savedGamePayload);
-    }}
-    className="rounded-xl bg-yellow-500 px-5 py-3 font-black text-black transition hover:scale-[1.02] hover:brightness-110"
-  >
-    Načíst
-  </button>
-
-  <button
-  onClick={() =>
-    setDeleteSavedGameId(
-      game.id
-    )
-  }
-  className="rounded-xl bg-red-600 px-5 py-3 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
->
-  Smazat
-</button>
-</div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  </div>
-)}
-
-{/* RESTORE GAME MODAL */}
-{!isOnlineGame && showRestoreGame && (
-  <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
-      <h2 className="mb-5 text-3xl font-black text-yellow-400">
-        Obnovit hru?
-      </h2>
-
-      <p className="mb-8 text-lg text-zinc-300">
-        Byla nalezena rozehraná hra.
-      </p>
-
-      <div className="flex gap-4">
-        <button
-          onClick={() => {
-            localStorage.removeItem(
-              "heroDiceCurrentGame"
-            );
-
-            setShowRestoreGame(
-              false
-            );
-          }}
-          className="flex-1 rounded-2xl border border-zinc-600 bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Zahodit
-        </button>
-
-        <button
-          onClick={() => {
-            const savedGame =
-              localStorage.getItem(
-                "heroDiceCurrentGame"
-              );
-
-            if (!savedGame)
-              return;
-
-            const parsed =
-              JSON.parse(savedGame);
-
-            openSavedGame(parsed);
-
-            setShowRestoreGame(
-              false
-            );
-          }}
-          className="flex-1 rounded-2xl border border-zinc-600 bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Obnovit
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-{showFinishGameConfirm &&
-  pendingFinishedGame && (
-    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/90 p-4">
-      <div className="w-full max-w-[500px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
-        <h2 className="mb-5 text-3xl font-black text-yellow-400">
-          🏁 Blížíte se ke konci hry
-        </h2>
-
-        <p className="mb-8 text-lg text-zinc-300">
-          Tento zápis dokončí hru.
-          <br />
-          <br />
-          Zvolte prosím, jak chcete
-          výsledek uložit.
-        </p>
-
-        <div className="flex flex-col gap-4">
-          <button
-            onClick={async () => {
-              if (hasComputerPlayer) {
-                return;
-              }
-
-              const saveSuccess =
-                await saveFinishedGame({
-                  date:
-                    new Date().toISOString(),
-
-                  winner:
-                    pendingFinishedGame.winner,
-
-                  winnerScore:
-                    pendingFinishedGame.winnerScore,
-
-                  players:
-                    pendingFinishedGame.players,
-
-                  scores:
-                    pendingFinishedGame.scores,
-
-                  gameId,
-                });
-
-              if (!saveSuccess) {
-                setShowFinishGameConfirm(
-                  false
-                );
-
-                setPendingFinishedGame(
-                  null
-                );
-
-                setShowDuplicateGameMessage(
-                  true
-                );
-
-                return;
-              }
-
-              setShowFinishGameConfirm(
-  false
-);
-
-setPendingFinishedGame(
-  null
-);
-
-setGameFinished(true);
-
-debugSetIsPlayModeActive(
-  false
-);
-
-setShowPlayModeResult(
-  false
-);
-
-localStorage.removeItem(
-  "heroDiceCurrentGame"
-);
-
-if (
-  celebrationSoundEnabled
-) {
-  const randomSound =
-    winSounds[
-      Math.floor(
-        Math.random() *
-        winSounds.length
-      )
-    ];
-
-  cleanupCelebrationAudio();
-
-  const audio =
-    new Audio(
-      randomSound
-    );
-
-  audio.volume = 0.8;
-
-  celebrationAudioRef.current =
-    audio;
-
-  audio.play().catch(() => {});
-}
-
-setShowFinishedGame(true);
-
-
-const celebrationType =
-  Math.floor(
-    Math.random() * 3
-  );
-
-if (celebrationType === 0) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 35,
-            spread: 100,
-            startVelocity: 35,
-            zIndex: 9999,
-            origin: {
-              x: Math.random(),
-              y: 0.6,
-            },
-          });
-        },
-        i * 500
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-
-if (celebrationType === 1) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 60,
-            spread: 180,
-            startVelocity: 60,
-            zIndex: 9999,
-            origin: {
-              x: 0.5,
-              y: 0.6,
-            },
-          });
-        },
-        i * 500
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-
-if (celebrationType === 2) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 40,
-            angle: 60,
-            spread: 55,
-            zIndex: 9999,
-            origin: {
-              x: 0,
-              y: 0.7,
-            },
-          });
-
-          confetti({
-            particleCount: 40,
-            angle: 120,
-            spread: 55,
-            zIndex: 9999,
-            origin: {
-              x: 1,
-              y: 0.7,
-            },
-          });
-        },
-        i * 250
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-
-             
-            }}
-            disabled={hasComputerPlayer}
-            className={`rounded-2xl px-5 py-4 text-lg font-black text-white transition ${
-              hasComputerPlayer
-                ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
-                : "bg-green-600 hover:bg-green-500"
-            }`}
-          >
-            {hasComputerPlayer
-              ? "Ligová hra není dostupná s Computer hráčem"
-              : "🟢 Ligová hra"}
-          </button>
-
-          <button
-            onClick={async () => {
-              const saveSuccess =
-                await saveFunGame({
-                  winner:
-                    pendingFinishedGame.winner,
-
-                  winnerScore:
-                    pendingFinishedGame.winnerScore,
-
-                  players:
-                    pendingFinishedGame.players,
-
-                  scores:
-                    pendingFinishedGame.scores,
-                });
-
-              if (!saveSuccess) {
-                setShowFinishGameConfirm(
-                  false
-                );
-
-                setPendingFinishedGame(
-                  null
-                );
-
-                setShowDuplicateGameMessage(
-                  true
-                );
-
-                return;
-              }
-
-              setShowFinishGameConfirm(
-  false
-);
-
-
-
-setPendingFinishedGame(
-  null
-);
-
-setGameFinished(true);
-
-debugSetIsPlayModeActive(
-  false
-);
-
-setShowPlayModeResult(
-  false
-);
-
-localStorage.removeItem(
-  "heroDiceCurrentGame"
-);
-
-if (
-  celebrationSoundEnabled
-) {
-  const randomSound =
-    winSounds[
-      Math.floor(
-        Math.random() *
-        winSounds.length
-      )
-    ];
-
-  cleanupCelebrationAudio();
-
-  const audio =
-    new Audio(
-      randomSound
-    );
-
-  audio.volume = 0.8;
-
-  celebrationAudioRef.current =
-    audio;
-
-  audio.play().catch(() => {});
-}
-
-setShowFinishedGame(true);
-
-const celebrationType =
-  Math.floor(
-    Math.random() * 3
-  );
-
-if (celebrationType === 0) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 35,
-            spread: 100,
-            startVelocity: 35,
-            zIndex: 9999,
-            origin: {
-              x: Math.random(),
-              y: 0.6,
-            },
-          });
-        },
-        i * 500
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-
-if (celebrationType === 1) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 60,
-            spread: 180,
-            startVelocity: 60,
-            zIndex: 9999,
-            origin: {
-              x: 0.5,
-              y: 0.6,
-            },
-          });
-        },
-        i * 500
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-
-if (celebrationType === 2) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 40,
-            angle: 60,
-            spread: 55,
-            zIndex: 9999,
-            origin: {
-              x: 0,
-              y: 0.7,
-            },
-          });
-
-          confetti({
-            particleCount: 40,
-            angle: 120,
-            spread: 55,
-            zIndex: 9999,
-            origin: {
-              x: 1,
-              y: 0.7,
-            },
-          });
-        },
-        i * 250
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-              
-            }}
-            className="rounded-2xl bg-purple-600 px-5 py-4 text-lg font-black text-white transition hover:bg-purple-500"
-          >
-            🟣 Fun hra
-          </button>
-        </div>
-      </div>
-    </div>
-)}
-
-
-{/* GAME SAVED MODAL */}
-{showGameSavedModal && (
-  <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[420px] rounded-3xl border border-green-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
-      <h2 className="mb-5 text-3xl font-black text-green-400">
-        Hra uložena
-      </h2>
-
-      <p className="mb-8 text-lg text-zinc-300">
-        Rozehraná hra byla úspěšně uložena.
-      </p>
-
-      <button
-        onClick={() =>
-  setShowGameSavedModal(
-    false
-  )
-}
-        className="w-full rounded-2xl border border-zinc-600 bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:scale-[1.02] hover:brightness-110"
-      >
-        OK
-      </button>
-    </div>
-  </div>
-)}
-
-{/* GAME VERSION MODAL */}
-{showGameVersionModal && (
-  <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[520px] rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-center text-white">
-      <h2 className="mb-5 text-3xl font-black text-yellow-400">
-        Hra již existuje
-      </h2>
-
-      <p className="mb-8 text-zinc-300">
-        Tato rozehraná hra už byla dříve uložena.
-      </p>
-
-      <div className="flex flex-wrap justify-center gap-4">
-        <button
-          onClick={() =>
-            {
-              setShowGameVersionModal(
-                false
-              );
-
-              setPendingSaveMetadata(
-                null
-              );
-            }
-          }
-          className="rounded-xl border border-zinc-600 bg-zinc-700 px-6 py-4 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Zrušit
-        </button>
-
-        <button
-          onClick={async () => {
-  await overwriteGameInSupabase(
-    pendingSaveMetadata ?? undefined
-  );
-}}
-          className="rounded-xl border border-zinc-600 bg-green-600 px-6 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Přepsat
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-{/* PLAY MODE SETUP */}
-{showPlayModeSetup && (
-  <div className="fixed inset-0 z-[140] overflow-y-auto bg-black/90 p-4">
-    <div className="mx-auto my-10 w-full max-w-[560px] rounded-3xl border border-purple-500/30 bg-zinc-900 p-6 text-white shadow-2xl md:p-8">
-      <div className="mb-8 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-  <h2 className="text-4xl font-black text-purple-400">
-    PLAY MODE
-  </h2>
-
-  <div className="group relative">
-    <button
-      className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-sm font-black text-white"
-    >
-      ?
-    </button>
-
-    <div className="pointer-events-none absolute left-1/2 top-11 z-10 w-[260px] -translate-x-1/2 rounded-2xl border border-green-500/20 bg-zinc-950 p-4 text-left text-sm text-zinc-300 opacity-0 shadow-2xl transition duration-200 group-hover:opacity-100">
-      <div className="mb-2 font-black uppercase tracking-wide text-green-400">
-        Ligové statistiky
-      </div>
-
-      <div className="space-y-1">
-        <div>
-          • 4 hody
-        </div>
-
-        <div>
-          • bez přepisování skóre
-        </div>
-
-        <div>
-          • bonus pouze u hero (2 bonus hody)
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-        <button
-  onClick={() => {
-    setShowPlayModeSetup(
-      false
-    );
-
-    debugSetGameStarted(
-      false
-    );
-  }}
-  className="rounded-xl bg-zinc-700 px-4 py-2 font-bold transition hover:bg-zinc-600"
->
-  ✕
-</button>
-      </div>
-
-      <div className="space-y-5">
-        
-
-        <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
-          <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
-            Počet hodů
-          </div>
-
-          <div className="flex items-center justify-center gap-6">
-            <button
-              onClick={() =>
-                setPlayModeRolls(
-                  (prev) =>
-                    Math.max(
-                      1,
-                      prev - 1
-                    )
-                )
-              }
-              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
-            >
-              −
-            </button>
-
-            <div
-              className={`min-w-[100px] text-center text-5xl font-black ${
-                playModeRolls === 4
-                  ? "text-green-400"
-                  : "text-yellow-400"
-              }`}
-            >
-              {playModeRolls}
-            </div>
-
-            <button
-              onClick={() =>
-                setPlayModeRolls(
-                  (prev) =>
-                    Math.min(
-                      hasComputerPlayer ? 12 : 7,
-                      prev + 1
-                    )
-                )
-              }
-              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
-            >
-              +
-            </button>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
-          <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
-            Přepisování skóre
-          </div>
-
-          <div className="flex gap-4">
-            <button
-              onClick={() =>
-                setPlayModeAllowRewrite(
-                  false
-                )
-              }
-              className={`flex-1 rounded-2xl px-5 py-4 font-black transition ${
-                !playModeAllowRewrite
-                  ? "bg-green-600 text-white"
-                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-              }`}
-            >
-              Ne
-            </button>
-
-            <button
-              onClick={() =>
-                setPlayModeAllowRewrite(
-                  true
-                )
-              }
-              className={`flex-1 rounded-2xl px-5 py-4 font-black transition ${
-                playModeAllowRewrite
-                  ? "bg-yellow-500 text-black"
-                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-              }`}
-            >
-              Ano
-            </button>
-          </div>
-        </div>
-
-        {!hasComputerPlayer && (
-          <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
-            <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
-              Bonus
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() =>
-                  setPlayModeBonusMode(
-                    "general-only"
-                  )
-                }
-                className={`rounded-2xl px-5 py-4 text-left font-black transition ${
-                  playModeBonusMode ===
-                  "general-only"
-                    ? "bg-green-600 text-white"
-                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-                }`}
-              >
-                Pouze Hero
-              </button>
-
-              <button
-                onClick={() =>
-                  setPlayModeBonusMode(
-                    "all"
-                  )
-                }
-                className={`rounded-2xl px-5 py-4 text-left font-black transition ${
-                  playModeBonusMode ===
-                  "all"
-                    ? "bg-yellow-500 text-black"
-                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-                }`}
-              >
-                Všechny kombinace
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-{!hasComputerPlayer && (
-  <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
-    <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
-      Bonus hody
-    </div>
-
-    <div className="flex items-center justify-center gap-6">
-      <button
-        onClick={() =>
-          setPlayModeBonusRolls(
-            (prev) =>
-              Math.max(
-                1,
-                prev - 1
-              )
-          )
-        }
-        className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
-      >
-        −
-      </button>
-
-      <div
-    className={`min-w-[100px] text-center text-5xl font-black ${
-      playModeBonusRolls === 2
-        ? "text-green-400"
-        : "text-yellow-400"
-    }`}
-  >
-    {playModeBonusRolls}
-  </div>
-
-      <button
-        onClick={() =>
-          setPlayModeBonusRolls(
-            (prev) =>
-              Math.min(
-                7,
-                prev + 1
-              )
-          )
-        }
-        className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
-      >
-        +
-      </button>
-    </div>
-  </div>
-)}
-
-{!hasStartedPlayMode && !hasComputerPlayer && (
-  <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
-    <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
-      Režim hry
-    </div>
-
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      <button
-        onClick={() =>
-          setSelectedGameMode(
-            "offline"
-          )
-        }
-        className={`rounded-2xl px-5 py-4 font-black transition ${
-          selectedGameMode ===
-          "offline"
-            ? "bg-yellow-500 text-black"
-            : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-        }`}
-      >
-        ▶ Offline hra
-      </button>
-
-      <button
-        onClick={() =>
-          setSelectedGameMode(
-            "online"
-          )
-        }
-        disabled={hasComputerPlayer}
-        className={`rounded-2xl px-5 py-4 font-black transition ${
-          hasComputerPlayer
-            ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
-            :
-          selectedGameMode ===
-          "online"
-            ? "bg-green-600 text-white"
-            : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-        }`}
-      >
-        🌐 Online hra
-      </button>
-    </div>
-  </div>
-)}
-
-      <div className="mt-8 flex flex-wrap justify-between gap-4">
-        
-
-        <div className="flex gap-4">
-          <button
-  onClick={() => {
-    setShowPlayModeSetup(
-      false
-    );
-
-    debugSetGameStarted(
-      false
-    );
-  }}
-  className="rounded-2xl bg-zinc-700 px-6 py-4 font-bold transition hover:bg-zinc-600"
->
-  Zrušit
-</button>
-
-            <button
-          onClick={async () => {
-    // If the game is already started, behave as before (enter Play Mode).
-    if (gameStarted && hasStartedPlayMode) {
-      setCurrentPlayPlayerIndex(0);
-
-      setPlayModeDice([1, 1, 1, 1, 1, 1]);
-
-      setLockedDice([false, false, false, false, false, false]);
-
-      setConfirmedLockedDice([
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ]);
-
-      setRemainingRolls(playModeRolls);
-      setHasRolledDice(false);
-      setBonusUsed(false);
-      setShowPlayModeSetup(false);
-
-      debugSetIsPlayModeActive(true);
-      debugSetHasStartedPlayMode(true);
-
-      return;
-    }
-
-    if (!canStartGame) {
-      alert(
-        "Vyber platný seznam hráčů."
-      );
-
-      return;
-    }
-
-    if (hasComputerPlayer) {
-      setSelectedGameMode("offline");
-      setGameMode("offline");
-    }
-
-    if (
-      selectedGameMode === "online" &&
-      !hasComputerPlayer
-    ) {
-      setShowPlayModeSetup(false);
-      setGameMode("online");
-
-      try {
-        await handleCreateOnlineSession();
-      } catch (err) {
-        console.error(
-          "PLAY MODE SETUP -> create online session error:",
-          err
-        );
-      }
-
-      return;
-    }
-
-    setShowPlayModeSetup(false);
-    setGameMode("offline");
-
-    debugSetGameStarted(
-      true,
-      "PlayModeSetup"
-    );
-
-    setCurrentPlayPlayerIndex(0);
-
-    setPlayModeDice([1, 1, 1, 1, 1, 1]);
-
-    setLockedDice([
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-    ]);
-
-    setConfirmedLockedDice([
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-    ]);
-
-    setRemainingRolls(playModeRolls);
-    setHasRolledDice(false);
-    setBonusUsed(false);
-
-    debugSetIsPlayModeActive(
-      true,
-      "PlayModeSetup"
-    );
-    debugSetHasStartedPlayMode(
-      true,
-      "PlayModeSetup"
-    );
-
-    debugSetScreen(
-      "game",
-      "PlayModeSetup"
-    );
-}}
-  className={`rounded-2xl px-8 py-4 font-black text-white transition ${
-    hasComputerPlayer
-      ? "bg-purple-600 hover:bg-purple-500"
-      : selectedGameMode === "online"
-      ? "bg-green-600 hover:bg-green-500"
-      : isLeaguePlayMode
-      ? "bg-green-600 hover:bg-green-500"
-      : "bg-purple-600 hover:bg-purple-500"
-  }`}
->
-  {hasComputerPlayer
-    ? "▶ Spustit fun offline hru"
-    : screen === "online-lobby"
-    ? "Hotovo"
-    : selectedGameMode === "online"
-    ? isLeaguePlayMode
-      ? "🌐 Spustit ligovou online hru"
-      : "🌐 Spustit fun online hru"
-    : isLeaguePlayMode
-    ? "▶ Spustit ligovou offline hru"
-    : "▶ Spustit fun offline hru"}
-</button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
-{/* PLAY MODE */}
-
-{showPlayModeResult &&
-currentCombination && (
-  <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-6">
-    <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950 p-8 text-center shadow-2xl">
-      <div className="text-sm font-bold uppercase tracking-[0.25em] text-zinc-500">
-        Zapsaný výsledek hodu
-      </div>
-
-      <div className="mt-6 text-4xl font-black text-green-400">
-        {
-          currentCombination.combination
-        }
-      </div>
-
-      <div className="mt-3 text-xl font-bold text-zinc-300">
-        Hráč:
-        {" "}
-        {
-          playersState.find(
-  (player) =>
-    player.id ===
-    selectedPlayers[
-      currentPlayPlayerIndex
-    ]
-)?.name
-        }
-      </div>
-
-      <div
-        className={`mt-2 text-2xl font-black ${(() => {
-          const categoryId =
-            playModeCategoryMap[
-              currentCombination
-                .combination
-            ];
-
-          const category =
-            gameCategories.find(
-              (c) =>
-                c.id ===
-                categoryId
-            );
-
-          return (
-            category &&
-            currentCombination.score ===
-              category.max
-              ? "text-red-500"
-              : "text-white"
-          );
-        })()}`}
-      >
-        Skóre: {currentCombination.score}
-      </div>
-
-      <div className="mt-8 grid grid-cols-2 gap-4">
-  <button
-    onClick={() => {
-  setShowPlayModeResult(false);
-  setPlayModeTurnSummary(null);
-  debugSetIsPlayModeActive(
-    false
-  );
-}}
-    disabled={!canControlOnlinePlayMode}
-    className="rounded-2xl bg-green-700 px-4 py-5 text-lg font-black text-white transition hover:bg-green-600"
-  >
-    Scoreboard
-  </button>
-
-  <button
-    onClick={() => {
-      setShowPlayModeResult(false);
-      setPlayModeTurnSummary(null);
-    }}
-    className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
-  >
-    ▶ Další hráč
-  </button>
-</div>
-    </div>
-  </div>
-)}
-
-{isPlayModeActive && (
-  <div className="fixed inset-0 z-[150] overflow-y-auto bg-black/60 backdrop-blur-sm p-4 text-white">
-    <div
-      className={`mx-auto flex w-full flex-col ${
-        canShowOnlineChat
-          ? "max-w-6xl lg:flex-row lg:items-stretch lg:gap-5"
-          : "max-w-2xl"
-      }`}
-    >
-      <div className="w-full lg:flex-1">
-      <div className="rounded-3xl border border-purple-500/20 bg-zinc-900 p-6 md:p-8">
-  <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-    
-    <div className="text-center md:text-left">
-      <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500">
-        Aktuální hráč
-      </div>
-
-      <div className="text-3xl font-black text-yellow-400 md:text-4xl">
-        {getPlayerDisplayName(
-          selectedPlayers[
-            currentPlayPlayerIndex
-          ] ?? ""
-        )}
-      </div>
-
-      <div
-        className={`mt-2 text-lg font-bold uppercase tracking-[0.25em] ${
-          isLeaguePlayMode
-            ? "text-green-400"
-            : "text-purple-400"
-        }`}
-      >
-        {`${
-          isLeaguePlayMode
-            ? "LIGOVÁ HRA"
-            : "FUN HRA"
-        } · ${gameTypeTagText}`}
-      </div>
-    </div>
-
-    <div className="text-center">
-      <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500">
-        Aktuální kombinace
-      </div>
-
-      <div className="mt-3 min-h-[84px]">
-        {currentCombination &&
-        hasRolledDice &&
+      {/* EDIT CONFIRM MODAL */}
+      {showEditConfirm &&
+        scoreModal &&
         hasStartedPlayMode &&
-        (() => {
-          const categoryId = playModeCategoryMap[currentCombination.combination] as PlayModeCategoryId;
-          const writableCategories = getWritableCategoryIds(scores[currentPlayPlayerIndex] || {}, playModeAllowRewrite);
-          return writableCategories.includes(categoryId);
-        })() ? (
-          <>
-            <div className="text-2xl font-black text-green-400 md:text-3xl">
-              {
-                currentCombination.combination
-              }
-            </div>
+        !playModeAllowRewrite && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/30 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+              <h2 className="mb-5 text-3xl font-black text-yellow-400">
+                Přepis není povolen
+              </h2>
 
-            <div
-              className={`mt-2 text-xl font-bold ${
-                (() => {
-                  const categoryId =
-  playModeCategoryMap[
-    currentCombination
-      .combination
-  ];
+              <p className="mb-8 text-lg text-zinc-300">
+                Nastavení hry neumožňuje přepsat skóre.
+              </p>
 
-const category =
-  gameCategories.find(
-    (c) =>
-      c.id === categoryId
-  );
+              <button
+                onClick={() => {
+                  setShowEditConfirm(false);
 
-return (
-  category &&
-  currentCombination.score ===
-    category.max
-)
-  ? "text-red-500"
-  : "text-green-400";
-                })()
-              }`}
-            >
-              Score:
-              {" "}
-              {
-                currentCombination.score
-              }
+                  setScoreModal(null);
+                }}
+                className="w-full rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
+              >
+                Zavřít
+              </button>
             </div>
-          </>
-        ) : (
-          <>
-            <div className="text-3xl font-black text-zinc-800">
-              —
-            </div>
-
-            <div className="mt-1 text-lg font-bold text-zinc-800">
-              —
-            </div>
-          </>
+          </div>
         )}
-      </div>
-    </div>
 
-  </div>
-</div>
+      {showEditConfirm &&
+        scoreModal &&
+        (!hasStartedPlayMode || playModeAllowRewrite) && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/30 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+              <h2 className="mb-5 text-3xl font-black text-yellow-400">
+                Upravit skóre?
+              </h2>
 
-      <div className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
-        <div className="relative mb-8 flex items-center justify-end">
-  <div className="absolute left-1/2 -translate-x-1/2 text-4xl leading-none">
-    {hasUsefulFutureMove ===
-    null
-      ? " "
-      : hasUsefulFutureMove
-        ? "😊"
-        : "❌"}
-  </div>
+              <p className="mb-8 text-lg text-zinc-300">
+                Tato kombinace už má zadané skóre.
+                <br />
+                Chceš jej upravit?
+              </p>
 
-  <button
-    onClick={() =>
-      debugSetIsPlayModeActive(
-        false
-      )
-    }
-    className="rounded-2xl bg-green-700 px-5 py-3 font-bold transition hover:bg-green-600"
-  >
-    Scoreboard
-  </button>
-</div>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    setShowEditConfirm(false);
 
-        <div className="flex flex-wrap justify-center gap-4">
-  {playModeDice.map(
-    (
-      dice,
-      index
-    ) => (
-      <button
-        key={index}
-        onClick={() =>
-          toggleDiceLock(
-            index
-          )
-        }
-        disabled={!canControlOnlinePlayMode}
-        className={`flex h-20 w-20 items-center justify-center rounded-xl border-0 transition ${
-  lockedDice[
-    index
-  ]
-    ? "border-yellow-400 bg-yellow-400"
-    : "border-black bg-white"
-}`}
-      >
-        <img
-          src={
-            diceImages[dice]
-          }
-          alt={`Kostka ${dice}`}
-          className="h-[85%] w-[85%] object-contain"
-          draggable={false}
-        />
-      </button>
-    )
-  )}
-</div>
-
-        <div className="mx-auto mt-8 grid w-full max-w-xl grid-cols-1 gap-4 md:grid-cols-2">
-          <button
-  onClick={
-    activateBonus
-  }
-  disabled={
-  hasComputerPlayer ||
-  generalBonusBlocked ||
-          !canUseGeneralBonus ||
-          !canControlOnlinePlayMode ||
-          showPlayModeResult
-}
-            className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
-  hasComputerPlayer ||
-  bonusUsed ||
-  generalBonusBlocked ||
-  !canUseGeneralBonus
-    ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
-    : playModeBonusMode ===
-        "general-only"
-      ? "bg-yellow-500 text-white hover:bg-yellow-400"
-      : "bg-yellow-500 text-black hover:bg-yellow-400"
-}`}
-          >
-            {hasComputerPlayer
-              ? "Bonus"
-              : playModeBonusMode ===
-            "general-only"
-              ? `Bonus Hero +${bonusDifference}`
-: `Bonus +${bonusDifference}`}
-          </button>
-
-          <button
-            onClick={() => {
-  if (
-    !currentCombination
-  ) {
-    return;
-  }
-
-  const saved =
-    savePlayModeScore();
-
-  if (!saved) {
-    return;
-  }
-
-  const categoryId =
-    playModeCategoryMap[
-      currentCombination.combination
-    ] ?? null;
-
-  endTurn({
-    playerId:
-      selectedPlayers[
-        currentPlayPlayerIndex
-      ] ?? "",
-    savedScore: true,
-    combination:
-      currentCombination.combination,
-    score: currentCombination.score,
-    categoryId,
-    reason: "human-save",
-  });
-}}
-            disabled={
-  !currentCombination ||
-  !hasRolledDice ||
-  !canSavePlayModeScore ||
-  !canControlOnlinePlayMode ||
-  showPlayModeResult ||
-  (
-    bonusUsed &&
-    playModeBonusMode ===
-      "general-only" &&
-    currentCombination
-      .combination !==
-      "Generál"
-  ) ||
-  (
-    currentCombination &&
-    !playModeAllowRewrite &&
-    scores[
-      selectedPlayers[
-        currentPlayPlayerIndex
-      ]
-    ]?.[
-      playModeCategoryMap[
-        currentCombination
-          .combination
-      ]
-    ] !== undefined
-  )
-}
-            className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
-  currentCombination &&
-hasRolledDice &&
-canSavePlayModeScore &&
-  !(
-    bonusUsed &&
-    playModeBonusMode ===
-      "general-only" &&
-    currentCombination
-      .combination !==
-      "Generál"
-  ) &&
-  !(
-    !playModeAllowRewrite &&
-    scores[
-      selectedPlayers[
-        currentPlayPlayerIndex
-      ]
-    ]?.[
-      playModeCategoryMap[
-        currentCombination
-          .combination
-      ]
-    ] !== undefined
-  )
-    ? "bg-green-600 text-white hover:bg-green-500"
-    : "cursor-not-allowed bg-zinc-700 text-zinc-400"
-}`}
-          >
-            Zapsat skóre
-          </button>
-
-{remainingRolls <= 0 && (
-  <button
-    onClick={() =>
-      endTurn({
-        playerId:
-          selectedPlayers[
-            currentPlayPlayerIndex
-          ] ?? "",
-        savedScore: false,
-        combination: null,
-        score: null,
-        categoryId: null,
-        reason:
-          "human-no-score-end-turn",
-      })
-    }
-    disabled={!canControlOnlinePlayMode}
-    className="h-24 rounded-2xl bg-yellow-500 px-8 text-2xl font-black text-black transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:col-span-2"
-  >
-    ▶ Hází další hráč
-  </button>
-)}
-{remainingRolls > 0 && (
-          <button
-            onClick={() =>
-              rollAllDice()
-            }
-            disabled={
-              remainingRolls <=
-              0 ||
-              !canControlOnlinePlayMode ||
-              showPlayModeResult
-            }
-            className={`h-24 rounded-2xl px-8 text-2xl font-black text-white transition md:col-span-2 ${
-              remainingRolls <=
-              0
-                ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
-                : playModeRolls ===
-                      4 &&
-                    !playModeAllowRewrite &&
-                    playModeBonusMode ===
-                      "general-only" &&
-                    playModeBonusRolls ===
-                      6
-                  ? "bg-purple-600 hover:bg-purple-500"
-                  : "bg-purple-600 hover:bg-purple-500"
-            }`}
-          >
-            Zbývá hodů:
-{" "}
-{
-  remainingRolls
-}
-          </button>
-          )}
-        </div>
-      </div>
-      </div>
-
-      {canShowOnlineChat && (
-        <div className="hidden lg:flex lg:self-stretch">
-          {isOnlineChatCollapsed ? (
-            <button
-              onClick={() =>
-                setIsOnlineChatCollapsed(
-                  false
-                )
-              }
-              className="h-full w-12 rounded-2xl border border-blue-500/30 bg-zinc-900 text-sm font-black uppercase tracking-[0.15em] text-blue-300 transition hover:bg-zinc-800"
-            >
-              Chat
-            </button>
-          ) : (
-            <div className="flex h-full w-[360px] flex-col rounded-3xl border border-blue-500/20 bg-zinc-900 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-black uppercase tracking-[0.18em] text-blue-300">
-                    Chat
-                  </div>
-
-                  <div className="text-xs font-bold text-zinc-500">
-                    Online hra
-                  </div>
-                </div>
+                    setScoreModal(null);
+                  }}
+                  className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
+                >
+                  Nechat hodnotu
+                </button>
 
                 <button
-                  onClick={() =>
-                    setIsOnlineChatCollapsed(
-                      true
-                    )
-                  }
-                  className="rounded-xl border border-zinc-700 px-3 py-2 text-xs font-black text-zinc-200 transition hover:bg-zinc-800"
+                  onClick={() => setShowEditConfirm(false)}
+                  className="flex-1 rounded-2xl bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:bg-yellow-400"
                 >
-                  Sbalit
+                  Opravit
                 </button>
               </div>
-
-              {renderOnlineChatMessages()}
             </div>
-          )}
+          </div>
+        )}
+
+      {/* HOME RESTORE MODAL */}
+      {!isOnlineGame && showHomeRestoreModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+            <h2 className="mb-5 text-3xl font-black text-yellow-400">
+              Obnovit hru?
+            </h2>
+
+            <p className="mb-8 text-lg text-zinc-300">
+              Byla nalezena rozehraná hra.
+            </p>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowHomeRestoreModal(false);
+
+                  startNewGame(true);
+                }}
+                className="flex-1 rounded-2xl border border-zinc-600 bg-yellow-500 px-5 py-4 text-lg font-bold text-black transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Nová hra
+              </button>
+
+              <button
+                onClick={() => {
+                  const savedGame = localStorage.getItem("heroDiceCurrentGame");
+
+                  if (!savedGame) return;
+
+                  const parsed = JSON.parse(savedGame);
+
+                  openSavedGame(parsed);
+
+                  setShowHomeRestoreModal(false);
+                }}
+                className="flex-1 rounded-2xl border border-zinc-600 bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Skóre board
+              </button>
+            </div>
+          </div>
         </div>
       )}
-    </div>
 
-    {canShowOnlineChat && (
-      <>
-        <button
-          onClick={() =>
-            setIsMobileChatOpen(
-              true
-            )
-          }
-          className="fixed bottom-6 right-4 z-[180] rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black uppercase tracking-[0.15em] text-white shadow-xl transition hover:bg-blue-500 lg:hidden"
-        >
-          Chat
-        </button>
+      {/* LOAD GAMES MODAL */}
+      {!isOnlineGame && showLoadGames && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-2xl rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-white">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-3xl font-black text-yellow-400">
+                Načíst hru
+              </h2>
 
-        {isMobileChatOpen && (
-          <div className="fixed inset-0 z-[220] bg-black/80 p-4 lg:hidden">
-            <div className="mx-auto flex h-full max-h-[85vh] w-full max-w-md flex-col rounded-3xl border border-blue-500/20 bg-zinc-900 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-black uppercase tracking-[0.18em] text-blue-300">
-                    Chat
-                  </div>
+              <button
+                onClick={() => setShowLoadGames(false)}
+                className="rounded-xl border border-zinc-600 bg-zinc-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Zavřít
+              </button>
+            </div>
 
-                  <div className="text-xs font-bold text-zinc-500">
-                    Online hra
-                  </div>
+            <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-2">
+              {savedGames.length === 0 ? (
+                <div className="rounded-2xl bg-black/40 p-6 text-center text-zinc-400">
+                  Žádné uložené hry.
                 </div>
+              ) : (
+                savedGames.map((game) => (
+                  <div
+                    key={game.id}
+                    className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/40 p-5"
+                  >
+                    <div>
+                      <div className="text-xl font-black text-white">
+                        {game.name}
+                      </div>
 
-                <button
-                  onClick={() =>
-                    setIsMobileChatOpen(
-                      false
-                    )
-                  }
-                  className="rounded-xl border border-zinc-700 px-3 py-2 text-xs font-black text-zinc-200 transition hover:bg-zinc-800"
-                >
-                  Zavřít
-                </button>
-              </div>
+                      <div className="mt-1 text-sm text-zinc-400">
+                        {new Date(game.created_at).toLocaleString("cs-CZ")}
+                      </div>
 
-              {renderOnlineChatMessages()}
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.16em]">
+                        <span
+                          className={`rounded-full px-3 py-1 ${
+                            (game.game_mode ?? "offline") === "online"
+                              ? "bg-green-600/20 text-green-400"
+                              : "bg-blue-600/20 text-blue-400"
+                          }`}
+                        >
+                          {(game.game_mode ?? "offline") === "online"
+                            ? "Online hra"
+                            : "Offline hra"}
+                        </span>
+
+                        <span
+                          className={`rounded-full px-3 py-1 ${
+                            Array.isArray(game.selected_players) &&
+                            game.selected_players.some(
+                              (playerId: unknown) =>
+                                typeof playerId === "string" &&
+                                isComputerPlayerId(playerId),
+                            )
+                              ? "bg-purple-600/20 text-purple-300"
+                              : game.play_mode_rolls === 4 &&
+                                  !game.play_mode_allow_rewrite &&
+                                  game.play_mode_bonus_mode ===
+                                    "general-only" &&
+                                  game.play_mode_bonus_rolls === 2
+                                ? "bg-green-600/20 text-green-400"
+                                : "bg-purple-600/20 text-purple-300"
+                          }`}
+                        >
+                          {Array.isArray(game.selected_players) &&
+                          game.selected_players.some(
+                            (playerId: unknown) =>
+                              typeof playerId === "string" &&
+                              isComputerPlayerId(playerId),
+                          )
+                            ? "Fun hra"
+                            : game.play_mode_rolls === 4 &&
+                                !game.play_mode_allow_rewrite &&
+                                game.play_mode_bonus_mode === "general-only" &&
+                                game.play_mode_bonus_rolls === 2
+                              ? "Ligová hra"
+                              : "Fun hra"}
+                        </span>
+                      </div>
+
+                      <div className="mt-2 text-xs text-zinc-500">
+                        {`${game.play_mode_rolls ?? 4} hodů / Přepis: ${
+                          game.play_mode_allow_rewrite ? "Ano" : "Ne"
+                        } / Bonus: ${
+                          game.play_mode_bonus_mode === "all"
+                            ? "Všechny kombinace"
+                            : "Hero"
+                        } +${Math.max(
+                          (game.play_mode_bonus_rolls ?? 2) -
+                            (game.play_mode_rolls ?? 4),
+                          0,
+                        )}`}
+                      </div>
+
+                      {(game.game_mode ?? "offline") === "online" &&
+                        game.online_session_id && (
+                          <div className="mt-2 text-xs font-bold text-green-400">
+                            Session: {game.online_session_id}
+                          </div>
+                        )}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          if (isOnlineGame) {
+                            return;
+                          }
+
+                          const savedGamePayload = buildSavedGamePayload({
+                            gameId: resolveGameId(game.game_id),
+                            playerCount: game.player_count,
+                            selectedPlayers: game.selected_players ?? [],
+                            scores: game.scores ?? {},
+                            gameStarted: game.game_started,
+                            gameFinished: game.game_finished,
+                            isPlayModeActive: game.is_play_mode_active ?? false,
+                            hasStartedPlayMode:
+                              game.has_started_play_mode ??
+                              game.is_play_mode_active ??
+                              false,
+                            playModeRolls: game.play_mode_rolls ?? 4,
+                            playModeAllowRewrite:
+                              game.play_mode_allow_rewrite ?? false,
+                            playModeBonusMode:
+                              game.play_mode_bonus_mode ?? "general-only",
+                            playModeBonusRolls: game.play_mode_bonus_rolls ?? 2,
+                            currentPlayPlayerIndex:
+                              game.current_play_player_index ?? 0,
+                            playModeDice: game.play_mode_dice ?? [
+                              1, 1, 1, 1, 1, 1,
+                            ],
+                            lockedDice: game.locked_dice ?? [
+                              false,
+                              false,
+                              false,
+                              false,
+                              false,
+                              false,
+                            ],
+                            confirmedLockedDice: game.confirmed_locked_dice ?? [
+                              false,
+                              false,
+                              false,
+                              false,
+                              false,
+                              false,
+                            ],
+                            remainingRolls:
+                              game.remaining_rolls ?? game.play_mode_rolls ?? 4,
+                            bonusUsed: game.bonus_used ?? false,
+                            selectedGeneralValue:
+                              game.selected_general_value ?? null,
+                            hasRolledDice: game.has_rolled_dice ?? false,
+                            gameMode: game.game_mode ?? "offline",
+                            onlineSessionId: game.online_session_id ?? null,
+                            localOnlinePlayerId:
+                              game.local_online_player_id ?? null,
+                          });
+
+                          localStorage.setItem(
+                            "heroDiceCurrentGame",
+                            JSON.stringify(savedGamePayload),
+                          );
+
+                          setShowLoadGames(false);
+
+                          openSavedGame(savedGamePayload);
+                        }}
+                        className="rounded-xl bg-yellow-500 px-5 py-3 font-black text-black transition hover:scale-[1.02] hover:brightness-110"
+                      >
+                        Načíst
+                      </button>
+
+                      <button
+                        onClick={() => setDeleteSavedGameId(game.id)}
+                        className="rounded-xl bg-red-600 px-5 py-3 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+                      >
+                        Smazat
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
-        )}
-      </>
-    )}
+        </div>
+      )}
 
-    {showPlayModeResult &&
-      playModeTurnSummary && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-6">
+      {/* RESTORE GAME MODAL */}
+      {!isOnlineGame && showRestoreGame && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+            <h2 className="mb-5 text-3xl font-black text-yellow-400">
+              Obnovit hru?
+            </h2>
+
+            <p className="mb-8 text-lg text-zinc-300">
+              Byla nalezena rozehraná hra.
+            </p>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  localStorage.removeItem("heroDiceCurrentGame");
+
+                  setShowRestoreGame(false);
+                }}
+                className="flex-1 rounded-2xl border border-zinc-600 bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Zahodit
+              </button>
+
+              <button
+                onClick={() => {
+                  const savedGame = localStorage.getItem("heroDiceCurrentGame");
+
+                  if (!savedGame) return;
+
+                  const parsed = JSON.parse(savedGame);
+
+                  openSavedGame(parsed);
+
+                  setShowRestoreGame(false);
+                }}
+                className="flex-1 rounded-2xl border border-zinc-600 bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Obnovit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showFinishGameConfirm && pendingFinishedGame && (
+        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[500px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+            <h2 className="mb-5 text-3xl font-black text-yellow-400">
+              🏁 Blížíte se ke konci hry
+            </h2>
+
+            <p className="mb-8 text-lg text-zinc-300">
+              Tento zápis dokončí hru.
+              <br />
+              <br />
+              Zvolte prosím, jak chcete výsledek uložit.
+            </p>
+
+            <div className="flex flex-col gap-4">
+              <button
+                onClick={async () => {
+                  if (hasComputerPlayer) {
+                    return;
+                  }
+
+                  const saveSuccess = await saveFinishedGame({
+                    date: new Date().toISOString(),
+
+                    winner: pendingFinishedGame.winner,
+
+                    winnerScore: pendingFinishedGame.winnerScore,
+
+                    players: pendingFinishedGame.players,
+
+                    scores: pendingFinishedGame.scores,
+
+                    gameId,
+                  });
+
+                  if (!saveSuccess) {
+                    setShowFinishGameConfirm(false);
+
+                    setPendingFinishedGame(null);
+
+                    setShowDuplicateGameMessage(true);
+
+                    return;
+                  }
+
+                  setShowFinishGameConfirm(false);
+
+                  setPendingFinishedGame(null);
+
+                  setGameFinished(true);
+
+                  debugSetIsPlayModeActive(false);
+
+                  setShowPlayModeResult(false);
+
+                  localStorage.removeItem("heroDiceCurrentGame");
+
+                  if (celebrationSoundEnabled) {
+                    const randomSound =
+                      winSounds[Math.floor(Math.random() * winSounds.length)];
+
+                    cleanupCelebrationAudio();
+
+                    const audio = new Audio(randomSound);
+
+                    audio.volume = 0.8;
+
+                    celebrationAudioRef.current = audio;
+
+                    audio.play().catch(() => {});
+                  }
+
+                  setShowFinishedGame(true);
+
+                  const celebrationType = Math.floor(Math.random() * 3);
+
+                  if (celebrationType === 0) {
+                    for (let i = 0; i < 18; i++) {
+                      const timeoutId = window.setTimeout(() => {
+                        confetti({
+                          particleCount: 35,
+                          spread: 100,
+                          startVelocity: 35,
+                          zIndex: 9999,
+                          origin: {
+                            x: Math.random(),
+                            y: 0.6,
+                          },
+                        });
+                      }, i * 500);
+
+                      celebrationTimeoutsRef.current.push(timeoutId);
+                    }
+                  }
+
+                  if (celebrationType === 1) {
+                    for (let i = 0; i < 18; i++) {
+                      const timeoutId = window.setTimeout(() => {
+                        confetti({
+                          particleCount: 60,
+                          spread: 180,
+                          startVelocity: 60,
+                          zIndex: 9999,
+                          origin: {
+                            x: 0.5,
+                            y: 0.6,
+                          },
+                        });
+                      }, i * 500);
+
+                      celebrationTimeoutsRef.current.push(timeoutId);
+                    }
+                  }
+
+                  if (celebrationType === 2) {
+                    for (let i = 0; i < 18; i++) {
+                      const timeoutId = window.setTimeout(() => {
+                        confetti({
+                          particleCount: 40,
+                          angle: 60,
+                          spread: 55,
+                          zIndex: 9999,
+                          origin: {
+                            x: 0,
+                            y: 0.7,
+                          },
+                        });
+
+                        confetti({
+                          particleCount: 40,
+                          angle: 120,
+                          spread: 55,
+                          zIndex: 9999,
+                          origin: {
+                            x: 1,
+                            y: 0.7,
+                          },
+                        });
+                      }, i * 250);
+
+                      celebrationTimeoutsRef.current.push(timeoutId);
+                    }
+                  }
+                }}
+                disabled={hasComputerPlayer}
+                className={`rounded-2xl px-5 py-4 text-lg font-black text-white transition ${
+                  hasComputerPlayer
+                    ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                    : "bg-green-600 hover:bg-green-500"
+                }`}
+              >
+                {hasComputerPlayer
+                  ? "Ligová hra není dostupná s Computer hráčem"
+                  : "🟢 Ligová hra"}
+              </button>
+
+              <button
+                onClick={async () => {
+                  const saveSuccess = await saveFunGame({
+                    winner: pendingFinishedGame.winner,
+
+                    winnerScore: pendingFinishedGame.winnerScore,
+
+                    players: pendingFinishedGame.players,
+
+                    scores: pendingFinishedGame.scores,
+                  });
+
+                  if (!saveSuccess) {
+                    setShowFinishGameConfirm(false);
+
+                    setPendingFinishedGame(null);
+
+                    setShowDuplicateGameMessage(true);
+
+                    return;
+                  }
+
+                  setShowFinishGameConfirm(false);
+
+                  setPendingFinishedGame(null);
+
+                  setGameFinished(true);
+
+                  debugSetIsPlayModeActive(false);
+
+                  setShowPlayModeResult(false);
+
+                  localStorage.removeItem("heroDiceCurrentGame");
+
+                  if (celebrationSoundEnabled) {
+                    const randomSound =
+                      winSounds[Math.floor(Math.random() * winSounds.length)];
+
+                    cleanupCelebrationAudio();
+
+                    const audio = new Audio(randomSound);
+
+                    audio.volume = 0.8;
+
+                    celebrationAudioRef.current = audio;
+
+                    audio.play().catch(() => {});
+                  }
+
+                  setShowFinishedGame(true);
+
+                  const celebrationType = Math.floor(Math.random() * 3);
+
+                  if (celebrationType === 0) {
+                    for (let i = 0; i < 18; i++) {
+                      const timeoutId = window.setTimeout(() => {
+                        confetti({
+                          particleCount: 35,
+                          spread: 100,
+                          startVelocity: 35,
+                          zIndex: 9999,
+                          origin: {
+                            x: Math.random(),
+                            y: 0.6,
+                          },
+                        });
+                      }, i * 500);
+
+                      celebrationTimeoutsRef.current.push(timeoutId);
+                    }
+                  }
+
+                  if (celebrationType === 1) {
+                    for (let i = 0; i < 18; i++) {
+                      const timeoutId = window.setTimeout(() => {
+                        confetti({
+                          particleCount: 60,
+                          spread: 180,
+                          startVelocity: 60,
+                          zIndex: 9999,
+                          origin: {
+                            x: 0.5,
+                            y: 0.6,
+                          },
+                        });
+                      }, i * 500);
+
+                      celebrationTimeoutsRef.current.push(timeoutId);
+                    }
+                  }
+
+                  if (celebrationType === 2) {
+                    for (let i = 0; i < 18; i++) {
+                      const timeoutId = window.setTimeout(() => {
+                        confetti({
+                          particleCount: 40,
+                          angle: 60,
+                          spread: 55,
+                          zIndex: 9999,
+                          origin: {
+                            x: 0,
+                            y: 0.7,
+                          },
+                        });
+
+                        confetti({
+                          particleCount: 40,
+                          angle: 120,
+                          spread: 55,
+                          zIndex: 9999,
+                          origin: {
+                            x: 1,
+                            y: 0.7,
+                          },
+                        });
+                      }, i * 250);
+
+                      celebrationTimeoutsRef.current.push(timeoutId);
+                    }
+                  }
+                }}
+                className="rounded-2xl bg-purple-600 px-5 py-4 text-lg font-black text-white transition hover:bg-purple-500"
+              >
+                🟣 Fun hra
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GAME SAVED MODAL */}
+      {showGameSavedModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[420px] rounded-3xl border border-green-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+            <h2 className="mb-5 text-3xl font-black text-green-400">
+              Hra uložena
+            </h2>
+
+            <p className="mb-8 text-lg text-zinc-300">
+              Rozehraná hra byla úspěšně uložena.
+            </p>
+
+            <button
+              onClick={() => setShowGameSavedModal(false)}
+              className="w-full rounded-2xl border border-zinc-600 bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* GAME VERSION MODAL */}
+      {showGameVersionModal && (
+        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[520px] rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-center text-white">
+            <h2 className="mb-5 text-3xl font-black text-yellow-400">
+              Hra již existuje
+            </h2>
+
+            <p className="mb-8 text-zinc-300">
+              Tato rozehraná hra už byla dříve uložena.
+            </p>
+
+            <div className="flex flex-wrap justify-center gap-4">
+              <button
+                onClick={() => {
+                  setShowGameVersionModal(false);
+
+                  setPendingSaveMetadata(null);
+                }}
+                className="rounded-xl border border-zinc-600 bg-zinc-700 px-6 py-4 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Zrušit
+              </button>
+
+              <button
+                onClick={async () => {
+                  await overwriteGameInSupabase(
+                    pendingSaveMetadata ?? undefined,
+                  );
+                }}
+                className="rounded-xl border border-zinc-600 bg-green-600 px-6 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Přepsat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PLAY MODE SETUP */}
+      {showPlayModeSetup && (
+        <div className="fixed inset-0 z-[140] overflow-y-auto bg-black/90 p-4">
+          <div className="mx-auto my-10 w-full max-w-[560px] rounded-3xl border border-purple-500/30 bg-zinc-900 p-6 text-white shadow-2xl md:p-8">
+            <div className="mb-8 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-4xl font-black text-purple-400">
+                  PLAY MODE
+                </h2>
+
+                <div className="group relative">
+                  <button className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-sm font-black text-white">
+                    ?
+                  </button>
+
+                  <div className="pointer-events-none absolute left-1/2 top-11 z-10 w-[260px] -translate-x-1/2 rounded-2xl border border-green-500/20 bg-zinc-950 p-4 text-left text-sm text-zinc-300 opacity-0 shadow-2xl transition duration-200 group-hover:opacity-100">
+                    <div className="mb-2 font-black uppercase tracking-wide text-green-400">
+                      Ligové statistiky
+                    </div>
+
+                    <div className="space-y-1">
+                      <div>• 4 hody</div>
+
+                      <div>• bez přepisování skóre</div>
+
+                      <div>• bonus pouze u hero (2 bonus hody)</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowPlayModeSetup(false);
+
+                  debugSetGameStarted(false);
+                }}
+                className="rounded-xl bg-zinc-700 px-4 py-2 font-bold transition hover:bg-zinc-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+                <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+                  Počet hodů
+                </div>
+
+                <div className="flex items-center justify-center gap-6">
+                  <button
+                    onClick={() =>
+                      setPlayModeRolls((prev) => Math.max(1, prev - 1))
+                    }
+                    className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
+                  >
+                    −
+                  </button>
+
+                  <div
+                    className={`min-w-[100px] text-center text-5xl font-black ${
+                      playModeRolls === 4 ? "text-green-400" : "text-yellow-400"
+                    }`}
+                  >
+                    {playModeRolls}
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      setPlayModeRolls((prev) =>
+                        Math.min(hasComputerPlayer ? 12 : 7, prev + 1),
+                      )
+                    }
+                    className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+                <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+                  Přepisování skóre
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setPlayModeAllowRewrite(false)}
+                    className={`flex-1 rounded-2xl px-5 py-4 font-black transition ${
+                      !playModeAllowRewrite
+                        ? "bg-green-600 text-white"
+                        : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                    }`}
+                  >
+                    Ne
+                  </button>
+
+                  <button
+                    onClick={() => setPlayModeAllowRewrite(true)}
+                    className={`flex-1 rounded-2xl px-5 py-4 font-black transition ${
+                      playModeAllowRewrite
+                        ? "bg-yellow-500 text-black"
+                        : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                    }`}
+                  >
+                    Ano
+                  </button>
+                </div>
+              </div>
+
+              {!hasComputerPlayer && (
+                <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+                  <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+                    Bonus
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={() => setPlayModeBonusMode("general-only")}
+                      className={`rounded-2xl px-5 py-4 text-left font-black transition ${
+                        playModeBonusMode === "general-only"
+                          ? "bg-green-600 text-white"
+                          : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                      }`}
+                    >
+                      Pouze Hero
+                    </button>
+
+                    <button
+                      onClick={() => setPlayModeBonusMode("all")}
+                      className={`rounded-2xl px-5 py-4 text-left font-black transition ${
+                        playModeBonusMode === "all"
+                          ? "bg-yellow-500 text-black"
+                          : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                      }`}
+                    >
+                      Všechny kombinace
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {!hasComputerPlayer && (
+              <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+                <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+                  Bonus hody
+                </div>
+
+                <div className="flex items-center justify-center gap-6">
+                  <button
+                    onClick={() =>
+                      setPlayModeBonusRolls((prev) => Math.max(1, prev - 1))
+                    }
+                    className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
+                  >
+                    −
+                  </button>
+
+                  <div
+                    className={`min-w-[100px] text-center text-5xl font-black ${
+                      playModeBonusRolls === 2
+                        ? "text-green-400"
+                        : "text-yellow-400"
+                    }`}
+                  >
+                    {playModeBonusRolls}
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      setPlayModeBonusRolls((prev) => Math.min(7, prev + 1))
+                    }
+                    className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-3xl font-black transition hover:bg-zinc-700"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!hasStartedPlayMode && !hasComputerPlayer && (
+              <div className="rounded-2xl border border-purple-500/20 bg-black/40 p-6">
+                <div className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-purple-400">
+                  Režim hry
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <button
+                    onClick={() => setSelectedGameMode("offline")}
+                    className={`rounded-2xl px-5 py-4 font-black transition ${
+                      selectedGameMode === "offline"
+                        ? "bg-yellow-500 text-black"
+                        : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                    }`}
+                  >
+                    ▶ Offline hra
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedGameMode("online")}
+                    disabled={hasComputerPlayer}
+                    className={`rounded-2xl px-5 py-4 font-black transition ${
+                      hasComputerPlayer
+                        ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
+                        : selectedGameMode === "online"
+                          ? "bg-green-600 text-white"
+                          : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                    }`}
+                  >
+                    🌐 Online hra
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-8 flex flex-wrap justify-between gap-4">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    setShowPlayModeSetup(false);
+
+                    debugSetGameStarted(false);
+                  }}
+                  className="rounded-2xl bg-zinc-700 px-6 py-4 font-bold transition hover:bg-zinc-600"
+                >
+                  Zrušit
+                </button>
+
+                <button
+                  onClick={async () => {
+                    // If the game is already started, behave as before (enter Play Mode).
+                    if (gameStarted && hasStartedPlayMode) {
+                      setCurrentPlayPlayerIndex(0);
+
+                      setPlayModeDice([1, 1, 1, 1, 1, 1]);
+
+                      setLockedDice([false, false, false, false, false, false]);
+
+                      setConfirmedLockedDice([
+                        false,
+                        false,
+                        false,
+                        false,
+                        false,
+                        false,
+                      ]);
+
+                      setRemainingRolls(playModeRolls);
+                      setHasRolledDice(false);
+                      setBonusUsed(false);
+                      setShowPlayModeSetup(false);
+
+                      debugSetIsPlayModeActive(true);
+                      debugSetHasStartedPlayMode(true);
+
+                      return;
+                    }
+
+                    if (!canStartGame) {
+                      alert("Vyber platný seznam hráčů.");
+
+                      return;
+                    }
+
+                    if (hasComputerPlayer) {
+                      setSelectedGameMode("offline");
+                      setGameMode("offline");
+                    }
+
+                    if (selectedGameMode === "online" && !hasComputerPlayer) {
+                      setShowPlayModeSetup(false);
+                      setGameMode("online");
+
+                      try {
+                        await handleCreateOnlineSession();
+                      } catch (err) {
+                        console.error(
+                          "PLAY MODE SETUP -> create online session error:",
+                          err,
+                        );
+                      }
+
+                      return;
+                    }
+
+                    setShowPlayModeSetup(false);
+                    setGameMode("offline");
+
+                    debugSetGameStarted(true, "PlayModeSetup");
+
+                    setCurrentPlayPlayerIndex(0);
+
+                    setPlayModeDice([1, 1, 1, 1, 1, 1]);
+
+                    setLockedDice([false, false, false, false, false, false]);
+
+                    setConfirmedLockedDice([
+                      false,
+                      false,
+                      false,
+                      false,
+                      false,
+                      false,
+                    ]);
+
+                    setRemainingRolls(playModeRolls);
+                    setHasRolledDice(false);
+                    setBonusUsed(false);
+
+                    debugSetIsPlayModeActive(true, "PlayModeSetup");
+                    debugSetHasStartedPlayMode(true, "PlayModeSetup");
+
+                    debugSetScreen("game", "PlayModeSetup");
+                  }}
+                  className={`rounded-2xl px-8 py-4 font-black text-white transition ${
+                    hasComputerPlayer
+                      ? "bg-purple-600 hover:bg-purple-500"
+                      : selectedGameMode === "online"
+                        ? "bg-green-600 hover:bg-green-500"
+                        : isLeaguePlayMode
+                          ? "bg-green-600 hover:bg-green-500"
+                          : "bg-purple-600 hover:bg-purple-500"
+                  }`}
+                >
+                  {hasComputerPlayer
+                    ? "▶ Spustit fun offline hru"
+                    : screen === "online-lobby"
+                      ? "Hotovo"
+                      : selectedGameMode === "online"
+                        ? isLeaguePlayMode
+                          ? "🌐 Spustit ligovou online hru"
+                          : "🌐 Spustit fun online hru"
+                        : isLeaguePlayMode
+                          ? "▶ Spustit ligovou offline hru"
+                          : "▶ Spustit fun offline hru"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PLAY MODE */}
+
+      {showPlayModeResult && currentCombination && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-6">
           <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950 p-8 text-center shadow-2xl">
             <div className="text-sm font-bold uppercase tracking-[0.25em] text-zinc-500">
-              Výsledek tahu
+              Zapsaný výsledek hodu
             </div>
 
             <div className="mt-6 text-4xl font-black text-green-400">
-              {playModeTurnSummary.combination ??
-                "Žádná kombinace"}
+              {currentCombination.combination}
             </div>
 
             <div className="mt-3 text-xl font-bold text-zinc-300">
-              Hráč:
-              {" "}
-              {getPlayerDisplayName(
-                playModeTurnSummary.playerId
-              )}
+              Hráč:{" "}
+              {
+                playersState.find(
+                  (player) =>
+                    player.id === selectedPlayers[currentPlayPlayerIndex],
+                )?.name
+              }
             </div>
 
-            <div className="mt-2 text-lg font-bold text-zinc-400">
-              Další hráč:
-              {" "}
-              {getPlayerDisplayName(
-                playModeTurnSummary.nextPlayerId
-              )}
-            </div>
+            <div
+              className={`mt-2 text-2xl font-black ${(() => {
+                const categoryId =
+                  playModeCategoryMap[currentCombination.combination];
 
-            <div className="mt-2 text-2xl font-black text-white">
-              {playModeTurnSummary.savedScore
-                ? `Skóre: ${playModeTurnSummary.score ?? 0}`
-                : "Hráč nezapsal skóre"}
+                const category = gameCategories.find(
+                  (c) => c.id === categoryId,
+                );
+
+                return category && currentCombination.score === category.max
+                  ? "text-red-500"
+                  : "text-white";
+              })()}`}
+            >
+              Skóre: {currentCombination.score}
             </div>
 
             <div className="mt-8 grid grid-cols-2 gap-4">
-  <button
-    onClick={() => {
-  setShowPlayModeResult(false);
-  setPlayModeTurnSummary(null);
-  debugSetIsPlayModeActive(
-    false
-  );
-}}
-    className="rounded-2xl bg-green-700 px-4 py-5 text-lg font-black text-white transition hover:bg-green-600"
-  >
-    Scoreboard
-  </button>
+              <button
+                onClick={() => {
+                  setShowPlayModeResult(false);
+                  setPlayModeTurnSummary(null);
+                  debugSetIsPlayModeActive(false);
+                }}
+                disabled={!canControlOnlinePlayMode}
+                className="rounded-2xl bg-green-700 px-4 py-5 text-lg font-black text-white transition hover:bg-green-600"
+              >
+                Scoreboard
+              </button>
 
-  <button
-    onClick={() => {
-      setShowPlayModeResult(false);
-      setPlayModeTurnSummary(null);
-    }}
-    disabled={!canControlOnlinePlayMode}
-    className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
-  >
-    ▶ Další hráč
-  </button>
-</div>
+              <button
+                onClick={() => {
+                  setShowPlayModeResult(false);
+                  setPlayModeTurnSummary(null);
+                }}
+                className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
+              >
+                ▶ Další hráč
+              </button>
+            </div>
           </div>
         </div>
       )}
-  </div>
-)}
+
+      {isPlayModeActive && (
+        <div className="fixed inset-0 z-[150] overflow-y-auto bg-black/60 backdrop-blur-sm p-4 text-white">
+          <div
+            className={`mx-auto flex w-full flex-col ${
+              canShowOnlineChat
+                ? "max-w-6xl lg:flex-row lg:items-stretch lg:gap-5"
+                : "max-w-2xl"
+            }`}
+          >
+            <div className="w-full lg:flex-1">
+              <div className="rounded-3xl border border-purple-500/20 bg-zinc-900 p-6 md:p-8">
+                <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+                  <div className="text-center md:text-left">
+                    <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500">
+                      Aktuální hráč
+                    </div>
+
+                    <div className="text-3xl font-black text-yellow-400 md:text-4xl">
+                      {getPlayerDisplayName(
+                        selectedPlayers[currentPlayPlayerIndex] ?? "",
+                      )}
+                    </div>
+
+                    <div
+                      className={`mt-2 text-lg font-bold uppercase tracking-[0.25em] ${
+                        isLeaguePlayMode ? "text-green-400" : "text-purple-400"
+                      }`}
+                    >
+                      {`${
+                        isLeaguePlayMode ? "LIGOVÁ HRA" : "FUN HRA"
+                      } · ${gameTypeTagText}`}
+                    </div>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500">
+                      Aktuální kombinace
+                    </div>
+
+                    <div className="mt-3 min-h-[84px]">
+                      {currentCombination &&
+                      hasRolledDice &&
+                      hasStartedPlayMode &&
+                      (() => {
+                        const categoryId = playModeCategoryMap[
+                          currentCombination.combination
+                        ] as PlayModeCategoryId;
+                        const writableCategories = getWritableCategoryIds(
+                          scores[currentPlayPlayerIndex] || {},
+                          playModeAllowRewrite,
+                        );
+                        return writableCategories.includes(categoryId);
+                      })() ? (
+                        <>
+                          <div className="text-2xl font-black text-green-400 md:text-3xl">
+                            {currentCombination.combination}
+                          </div>
+
+                          <div
+                            className={`mt-2 text-xl font-bold ${(() => {
+                              const categoryId =
+                                playModeCategoryMap[
+                                  currentCombination.combination
+                                ];
+
+                              const category = gameCategories.find(
+                                (c) => c.id === categoryId,
+                              );
+
+                              return category &&
+                                currentCombination.score === category.max
+                                ? "text-red-500"
+                                : "text-green-400";
+                            })()}`}
+                          >
+                            Score: {currentCombination.score}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-3xl font-black text-zinc-800">
+                            —
+                          </div>
+
+                          <div className="mt-1 text-lg font-bold text-zinc-800">
+                            —
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
+                <div className="relative mb-8 flex items-center justify-end">
+                  <div className="absolute left-1/2 -translate-x-1/2 text-4xl leading-none">
+                    {hasUsefulFutureMove === null
+                      ? " "
+                      : hasUsefulFutureMove
+                        ? "😊"
+                        : "❌"}
+                  </div>
+
+                  <button
+                    onClick={() => debugSetIsPlayModeActive(false)}
+                    className="rounded-2xl bg-green-700 px-5 py-3 font-bold transition hover:bg-green-600"
+                  >
+                    Scoreboard
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap justify-center gap-4">
+                  {playModeDice.map((dice, index) => (
+                    <button
+                      key={index}
+                      onClick={() => toggleDiceLock(index)}
+                      disabled={!canControlOnlinePlayMode}
+                      className={`flex h-20 w-20 items-center justify-center rounded-xl border-0 transition ${
+                        lockedDice[index]
+                          ? "border-yellow-400 bg-yellow-400"
+                          : "border-black bg-white"
+                      }`}
+                    >
+                      <img
+                        src={diceImages[dice]}
+                        alt={`Kostka ${dice}`}
+                        className="h-[85%] w-[85%] object-contain"
+                        draggable={false}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mx-auto mt-8 grid w-full max-w-xl grid-cols-1 gap-4 md:grid-cols-2">
+                  <button
+                    onClick={activateBonus}
+                    disabled={
+                      hasComputerPlayer ||
+                      generalBonusBlocked ||
+                      !canUseGeneralBonus ||
+                      !canControlOnlinePlayMode ||
+                      showPlayModeResult
+                    }
+                    className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
+                      hasComputerPlayer ||
+                      bonusUsed ||
+                      generalBonusBlocked ||
+                      !canUseGeneralBonus
+                        ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                        : playModeBonusMode === "general-only"
+                          ? "bg-yellow-500 text-white hover:bg-yellow-400"
+                          : "bg-yellow-500 text-black hover:bg-yellow-400"
+                    }`}
+                  >
+                    {hasComputerPlayer
+                      ? "Bonus"
+                      : playModeBonusMode === "general-only"
+                        ? `Bonus Hero +${bonusDifference}`
+                        : `Bonus +${bonusDifference}`}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (!currentCombination) {
+                        return;
+                      }
+
+                      const saved = savePlayModeScore();
+
+                      if (!saved) {
+                        return;
+                      }
+
+                      const categoryId =
+                        playModeCategoryMap[currentCombination.combination] ??
+                        null;
+
+                      endTurn({
+                        playerId: selectedPlayers[currentPlayPlayerIndex] ?? "",
+                        savedScore: true,
+                        combination: currentCombination.combination,
+                        score: currentCombination.score,
+                        categoryId,
+                        reason: "human-save",
+                      });
+                    }}
+                    disabled={
+                      !currentCombination ||
+                      !hasRolledDice ||
+                      !canSavePlayModeScore ||
+                      !canControlOnlinePlayMode ||
+                      showPlayModeResult ||
+                      (bonusUsed &&
+                        playModeBonusMode === "general-only" &&
+                        currentCombination.combination !== "Generál") ||
+                      (currentCombination &&
+                        !playModeAllowRewrite &&
+                        scores[selectedPlayers[currentPlayPlayerIndex]]?.[
+                          playModeCategoryMap[currentCombination.combination]
+                        ] !== undefined)
+                    }
+                    className={`h-24 rounded-2xl px-8 text-2xl font-black transition ${
+                      currentCombination &&
+                      hasRolledDice &&
+                      canSavePlayModeScore &&
+                      !(
+                        bonusUsed &&
+                        playModeBonusMode === "general-only" &&
+                        currentCombination.combination !== "Generál"
+                      ) &&
+                      !(
+                        !playModeAllowRewrite &&
+                        scores[selectedPlayers[currentPlayPlayerIndex]]?.[
+                          playModeCategoryMap[currentCombination.combination]
+                        ] !== undefined
+                      )
+                        ? "bg-green-600 text-white hover:bg-green-500"
+                        : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                    }`}
+                  >
+                    Zapsat skóre
+                  </button>
+
+                  {remainingRolls <= 0 && (
+                    <button
+                      onClick={() =>
+                        endTurn({
+                          playerId:
+                            selectedPlayers[currentPlayPlayerIndex] ?? "",
+                          savedScore: false,
+                          combination: null,
+                          score: null,
+                          categoryId: null,
+                          reason: "human-no-score-end-turn",
+                        })
+                      }
+                      disabled={!canControlOnlinePlayMode}
+                      className="h-24 rounded-2xl bg-yellow-500 px-8 text-2xl font-black text-black transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:col-span-2"
+                    >
+                      ▶ Hází další hráč
+                    </button>
+                  )}
+                  {remainingRolls > 0 && (
+                    <button
+                      onClick={() => rollAllDice()}
+                      disabled={
+                        remainingRolls <= 0 ||
+                        !canControlOnlinePlayMode ||
+                        showPlayModeResult
+                      }
+                      className={`h-24 rounded-2xl px-8 text-2xl font-black text-white transition md:col-span-2 ${
+                        remainingRolls <= 0
+                          ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
+                          : playModeRolls === 4 &&
+                              !playModeAllowRewrite &&
+                              playModeBonusMode === "general-only" &&
+                              playModeBonusRolls === 6
+                            ? "bg-purple-600 hover:bg-purple-500"
+                            : "bg-purple-600 hover:bg-purple-500"
+                      }`}
+                    >
+                      Zbývá hodů: {remainingRolls}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {canShowOnlineChat && (
+              <div className="hidden lg:flex lg:self-stretch">
+                {isOnlineChatCollapsed ? (
+                  <button
+                    onClick={() => setIsOnlineChatCollapsed(false)}
+                    className="h-full w-12 rounded-2xl border border-blue-500/30 bg-zinc-900 text-sm font-black uppercase tracking-[0.15em] text-blue-300 transition hover:bg-zinc-800"
+                  >
+                    Chat
+                  </button>
+                ) : (
+                  <div className="flex h-full w-[360px] flex-col rounded-3xl border border-blue-500/20 bg-zinc-900 p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-black uppercase tracking-[0.18em] text-blue-300">
+                          Chat
+                        </div>
+
+                        <div className="text-xs font-bold text-zinc-500">
+                          Online hra
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setIsOnlineChatCollapsed(true)}
+                        className="rounded-xl border border-zinc-700 px-3 py-2 text-xs font-black text-zinc-200 transition hover:bg-zinc-800"
+                      >
+                        Sbalit
+                      </button>
+                    </div>
+
+                    {renderOnlineChatMessages()}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {canShowOnlineChat && (
+            <>
+              <button
+                onClick={() => setIsMobileChatOpen(true)}
+                className="fixed bottom-6 right-4 z-[180] rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black uppercase tracking-[0.15em] text-white shadow-xl transition hover:bg-blue-500 lg:hidden"
+              >
+                Chat
+              </button>
+
+              {isMobileChatOpen && (
+                <div className="fixed inset-0 z-[220] bg-black/80 p-4 lg:hidden">
+                  <div className="mx-auto flex h-full max-h-[85vh] w-full max-w-md flex-col rounded-3xl border border-blue-500/20 bg-zinc-900 p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-black uppercase tracking-[0.18em] text-blue-300">
+                          Chat
+                        </div>
+
+                        <div className="text-xs font-bold text-zinc-500">
+                          Online hra
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setIsMobileChatOpen(false)}
+                        className="rounded-xl border border-zinc-700 px-3 py-2 text-xs font-black text-zinc-200 transition hover:bg-zinc-800"
+                      >
+                        Zavřít
+                      </button>
+                    </div>
+
+                    {renderOnlineChatMessages()}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {showPlayModeResult && playModeTurnSummary && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-6">
+              <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950 p-8 text-center shadow-2xl">
+                <div className="text-sm font-bold uppercase tracking-[0.25em] text-zinc-500">
+                  Výsledek tahu
+                </div>
+
+                <div className="mt-6 text-4xl font-black text-green-400">
+                  {getPlayModeCombinationLabel(playModeTurnSummary.combination)}
+                </div>
+
+                <div className="mt-3 text-xl font-bold text-zinc-300">
+                  Hráč: {getPlayerDisplayName(playModeTurnSummary.playerId)}
+                </div>
+
+                <div className="mt-2 text-lg font-bold text-zinc-400">
+                  Další hráč:{" "}
+                  {getPlayerDisplayName(playModeTurnSummary.nextPlayerId)}
+                </div>
+
+                <div
+                  className={`mt-2 text-2xl font-black ${getPlayModeScoreClass(
+                    playModeTurnSummary.categoryId,
+                    playModeTurnSummary.score,
+                  )}`}
+                >
+                  {playModeTurnSummary.savedScore
+                    ? `Skóre: ${playModeTurnSummary.score ?? 0}`
+                    : "Hráč nezapsal skóre"}
+                </div>
+
+                <div className="mt-8 grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => {
+                      setShowPlayModeResult(false);
+                      setPlayModeTurnSummary(null);
+                      debugSetIsPlayModeActive(false);
+                    }}
+                    disabled={!canControlOnlinePlayMode}
+                    className="rounded-2xl bg-green-700 px-4 py-5 text-lg font-black text-white transition hover:bg-green-600"
+                  >
+                    Scoreboard
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowPlayModeResult(false);
+                      setPlayModeTurnSummary(null);
+                    }}
+                    className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
+                  >
+                    ▶ Další hráč
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* SCORE MODAL */}
       {scoreModal && (
@@ -11149,9 +8345,7 @@ canSavePlayModeScore &&
               <div className="text-3xl font-black text-yellow-300">
                 {
                   gameCategories.find(
-                    (category) =>
-                      category.id ===
-                      scoreModal.categoryId
+                    (category) => category.id === scoreModal.categoryId,
                   )?.name
                 }
               </div>
@@ -11163,50 +8357,37 @@ canSavePlayModeScore &&
               </div>
 
               <div className="text-2xl font-bold text-blue-300">
-                {getPlayerDisplayName(
-                  scoreModal.playerId
-                )}
+                {getPlayerDisplayName(scoreModal.playerId)}
               </div>
             </div>
 
             <div className="mb-4 text-center text-zinc-400">
               Povolené rozmezí:
               <span className="ml-2 font-bold text-green-400">
-                {scoreModal.min} –{" "}
-                {scoreModal.max}
+                {scoreModal.min} – {scoreModal.max}
               </span>
             </div>
 
             <input
-  type="number"
-  min={scoreModal.min}
-  max={scoreModal.max}
-  value={scoreInput}
-  onChange={(e) =>
-    setScoreInput(
-      e.target.value
-    )
-  }
-  onKeyDown={(e) => {
-    if (
-      e.key === "Enter" &&
-      !isOnlineGame &&
-      !hasComputerPlayer
-    ) {
-      e.preventDefault();
-      saveScore();
-    }
-  }}
-  onFocus={(e) =>
-  e.target.select()
-}
-  onBlur={() => {
-  setTimeout(() => {
-    window.scrollTo(0, 0);
-  }, 50);
-}}
-  className="mb-6 w-full rounded-2xl border border-zinc-700 bg-black/60 p-5 text-center text-5xl font-black text-yellow-300 outline-none transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/40"
-/>
+              type="number"
+              min={scoreModal.min}
+              max={scoreModal.max}
+              value={scoreInput}
+              onChange={(e) => setScoreInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !isOnlineGame && !hasComputerPlayer) {
+                  e.preventDefault();
+                  saveScore();
+                }
+              }}
+              onFocus={(e) => e.target.select()}
+              onBlur={() => {
+                setTimeout(() => {
+                  window.scrollTo(0, 0);
+                }, 50);
+              }}
+              className="mb-6 w-full rounded-2xl border border-zinc-700 bg-black/60 p-5 text-center text-5xl font-black text-yellow-300 outline-none transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/40"
+            />
 
             <div className="flex gap-4">
               <button
@@ -11217,9 +8398,7 @@ canSavePlayModeScore &&
               </button>
 
               <button
-                onClick={() =>
-                  setScoreModal(null)
-                }
+                onClick={() => setScoreModal(null)}
                 className="flex-1 rounded-2xl bg-zinc-700 px-5 py-4 text-lg font-bold text-white transition hover:bg-zinc-600"
               >
                 Zrušit
@@ -11235,12 +8414,7 @@ canSavePlayModeScore &&
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
           onClick={closeSelectedHelpImage}
         >
-          <div
-            className="relative"
-            onClick={(e) =>
-              e.stopPropagation()
-            }
-          >
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
             <img
               src={selectedHelpImage}
               alt="Nápověda"
@@ -11257,676 +8431,519 @@ canSavePlayModeScore &&
         </div>
       )}
 
-{/* GAME SAVED MODAL */}
-{showGameSavedModal && (
-  <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[420px] rounded-3xl border border-green-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
-      <h2 className="mb-5 text-3xl font-black text-green-400">
-        Hra uložena
-      </h2>
+      {/* GAME SAVED MODAL */}
+      {showGameSavedModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[420px] rounded-3xl border border-green-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+            <h2 className="mb-5 text-3xl font-black text-green-400">
+              Hra uložena
+            </h2>
 
-      <p className="mb-8 text-lg text-zinc-300">
-        Rozehraná hra byla úspěšně uložena.
-      </p>
+            <p className="mb-8 text-lg text-zinc-300">
+              Rozehraná hra byla úspěšně uložena.
+            </p>
 
-      <button
-        onClick={() =>
-          setShowGameSavedModal(
-            false
-          )
-        }
-        className="w-full rounded-2xl border border-zinc-600 bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:scale-[1.02] hover:brightness-110"
-      >
-        OK
-      </button>
-    </div>
-  </div>
-)}
-
-{/* DUPLICATE GAME MESSAGE */}
-{showDuplicateGameMessage && (
-  <div className="fixed inset-0 z-[170] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
-      <h2 className="mb-5 text-3xl font-black text-yellow-400">
-        Hra již zapsána
-      </h2>
-
-      <p className="mb-8 text-lg text-zinc-300">
-        Tato hra již byla dříve do statistik zapsána.
-        <br />
-        Výsledek nebyl uložen znovu.
-      </p>
-
-      <button
-        onClick={() =>
-          setShowDuplicateGameMessage(
-            false
-          )
-        }
-        className="w-full rounded-2xl border border-zinc-600 bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:scale-[1.02] hover:brightness-110"
-      >
-        OK
-      </button>
-    </div>
-  </div>
-)}
-
-{showSettings && (
-  <div className="fixed inset-0 z-[170] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[520px] rounded-3xl bg-zinc-900 p-8 text-white">
-
-      <h2 className="mb-8 text-3xl font-black text-yellow-400">
-        Nastavení zvuku
-      </h2>
-
-      <div className="space-y-6">
-
-        <div className="flex items-center justify-between">
-          <span className="font-bold">
-            Závěrečná oslava
-          </span>
-
-          <button
-            onClick={() => {
-              const value =
-                !celebrationSoundEnabled;
-
-              setCelebrationSoundEnabled(
-                value
-              );
-
-              saveSettings(
-  value,
-  maxScoreSoundEnabled,
-  noCombinationSoundEnabled,
-  turnEndSoundEnabled
-);
-            }}
-            className={`rounded-xl px-5 py-2 font-black ${
-              celebrationSoundEnabled
-                ? "bg-green-600"
-                : "bg-red-600"
-            }`}
-          >
-            {celebrationSoundEnabled
-              ? "ZAP"
-              : "VYP"}
-          </button>
+            <button
+              onClick={() => setShowGameSavedModal(false)}
+              className="w-full rounded-2xl border border-zinc-600 bg-green-600 px-5 py-4 text-lg font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+            >
+              OK
+            </button>
+          </div>
         </div>
+      )}
 
-        <div className="flex items-center justify-between">
-          <span className="font-bold">
-            Max skóre
-          </span>
+      {/* DUPLICATE GAME MESSAGE */}
+      {showDuplicateGameMessage && (
+        <div className="fixed inset-0 z-[170] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[420px] rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center text-white shadow-2xl">
+            <h2 className="mb-5 text-3xl font-black text-yellow-400">
+              Hra již zapsána
+            </h2>
 
-          <button
-            onClick={() => {
-              const value =
-                !maxScoreSoundEnabled;
+            <p className="mb-8 text-lg text-zinc-300">
+              Tato hra již byla dříve do statistik zapsána.
+              <br />
+              Výsledek nebyl uložen znovu.
+            </p>
 
-              setMaxScoreSoundEnabled(
-                value
-              );
-
-              saveSettings(
-  celebrationSoundEnabled,
-  value,
-  noCombinationSoundEnabled,
-  turnEndSoundEnabled
-);
-            }}
-            className={`rounded-xl px-5 py-2 font-black ${
-              maxScoreSoundEnabled
-                ? "bg-green-600"
-                : "bg-red-600"
-            }`}
-          >
-            {maxScoreSoundEnabled
-              ? "ZAP"
-              : "VYP"}
-          </button>
+            <button
+              onClick={() => setShowDuplicateGameMessage(false)}
+              className="w-full rounded-2xl border border-zinc-600 bg-yellow-500 px-5 py-4 text-lg font-black text-black transition hover:scale-[1.02] hover:brightness-110"
+            >
+              OK
+            </button>
+          </div>
         </div>
-        <div className="flex items-center justify-between">
-  <span className="font-bold">
-    Není kombinace
-  </span>
+      )}
 
-  <button
-    onClick={() => {
-      const value =
-        !noCombinationSoundEnabled;
+      {showSettings && (
+        <div className="fixed inset-0 z-[170] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[520px] rounded-3xl bg-zinc-900 p-8 text-white">
+            <h2 className="mb-8 text-3xl font-black text-yellow-400">
+              Nastavení zvuku
+            </h2>
 
-      setNoCombinationSoundEnabled(
-        value
-      );
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <span className="font-bold">Závěrečná oslava</span>
 
-      saveSettings(
-        celebrationSoundEnabled,
-        maxScoreSoundEnabled,
-        value,
-        turnEndSoundEnabled
-      );
-    }}
-    className={`rounded-xl px-5 py-2 font-black ${
-      noCombinationSoundEnabled
-        ? "bg-green-600"
-        : "bg-red-600"
-    }`}
-  >
-    {noCombinationSoundEnabled
-      ? "ZAP"
-      : "VYP"}
-  </button>
-</div>
+                <button
+                  onClick={() => {
+                    const value = !celebrationSoundEnabled;
 
-        <div className="flex items-center justify-between">
-  <span className="font-bold">
-    Zvuk ukončení tahu
-  </span>
+                    setCelebrationSoundEnabled(value);
 
-  <button
-    onClick={() => {
-      const value =
-        !turnEndSoundEnabled;
+                    saveSettings(
+                      value,
+                      maxScoreSoundEnabled,
+                      noCombinationSoundEnabled,
+                      turnEndSoundEnabled,
+                    );
+                  }}
+                  className={`rounded-xl px-5 py-2 font-black ${
+                    celebrationSoundEnabled ? "bg-green-600" : "bg-red-600"
+                  }`}
+                >
+                  {celebrationSoundEnabled ? "ZAP" : "VYP"}
+                </button>
+              </div>
 
-      setTurnEndSoundEnabled(
-        value
-      );
+              <div className="flex items-center justify-between">
+                <span className="font-bold">Max skóre</span>
 
-      saveSettings(
-        celebrationSoundEnabled,
-        maxScoreSoundEnabled,
-        noCombinationSoundEnabled,
-        value
-      );
-    }}
-    className={`rounded-xl px-5 py-2 font-black ${
-      turnEndSoundEnabled
-        ? "bg-green-600"
-        : "bg-red-600"
-    }`}
-  >
-    {turnEndSoundEnabled
-      ? "ZAP"
-      : "VYP"}
-  </button>
-</div>
-      </div>
+                <button
+                  onClick={() => {
+                    const value = !maxScoreSoundEnabled;
 
-      <button
-        onClick={() =>
-          setShowSettings(false)
-        }
-        className="mt-8 w-full rounded-2xl bg-yellow-500 px-5 py-4 font-black text-black"
-      >
-        Zavřít
-      </button>
-    </div>
-  </div>
-)}
+                    setMaxScoreSoundEnabled(value);
 
-      {/* WINNER MODAL */}
-{showFinishedGame && (
-  <div
-    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/30 p-4"
-    onClick={closeCelebrationOverlay}
-  >
-    <div className="w-full max-w-[700px] rounded-2xl bg-zinc-950/92 p-8 text-center text-white md:p-10">
-      <div className="mb-8 flex flex-col items-center gap-3">
-      <h2
-        className="cursor-pointer text-5xl transition hover:scale-110"
-        onClick={(e) => {
-          e.stopPropagation();
+                    saveSettings(
+                      celebrationSoundEnabled,
+                      value,
+                      noCombinationSoundEnabled,
+                      turnEndSoundEnabled,
+                    );
+                  }}
+                  className={`rounded-xl px-5 py-2 font-black ${
+                    maxScoreSoundEnabled ? "bg-green-600" : "bg-red-600"
+                  }`}
+                >
+                  {maxScoreSoundEnabled ? "ZAP" : "VYP"}
+                </button>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold">Není kombinace</span>
 
-          const randomSound =
-            winSounds[
-              Math.floor(
-                Math.random() *
-                  winSounds.length
-              )
-            ];
+                <button
+                  onClick={() => {
+                    const value = !noCombinationSoundEnabled;
 
-          const isPlaying =
-            celebrationAudioRef.current &&
-            !celebrationAudioRef.current
-              .paused &&
-            !celebrationAudioRef.current
-              .ended;
+                    setNoCombinationSoundEnabled(value);
 
-          if (!isPlaying) {
-            cleanupCelebrationAudio();
+                    saveSettings(
+                      celebrationSoundEnabled,
+                      maxScoreSoundEnabled,
+                      value,
+                      turnEndSoundEnabled,
+                    );
+                  }}
+                  className={`rounded-xl px-5 py-2 font-black ${
+                    noCombinationSoundEnabled ? "bg-green-600" : "bg-red-600"
+                  }`}
+                >
+                  {noCombinationSoundEnabled ? "ZAP" : "VYP"}
+                </button>
+              </div>
 
-            const audio =
-              new Audio(
-                randomSound
-              );
+              <div className="flex items-center justify-between">
+                <span className="font-bold">Zvuk ukončení tahu</span>
 
-            celebrationAudioRef.current =
-              audio;
+                <button
+                  onClick={() => {
+                    const value = !turnEndSoundEnabled;
 
-            audio.play().catch(
-              () => {}
-            );
-          }
+                    setTurnEndSoundEnabled(value);
 
-          const celebrationType =
-  Math.floor(
-    Math.random() * 3
-  );
-
-if (celebrationType === 0) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 333,
-            spread: 100,
-            startVelocity: 35,
-            zIndex: 9999,
-            origin: {
-              x: Math.random(),
-              y: 0.6,
-            },
-          });
-        },
-        i * 500
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-
-if (celebrationType === 1) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 333,
-            spread: 60,
-            startVelocity: 60,
-            zIndex: 9999,
-            origin: {
-              x: 0.5,
-              y: 0.6,
-            },
-          });
-        },
-        i * 500
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-
-if (celebrationType === 2) {
-  for (
-    let i = 0;
-    i < 18;
-    i++
-  ) {
-    const timeoutId =
-      window.setTimeout(
-        () => {
-          confetti({
-            particleCount: 333,
-            angle: 60,
-            spread: 55,
-            zIndex: 9999,
-            origin: {
-              x: 0,
-              y: 0.7,
-            },
-          });
-
-          confetti({
-            particleCount: 333,
-            angle: 120,
-            spread: 55,
-            zIndex: 9999,
-            origin: {
-              x: 1,
-              y: 0.7,
-            },
-          });
-        },
-        i * 500
-      );
-
-    celebrationTimeoutsRef.current.push(
-      timeoutId
-    );
-  }
-}
-        }}
-      >
-        🏆
-      </h2>
-      <div className="text-3xl font-black tracking-[0.18em] text-yellow-300">
-        KONEC HRY
-      </div>
-
-      <p className="text-sm text-zinc-400">
-        klikni na 🏆 pro další
-        oslavu
-      </p>
-      </div>
-
-      {(() => {
-        const rankedResults =
-          selectedPlayers
-            .map((playerId) => {
-              const playerScores =
-                scores[playerId] || {};
-
-              const total =
-                Object.values(
-                  playerScores
-                ).reduce(
-                  (sum, value) =>
-                    sum + value,
-                  0
-                );
-
-              return {
-                playerId,
-                playerName:
-                  getPlayerDisplayName(
-                    playerId
-                  ),
-                total,
-              };
-            })
-            .sort(
-              (a, b) =>
-                b.total - a.total
-            );
-
-        const gameTypeText =
-          isLeaguePlayMode
-            ? "Ligová"
-            : "Fun";
-
-        const gameModeText =
-          hasComputerPlayer
-            ? "AI"
-            : gameMode === "online"
-            ? "Online"
-            : "Offline";
-
-        const bonusModeText =
-          playModeBonusMode === "all"
-            ? "všechny kombinace"
-            : "pouze Hero";
-
-        return (
-          <>
-            <div className="mx-auto mb-5 w-full max-w-[520px] rounded-2xl border border-zinc-700 bg-zinc-900/60 p-4 text-center">
-              <div className="text-sm text-zinc-300">
-                <div>
-                  {`Hráči: ${selectedPlayers.length} • Typ: ${gameTypeText} • Režim: ${gameModeText}`}
-                </div>
-
-                <div className="mt-1">
-                  {`Nastavení: ${playModeRolls} hodů / Přepis: ${
-                    playModeAllowRewrite
-                      ? "Ano"
-                      : "Ne"
-                  } / Bonus: ${bonusModeText} +${playModeBonusRolls} hodů`}
-                </div>
+                    saveSettings(
+                      celebrationSoundEnabled,
+                      maxScoreSoundEnabled,
+                      noCombinationSoundEnabled,
+                      value,
+                    );
+                  }}
+                  className={`rounded-xl px-5 py-2 font-black ${
+                    turnEndSoundEnabled ? "bg-green-600" : "bg-red-600"
+                  }`}
+                >
+                  {turnEndSoundEnabled ? "ZAP" : "VYP"}
+                </button>
               </div>
             </div>
 
-            <div className="mx-auto mb-7 w-full max-w-[520px]">
-              {rankedResults.length > 0 && (
-                <div className="grid grid-cols-3 items-end gap-3">
-                  {[1, 0, 2].map(
-                    (rankIndex) => {
-                      const entry =
-                        rankedResults[
-                          rankIndex
-                        ] ?? null;
+            <button
+              onClick={() => setShowSettings(false)}
+              className="mt-8 w-full rounded-2xl bg-yellow-500 px-5 py-4 font-black text-black"
+            >
+              Zavřít
+            </button>
+          </div>
+        </div>
+      )}
 
-                      const placeLabel =
-                        rankIndex === 0
-                          ? "🥇 1. místo"
-                          : rankIndex === 1
-                          ? "🥈 2. místo"
-                          : "🥉 3. místo";
+      {/* WINNER MODAL */}
+      {showFinishedGame && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/30 p-4"
+          onClick={closeCelebrationOverlay}
+        >
+          <div className="w-full max-w-[700px] rounded-2xl bg-zinc-950/92 p-8 text-center text-white md:p-10">
+            <div className="mb-8 flex flex-col items-center gap-3">
+              <h2
+                className="cursor-pointer text-5xl transition hover:scale-110"
+                onClick={(e) => {
+                  e.stopPropagation();
 
-                      const heightClass =
-                        rankIndex === 0
-                          ? "min-h-[180px]"
-                          : rankIndex === 1
-                          ? "min-h-[152px]"
-                          : "min-h-[132px]";
+                  const randomSound =
+                    winSounds[Math.floor(Math.random() * winSounds.length)];
 
-                      return (
-                        <div
-                          key={
-                            entry?.playerId ??
-                            `podium-${rankIndex}`
-                          }
-                          className={`flex ${heightClass} flex-col items-center justify-center rounded-2xl border p-4 text-center ${
-                            !entry
-                              ? "border-zinc-700/70 bg-zinc-900/40"
-                              :
-                            rankIndex === 0
-                              ? "winner-first-place border-yellow-500/50 bg-yellow-500/10"
-                              : "border-zinc-400/35 bg-zinc-400/10"
-                          }`}
-                        >
-                          <div
-                            className={`text-sm font-black ${
-                              rankIndex === 0
-                                ? "text-yellow-300"
-                                : "text-zinc-200"
-                            }`}
-                          >
-                            {placeLabel}
-                          </div>
+                  const isPlaying =
+                    celebrationAudioRef.current &&
+                    !celebrationAudioRef.current.paused &&
+                    !celebrationAudioRef.current.ended;
 
-                          <div
-                            className={`mt-1 font-black ${
-                              rankIndex === 0
-                                ? "text-3xl text-yellow-300"
-                                : "text-2xl text-white"
-                            }`}
-                          >
-                            {entry
-                              ? entry.playerName
-                              : " "}
-                          </div>
+                  if (!isPlaying) {
+                    cleanupCelebrationAudio();
 
-                          <div
-                            className={`font-bold ${
-                              rankIndex === 0
-                                ? "text-base text-yellow-200"
-                                : "text-sm text-zinc-300"
-                            }`}
-                          >
-                            {entry
-                              ? `Skóre: ${entry.total}`
-                              : " "}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
+                    const audio = new Audio(randomSound);
 
-              {rankedResults.length > 3 && (
-                <div className="mt-4 space-y-3">
-                  {rankedResults
-                    .slice(3)
-                    .map(
-                      (
-                        entry,
-                        offset
-                      ) => {
-                        const placeNumber =
-                          offset + 4;
+                    celebrationAudioRef.current = audio;
 
-                        return (
-                          <div
-                            key={
-                              entry.playerId
-                            }
-                            className="flex min-h-[110px] flex-col justify-center rounded-2xl border border-zinc-700 bg-zinc-900/50 p-4"
-                          >
-                            <div className="text-center">
-                            <div className="text-sm font-black text-zinc-300">
-                              {`${placeNumber}. místo`}
-                            </div>
+                    audio.play().catch(() => {});
+                  }
 
-                            <div className="mt-1 text-2xl font-black text-white">
-                              {
-                                entry.playerName
-                              }
-                            </div>
+                  const celebrationType = Math.floor(Math.random() * 3);
 
-                            <div className="text-sm font-bold text-zinc-300">
-                              Skóre: {entry.total}
-                            </div>
-                            </div>
-                          </div>
-                        );
-                      }
-                    )}
-                </div>
-              )}
+                  if (celebrationType === 0) {
+                    for (let i = 0; i < 18; i++) {
+                      const timeoutId = window.setTimeout(() => {
+                        confetti({
+                          particleCount: 333,
+                          spread: 100,
+                          startVelocity: 35,
+                          zIndex: 9999,
+                          origin: {
+                            x: Math.random(),
+                            y: 0.6,
+                          },
+                        });
+                      }, i * 500);
+
+                      celebrationTimeoutsRef.current.push(timeoutId);
+                    }
+                  }
+
+                  if (celebrationType === 1) {
+                    for (let i = 0; i < 18; i++) {
+                      const timeoutId = window.setTimeout(() => {
+                        confetti({
+                          particleCount: 333,
+                          spread: 60,
+                          startVelocity: 60,
+                          zIndex: 9999,
+                          origin: {
+                            x: 0.5,
+                            y: 0.6,
+                          },
+                        });
+                      }, i * 500);
+
+                      celebrationTimeoutsRef.current.push(timeoutId);
+                    }
+                  }
+
+                  if (celebrationType === 2) {
+                    for (let i = 0; i < 18; i++) {
+                      const timeoutId = window.setTimeout(() => {
+                        confetti({
+                          particleCount: 333,
+                          angle: 60,
+                          spread: 55,
+                          zIndex: 9999,
+                          origin: {
+                            x: 0,
+                            y: 0.7,
+                          },
+                        });
+
+                        confetti({
+                          particleCount: 333,
+                          angle: 120,
+                          spread: 55,
+                          zIndex: 9999,
+                          origin: {
+                            x: 1,
+                            y: 0.7,
+                          },
+                        });
+                      }, i * 500);
+
+                      celebrationTimeoutsRef.current.push(timeoutId);
+                    }
+                  }
+                }}
+              >
+                🏆
+              </h2>
+              <div className="text-3xl font-black tracking-[0.18em] text-yellow-300">
+                KONEC HRY
+              </div>
+
+              <p className="text-sm text-zinc-400">
+                klikni na 🏆 pro další oslavu
+              </p>
             </div>
-          </>
-        );
-      })()}
 
-      <div className="mx-auto flex w-full max-w-[520px] flex-wrap justify-center gap-4">
-        <button
-          onClick={
-            closeCelebrationOverlay
-          }
-          className="rounded-lg bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-500"
-        >
-          Zobrazit hru
-        </button>
+            {(() => {
+              const rankedResults = selectedPlayers
+                .map((playerId) => {
+                  const playerScores = scores[playerId] || {};
 
-        <button
-          onClick={() =>
-            setShowStatistics(
-              true
-            )
-          }
-          className="rounded-lg bg-yellow-500 px-5 py-3 font-bold text-black transition hover:bg-yellow-400"
-        >
-          Statistiky
-        </button>
+                  const total = Object.values(playerScores).reduce(
+                    (sum, value) => sum + value,
+                    0,
+                  );
 
-        <button
-          onClick={() => {
-            closeCelebrationOverlay();
-            startNewGame();
-          }}
-          className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
-        >
-          Nová hra
-        </button>
+                  return {
+                    playerId,
+                    playerName: getPlayerDisplayName(playerId),
+                    total,
+                  };
+                })
+                .sort((a, b) => b.total - a.total);
 
-        <button
-          onClick={() => {
-            closeCelebrationOverlay();
+              const gameTypeText = isLeaguePlayMode ? "Ligová" : "Fun";
 
-            debugSetScreen("home");
-          }}
-          className="rounded-lg bg-zinc-700 px-5 py-3 font-bold text-white transition hover:bg-zinc-600"
-        >
-          Domů
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+              const gameModeText = hasComputerPlayer
+                ? "AI"
+                : gameMode === "online"
+                  ? "Online"
+                  : "Offline";
+
+              const bonusModeText =
+                playModeBonusMode === "all"
+                  ? "všechny kombinace"
+                  : "pouze Hero";
+
+              return (
+                <>
+                  <div className="mx-auto mb-5 w-full max-w-[520px] rounded-2xl border border-zinc-700 bg-zinc-900/60 p-4 text-center">
+                    <div className="text-sm text-zinc-300">
+                      <div>
+                        {`Hráči: ${selectedPlayers.length} • Typ: ${gameTypeText} • Režim: ${gameModeText}`}
+                      </div>
+
+                      <div className="mt-1">
+                        {`Nastavení: ${playModeRolls} hodů / Přepis: ${
+                          playModeAllowRewrite ? "Ano" : "Ne"
+                        } / Bonus: ${bonusModeText} +${playModeBonusRolls} hodů`}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mx-auto mb-7 w-full max-w-[520px]">
+                    {rankedResults.length > 0 && (
+                      <div className="grid grid-cols-3 items-end gap-3">
+                        {[1, 0, 2].map((rankIndex) => {
+                          const entry = rankedResults[rankIndex] ?? null;
+
+                          const placeLabel =
+                            rankIndex === 0
+                              ? "🥇 1. místo"
+                              : rankIndex === 1
+                                ? "🥈 2. místo"
+                                : "🥉 3. místo";
+
+                          const heightClass =
+                            rankIndex === 0
+                              ? "min-h-[180px]"
+                              : rankIndex === 1
+                                ? "min-h-[152px]"
+                                : "min-h-[132px]";
+
+                          return (
+                            <div
+                              key={entry?.playerId ?? `podium-${rankIndex}`}
+                              className={`flex ${heightClass} flex-col items-center justify-center rounded-2xl border p-4 text-center ${
+                                !entry
+                                  ? "border-zinc-700/70 bg-zinc-900/40"
+                                  : rankIndex === 0
+                                    ? "winner-first-place border-yellow-500/50 bg-yellow-500/10"
+                                    : "border-zinc-400/35 bg-zinc-400/10"
+                              }`}
+                            >
+                              <div
+                                className={`text-sm font-black ${
+                                  rankIndex === 0
+                                    ? "text-yellow-300"
+                                    : "text-zinc-200"
+                                }`}
+                              >
+                                {placeLabel}
+                              </div>
+
+                              <div
+                                className={`mt-1 font-black ${
+                                  rankIndex === 0
+                                    ? "text-3xl text-yellow-300"
+                                    : "text-2xl text-white"
+                                }`}
+                              >
+                                {entry ? entry.playerName : " "}
+                              </div>
+
+                              <div
+                                className={`font-bold ${
+                                  rankIndex === 0
+                                    ? "text-base text-yellow-200"
+                                    : "text-sm text-zinc-300"
+                                }`}
+                              >
+                                {entry ? `Skóre: ${entry.total}` : " "}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {rankedResults.length > 3 && (
+                      <div className="mt-4 space-y-3">
+                        {rankedResults.slice(3).map((entry, offset) => {
+                          const placeNumber = offset + 4;
+
+                          return (
+                            <div
+                              key={entry.playerId}
+                              className="flex min-h-[110px] flex-col justify-center rounded-2xl border border-zinc-700 bg-zinc-900/50 p-4"
+                            >
+                              <div className="text-center">
+                                <div className="text-sm font-black text-zinc-300">
+                                  {`${placeNumber}. místo`}
+                                </div>
+
+                                <div className="mt-1 text-2xl font-black text-white">
+                                  {entry.playerName}
+                                </div>
+
+                                <div className="text-sm font-bold text-zinc-300">
+                                  Skóre: {entry.total}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+
+            <div className="mx-auto flex w-full max-w-[520px] flex-wrap justify-center gap-4">
+              <button
+                onClick={closeCelebrationOverlay}
+                className="rounded-lg bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-500"
+              >
+                Zobrazit hru
+              </button>
+
+              <button
+                onClick={() => setShowStatistics(true)}
+                className="rounded-lg bg-yellow-500 px-5 py-3 font-bold text-black transition hover:bg-yellow-400"
+              >
+                Statistiky
+              </button>
+
+              <button
+                onClick={() => {
+                  closeCelebrationOverlay();
+                  startNewGame();
+                }}
+                className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
+              >
+                Nová hra
+              </button>
+
+              <button
+                onClick={() => {
+                  closeCelebrationOverlay();
+
+                  debugSetScreen("home");
+                }}
+                className="rounded-lg bg-zinc-700 px-5 py-3 font-bold text-white transition hover:bg-zinc-600"
+              >
+                Domů
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* LEAVE CONFIRM */}
       {showLeaveConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
           <div className="relative w-full max-w-[420px] rounded-2xl border border-zinc-700 bg-zinc-950 p-8 text-center text-white">
             <button
-              onClick={() =>
-                setShowLeaveConfirm(
-                  false
-                )
-              }
+              onClick={() => setShowLeaveConfirm(false)}
               className="absolute right-5 top-5 rounded-lg border border-zinc-700 px-3 py-1 text-sm font-black text-zinc-400 transition hover:border-zinc-500 hover:text-white"
               aria-label="Zavřít modal"
             >
               ✕
             </button>
 
-            <h2 className="mb-6 text-3xl font-black">
-              Opravdu ukončit hru?
-            </h2>
+            <h2 className="mb-6 text-3xl font-black">Opravdu ukončit hru?</h2>
 
-            <p className="mb-8 text-zinc-300">
-              Rozehraná hra nebude uložena.
-            </p>
+            <p className="mb-8 text-zinc-300">Rozehraná hra nebude uložena.</p>
 
             <div className="flex flex-wrap justify-center gap-4">
-  <button
-    onClick={async () => {
-      setShowLeaveConfirm(
-        false
-      );
+              <button
+                onClick={async () => {
+                  setShowLeaveConfirm(false);
 
-      await runSaveCurrentGameFlow();
-    }}
-    className="rounded-xl border border-zinc-600 bg-green-600 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-  >
-    Uložit hru
-  </button>
+                  await runSaveCurrentGameFlow();
+                }}
+                className="rounded-xl border border-zinc-600 bg-green-600 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Uložit hru
+              </button>
 
-  <button
-    onClick={() => {
-      setShowLeaveConfirm(
-        false
-      );
+              <button
+                onClick={() => {
+                  setShowLeaveConfirm(false);
 
-      startNewGame();
-    }}
-    className="rounded-xl border border-zinc-600 bg-yellow-500 px-5 py-3 font-bold text-black transition hover:scale-[1.02] hover:brightness-110"
-  >
-    Nová hra
-  </button>
+                  startNewGame();
+                }}
+                className="rounded-xl border border-zinc-600 bg-yellow-500 px-5 py-3 font-bold text-black transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Nová hra
+              </button>
 
-  <button
-  onClick={() => {
-    setShowLeaveConfirm(
-      false
-    );
+              <button
+                onClick={() => {
+                  setShowLeaveConfirm(false);
 
-    if (isOnlineGame) {
-      leaveCurrentOnlineGame();
-    } else {
-      debugSetScreen("home");
-    }
-  }}
-  className="rounded-xl border border-zinc-600 bg-red-600 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
->
-  Domů
-</button>
-</div>
+                  if (isOnlineGame) {
+                    leaveCurrentOnlineGame();
+                  } else {
+                    debugSetScreen("home");
+                  }
+                }}
+                className="rounded-xl border border-zinc-600 bg-red-600 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Domů
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -11936,11 +8953,7 @@ if (celebrationType === 2) {
         <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/90 p-4">
           <div className="relative w-full max-w-[460px] rounded-2xl border border-zinc-700 bg-zinc-950 p-8 text-white">
             <button
-              onClick={() =>
-                setShowJoinSessionModal(
-                  false
-                )
-              }
+              onClick={() => setShowJoinSessionModal(false)}
               className="absolute right-4 top-4 rounded-lg border border-zinc-700 px-3 py-1 text-sm font-black text-zinc-300 transition hover:border-zinc-500 hover:text-white"
               aria-label="Zavřít modal"
             >
@@ -11958,23 +8971,16 @@ if (celebrationType === 2) {
             <input
               type="text"
               value={joinSessionId}
-              onChange={(e) =>
-                setJoinSessionId(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setJoinSessionId(e.target.value)}
               onKeyDown={async (event) => {
                 if (event.key !== "Enter") {
                   return;
                 }
 
-                const joined =
-                  await handleJoinOnlineSession();
+                const joined = await handleJoinOnlineSession();
 
                 if (joined) {
-                  setShowJoinSessionModal(
-                    false
-                  );
+                  setShowJoinSessionModal(false);
                 }
               }}
               placeholder="Kód místnosti"
@@ -11984,13 +8990,10 @@ if (celebrationType === 2) {
 
             <button
               onClick={async () => {
-                const joined =
-                  await handleJoinOnlineSession();
+                const joined = await handleJoinOnlineSession();
 
                 if (joined) {
-                  setShowJoinSessionModal(
-                    false
-                  );
+                  setShowJoinSessionModal(false);
                 }
               }}
               className="w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-4 text-xl font-black tracking-[0.08em] text-white transition hover:brightness-110"
@@ -12001,386 +9004,294 @@ if (celebrationType === 2) {
         </div>
       )}
 
-{/* SAVE GAME CONFIRM */}
-{showSaveGameConfirm && (
-  <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[420px] rounded-2xl border border-zinc-700 bg-zinc-950 p-8 text-center text-white">
-      <h2 className="mb-21 text-3xl font-black">
-        Uložit rozehranou hru?
-      </h2>
+      {/* SAVE GAME CONFIRM */}
+      {showSaveGameConfirm && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[420px] rounded-2xl border border-zinc-700 bg-zinc-950 p-8 text-center text-white">
+            <h2 className="mb-21 text-3xl font-black">
+              Uložit rozehranou hru?
+            </h2>
 
-      <p className="mb-8 text-zinc-300">
-        Hra bude uložena mezi uložené hry a lze ji později znovu načíst.
-      </p>
+            <p className="mb-8 text-zinc-300">
+              Hra bude uložena mezi uložené hry a lze ji později znovu načíst.
+            </p>
 
-      <div className="flex flex-wrap justify-center gap-4">
-        <button
-          onClick={() =>
-            setShowSaveGameConfirm(
-              false
-            )
-          }
-          className="rounded-xl border border-zinc-600 bg-zinc-700 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Zrušit
-        </button>
+            <div className="flex flex-wrap justify-center gap-4">
+              <button
+                onClick={() => setShowSaveGameConfirm(false)}
+                className="rounded-xl border border-zinc-600 bg-zinc-700 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Zrušit
+              </button>
 
-        <button
-          onClick={async () => {
-  setShowSaveGameConfirm(
-    false
-  );
+              <button
+                onClick={async () => {
+                  setShowSaveGameConfirm(false);
 
-  await runSaveCurrentGameFlow();
-}}
-          className="rounded-xl border border-zinc-600 bg-green-600 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Uložit
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-{deleteSavedGameId !== null && (
-  <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[520px] rounded-2xl bg-zinc-900 p-8 text-center text-white">
-      <h2 className="mb-6 text-3xl font-black text-red-500">
-        Smazat uloženou hru?
-      </h2>
-
-      <p className="mb-8 text-zinc-300">
-        Opravdu chceš smazat tuto uloženou hru?
-      </p>
-
-      <div className="flex flex-wrap justify-center gap-4">
-        <button
-          onClick={() =>
-            setDeleteSavedGameId(
-              null
-            )
-          }
-          className="rounded-xl border border-zinc-600 bg-zinc-700 px-8 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Nechat
-        </button>
-
-        <button
-          onClick={async () => {
-            const result =
-  await supabase
-    .from(
-      "saved_games"
-    )
-    .delete()
-    .eq(
-      "id",
-      deleteSavedGameId
-    );
-
-const { error } =
-  result;
-
-            if (!error) {
-              setSavedGames(
-                savedGames.filter(
-                  (savedGame) =>
-                    savedGame.id !==
-                    deleteSavedGameId
-                )
-              );
-            }
-
-            setDeleteSavedGameId(
-              null
-            );
-          }}
-          className="rounded-xl border border-zinc-600 bg-red-600 px-8 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Smazat
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-{/* ADMIN */}
-{showAdmin && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-3xl rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-white shadow-2xl">
-      <div className="mb-8 flex items-center justify-between">
-        <h2 className="text-4xl font-black text-yellow-400">
-          Administrace hráčů
-        </h2>
-
-        <button
-          onClick={() =>
-            setShowAdmin(false)
-          }
-          className="rounded-xl border border-zinc-600 bg-zinc-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Zavřít
-        </button>
-      </div>
-
-      <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-2">
-        {playersState.map((player) => (
-          <div
-            key={player.id}
-            className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/40 p-5"
-          >
-            <div>
-              <input
-  type="text"
-  value={player.name}
-  onChange={(e) => {
-  const updatedPlayers =
-    playersState.map((p) =>
-      p.id === player.id
-        ? {
-            ...p,
-            name: e.target.value,
-          }
-        : p
-    );
-
-  setPlayersState(
-    updatedPlayers
-  );
-}}
-  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-2xl font-black text-white outline-none transition focus:border-yellow-400"
-/>
-
-              <div className="mt-1 text-sm text-zinc-500">
-                ID: {player.id}
-              </div>
+                  await runSaveCurrentGameFlow();
+                }}
+                className="rounded-xl border border-zinc-600 bg-green-600 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Uložit
+              </button>
             </div>
-
-            <div className="flex gap-2">
-  <button
-    onClick={() => {
-      updatePlayerInSupabase(
-        player.id,
-        {
-          name: player.name,
-        }
-      );
-    }}
-    className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-  >
-    Uložit
-  </button>
-
-  <button
-    onClick={() =>
-      setDeletePlayerId(
-        player.id
-      )
-    }
-    className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-  >
-    Smazat
-  </button>
-
-  <button
-    onClick={() => {
-      const updatedPlayers =
-        playersState.map((p) =>
-          p.id === player.id
-            ? {
-                ...p,
-                active:
-                  !p.active,
-              }
-            : p
-        );
-
-      setPlayersState(
-        updatedPlayers
-      );
-
-      updatePlayerInSupabase(
-        player.id,
-        {
-          active:
-            !player.active,
-        }
-      );
-
-      localStorage.setItem(
-        "heroDicePlayers",
-        JSON.stringify(
-          updatedPlayers
-        )
-      );
-    }}
-    className={`rounded-xl px-4 py-2 font-bold transition hover:scale-[1.02] hover:brightness-110 ${
-      player.active
-        ? "bg-green-600"
-        : "bg-red-600"
-    }`}
-  >
-    {player.active
-      ? "Aktivní"
-      : "Neaktivní"}
-  </button>
-</div>
-          </div>
-                ))}
-
-        <div className="mt-6 rounded-2xl border border-zinc-700 bg-black/40 p-5">
-          <div className="mb-4 text-xl font-black text-yellow-400">
-            Přidat hráče
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <input
-              type="text"
-              placeholder="Player ID"
-              value={newPlayerId}
-              onChange={(e) =>
-                setNewPlayerId(
-                  e.target.value
-                )
-              }
-              className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
-            />
-
-            <input
-              type="text"
-              placeholder="Jméno hráče"
-              value={newPlayerName}
-              onChange={(e) =>
-                setNewPlayerName(
-                  e.target.value
-                )
-              }
-              className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
-            />
-
-            <button
-              onClick={handleAddPlayer}
-              className="rounded-xl bg-green-600 px-5 py-3 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
-            >
-              Přidat hráče
-            </button>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
-{/* DELETE PLAYER CONFIRM */}
-{deletePlayerId && (
-  <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4">
-    <div className="w-full max-w-[420px] rounded-3xl bg-zinc-900 p-8 text-center text-white shadow-2xl">
-      <h2 className="mb-5 text-3xl font-black text-red-500">
-        Smazat hráče?
-      </h2>
+      {deleteSavedGameId !== null && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[520px] rounded-2xl bg-zinc-900 p-8 text-center text-white">
+            <h2 className="mb-6 text-3xl font-black text-red-500">
+              Smazat uloženou hru?
+            </h2>
 
-      <p className="mb-8 text-zinc-300">
-  Opravdu chceš smazat hráče{" "}
-  <span className="font-bold text-white">
-    {
-      playersState.find(
-        (player) =>
-          player.id ===
-          deletePlayerId
-      )?.name
-    }
-  </span>
-  ?
-</p>
+            <p className="mb-8 text-zinc-300">
+              Opravdu chceš smazat tuto uloženou hru?
+            </p>
 
-      <div className="flex gap-4">
-        <button
-          onClick={() =>
-            setDeletePlayerId(
-              null
-            )
-          }
-          className="flex-1 rounded-2xl border border-zinc-600 bg-zinc-700 px-5 py-4 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Nechat
-        </button>
+            <div className="flex flex-wrap justify-center gap-4">
+              <button
+                onClick={() => setDeleteSavedGameId(null)}
+                className="rounded-xl border border-zinc-600 bg-zinc-700 px-8 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Nechat
+              </button>
 
-        <button
-          onClick={() => {
-            handleDeletePlayer(
-              deletePlayerId
-            );
+              <button
+                onClick={async () => {
+                  const result = await supabase
+                    .from("saved_games")
+                    .delete()
+                    .eq("id", deleteSavedGameId);
 
-            setDeletePlayerId(
-              null
-            );
-          }}
-          className="flex-1 rounded-2xl border border-zinc-600 bg-red-600 px-5 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
-        >
-          Smazat
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+                  const { error } = result;
+
+                  if (!error) {
+                    setSavedGames(
+                      savedGames.filter(
+                        (savedGame) => savedGame.id !== deleteSavedGameId,
+                      ),
+                    );
+                  }
+
+                  setDeleteSavedGameId(null);
+                }}
+                className="rounded-xl border border-zinc-600 bg-red-600 px-8 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Smazat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN */}
+      {showAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-3xl rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-white shadow-2xl">
+            <div className="mb-8 flex items-center justify-between">
+              <h2 className="text-4xl font-black text-yellow-400">
+                Administrace hráčů
+              </h2>
+
+              <button
+                onClick={() => setShowAdmin(false)}
+                className="rounded-xl border border-zinc-600 bg-zinc-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Zavřít
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-2">
+              {playersState.map((player) => (
+                <div
+                  key={player.id}
+                  className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/40 p-5"
+                >
+                  <div>
+                    <input
+                      type="text"
+                      value={player.name}
+                      onChange={(e) => {
+                        const updatedPlayers = playersState.map((p) =>
+                          p.id === player.id
+                            ? {
+                                ...p,
+                                name: e.target.value,
+                              }
+                            : p,
+                        );
+
+                        setPlayersState(updatedPlayers);
+                      }}
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-2xl font-black text-white outline-none transition focus:border-yellow-400"
+                    />
+
+                    <div className="mt-1 text-sm text-zinc-500">
+                      ID: {player.id}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        updatePlayerInSupabase(player.id, {
+                          name: player.name,
+                        });
+                      }}
+                      className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+                    >
+                      Uložit
+                    </button>
+
+                    <button
+                      onClick={() => setDeletePlayerId(player.id)}
+                      className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+                    >
+                      Smazat
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const updatedPlayers = playersState.map((p) =>
+                          p.id === player.id
+                            ? {
+                                ...p,
+                                active: !p.active,
+                              }
+                            : p,
+                        );
+
+                        setPlayersState(updatedPlayers);
+
+                        updatePlayerInSupabase(player.id, {
+                          active: !player.active,
+                        });
+
+                        localStorage.setItem(
+                          "heroDicePlayers",
+                          JSON.stringify(updatedPlayers),
+                        );
+                      }}
+                      className={`rounded-xl px-4 py-2 font-bold transition hover:scale-[1.02] hover:brightness-110 ${
+                        player.active ? "bg-green-600" : "bg-red-600"
+                      }`}
+                    >
+                      {player.active ? "Aktivní" : "Neaktivní"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <div className="mt-6 rounded-2xl border border-zinc-700 bg-black/40 p-5">
+                <div className="mb-4 text-xl font-black text-yellow-400">
+                  Přidat hráče
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="text"
+                    placeholder="Player ID"
+                    value={newPlayerId}
+                    onChange={(e) => setNewPlayerId(e.target.value)}
+                    className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Jméno hráče"
+                    value={newPlayerName}
+                    onChange={(e) => setNewPlayerName(e.target.value)}
+                    className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
+                  />
+
+                  <button
+                    onClick={handleAddPlayer}
+                    className="rounded-xl bg-green-600 px-5 py-3 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+                  >
+                    Přidat hráče
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE PLAYER CONFIRM */}
+      {deletePlayerId && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[420px] rounded-3xl bg-zinc-900 p-8 text-center text-white shadow-2xl">
+            <h2 className="mb-5 text-3xl font-black text-red-500">
+              Smazat hráče?
+            </h2>
+
+            <p className="mb-8 text-zinc-300">
+              Opravdu chceš smazat hráče{" "}
+              <span className="font-bold text-white">
+                {
+                  playersState.find((player) => player.id === deletePlayerId)
+                    ?.name
+                }
+              </span>
+              ?
+            </p>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setDeletePlayerId(null)}
+                className="flex-1 rounded-2xl border border-zinc-600 bg-zinc-700 px-5 py-4 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Nechat
+              </button>
+
+              <button
+                onClick={() => {
+                  handleDeletePlayer(deletePlayerId);
+
+                  setDeletePlayerId(null);
+                }}
+                className="flex-1 rounded-2xl border border-zinc-600 bg-red-600 px-5 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Smazat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* STATISTICS */}
-{showStatistics && (
-  <StatisticsModal
-  players={playersState}
-  onClose={() =>
-    setShowStatistics(false)
-  }
-  onOpenFunGames={() => {
-    setShowStatistics(
-      false
-    );
+      {showStatistics && (
+        <StatisticsModal
+          players={playersState}
+          onClose={() => setShowStatistics(false)}
+          onOpenFunGames={() => {
+            setShowStatistics(false);
+            setShowFunGames(true);
+          }}
+        />
+      )}
 
-    setShowFunGames(
-      true
-    );
-  }}
-/>
-)}
+      {/* FUN GAMES */}
+      {showFunGames && (
+        <FunGamesModal
+          players={playersState}
+          onClose={() => {
+            setShowFunGames(false);
+            setShowStatistics(true);
+          }}
+        />
+      )}
 
-{/* FUN GAMES */}
-{showFunGames && (
-  <FunGamesModal
-    players={playersState}
-    onClose={() => {
-      setShowFunGames(
-        false
-      );
-
-      setShowStatistics(
-        true
-      );
-    }}
-  />
-)}
-    
-    <HelpModal
-  open={showHelp}
-  onClose={() =>
-    setShowHelp(false)
-  }
-  onOpenCombinationHelp={(
-    categoryId
-  ) => {
-    setSelectedHelpImageSource(
-      "help-modal"
-    );
-
-    setSelectedHelpImage(
-      `/help/${categoryId}.png`
-    );
-  }
-  }
-/>
-    
+      <HelpModal
+        open={showHelp}
+        onClose={() => setShowHelp(false)}
+        onOpenCombinationHelp={(categoryId) => {
+          setSelectedHelpImageSource("help-modal");
+          setSelectedHelpImage(`/help/${categoryId}.png`);
+        }}
+      />
     </main>
   );
 }
-

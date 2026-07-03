@@ -1,14 +1,11 @@
 /**
  * Hero Dice - AI Player Decision Logic
- * 
+ *
  * Provides decision-making for computer players when selecting dice to lock.
  * This module is pure functional - no side effects, no state mutations.
  */
 
-import {
-  detectCombination,
-  PlayModeResult,
-} from "./playMode";
+import { detectCombination, PlayModeResult } from "./playMode";
 import {
   canTargetCategoryWorkWithFixedLocks,
   type PlayModeCategoryId,
@@ -20,15 +17,9 @@ export type ScoreMap = {
   };
 };
 
-export type AITurnAction =
-  | "roll"
-  | "save"
-  | "end_turn";
+export type AITurnAction = "roll" | "save" | "end_turn";
 
-export type AIRiskLevel =
-  | "low"
-  | "medium"
-  | "high";
+export type AIRiskLevel = "low" | "medium" | "high";
 
 export type AIDecision = {
   targetCategory: string | null;
@@ -141,17 +132,12 @@ type CandidateCombination = {
   strategyScore?: number;
   strategyBreakdown?: StrategyScoreBreakdown;
   candidateDice?: number[];
-  candidateCombinationFromGameValidator?:
-    | PlayModeResult
-    | null;
+  candidateCombinationFromGameValidator?: PlayModeResult | null;
   candidateCombinationCategoryId?: string | null;
   rejectedBecauseNoCombination?: boolean;
   rejectedBecauseIncompatibleWithFixedLocks?: boolean;
   rejectedBecauseFullLockWithoutValidCombination?: boolean;
-  selectedCandidateValidationResult?:
-    | "accepted"
-    | "risk"
-    | "rejected";
+  selectedCandidateValidationResult?: "accepted" | "risk" | "rejected";
   validationReason?: string;
   currentMatchCount: number;
   totalRequired: number;
@@ -252,17 +238,12 @@ type CandidateAuditEntry = {
     | "validation-rejected"
     | "accepted";
   candidateDice?: number[];
-  candidateCombinationFromGameValidator?:
-    | PlayModeResult
-    | null;
+  candidateCombinationFromGameValidator?: PlayModeResult | null;
   candidateCombinationCategoryId?: string | null;
   rejectedBecauseNoCombination?: boolean;
   rejectedBecauseIncompatibleWithFixedLocks?: boolean;
   rejectedBecauseFullLockWithoutValidCombination?: boolean;
-  selectedCandidateValidationResult?:
-    | "accepted"
-    | "risk"
-    | "rejected";
+  selectedCandidateValidationResult?: "accepted" | "risk" | "rejected";
   validationReason?: string;
   targetPattern?: string;
   requiredDicePattern?: string[];
@@ -332,17 +313,14 @@ type PhasePolicy = {
   strategicGeneralSingletonMinValue: number;
 };
 
-const combinationToCategoryId: Record<
-  CombinationType,
-  string
-> = {
-  "Generál": "general",
-  "Pyramida": "pyramida",
-  "Hrozen": "hrozen",
-  "Postupka": "postupka",
+const combinationToCategoryId: Record<CombinationType, string> = {
+  Generál: "general",
+  Pyramida: "pyramida",
+  Hrozen: "hrozen",
+  Postupka: "postupka",
   "Čtyři-dvě": "ctyri_dva",
-  "Trojice": "trojce",
-  "Dvojice": "dvojce",
+  Trojice: "trojce",
+  Dvojice: "dvojce",
 };
 
 const combinationTypes: CombinationType[] = [
@@ -355,30 +333,24 @@ const combinationTypes: CombinationType[] = [
   "Dvojice",
 ];
 
-const combinationPriority: Record<
-  CombinationType,
-  number
-> = {
-  "Generál": 7,
-  "Pyramida": 6,
-  "Hrozen": 6,
-  "Postupka": 5,
+const combinationPriority: Record<CombinationType, number> = {
+  Generál: 7,
+  Pyramida: 6,
+  Hrozen: 6,
+  Postupka: 5,
   "Čtyři-dvě": 4,
-  "Trojice": 3,
-  "Dvojice": 2,
+  Trojice: 3,
+  Dvojice: 2,
 };
 
-const combinationMaxScore: Record<
-  CombinationType,
-  number
-> = {
-  "Generál": 36,
-  "Pyramida": 32,
-  "Hrozen": 28,
-  "Postupka": 21,
+const combinationMaxScore: Record<CombinationType, number> = {
+  Generál: 36,
+  Pyramida: 32,
+  Hrozen: 28,
+  Postupka: 21,
   "Čtyři-dvě": 34,
-  "Trojice": 33,
-  "Dvojice": 30,
+  Trojice: 33,
+  Dvojice: 30,
 };
 
 /**
@@ -389,9 +361,7 @@ const hasSequence = (dice: number[]): boolean => {
   return sorted.join(",") === "1,2,3,4,5,6";
 };
 
-const getIndicesByValue = (
-  dice: number[]
-): Record<number, number[]> => {
+const getIndicesByValue = (dice: number[]): Record<number, number[]> => {
   const byValue: Record<number, number[]> = {};
 
   dice.forEach((value, index) => {
@@ -404,23 +374,17 @@ const getIndicesByValue = (
   return byValue;
 };
 
-const uniqueSortedIndices = (
-  indices: number[]
-): number[] =>
-  Array.from(new Set(indices)).sort(
-    (a, b) => a - b
-  );
+const uniqueSortedIndices = (indices: number[]): number[] =>
+  Array.from(new Set(indices)).sort((a, b) => a - b);
 
 const filterSafeLocks = (
   dice: number[],
   proposedIndices: number[],
   targetType: CombinationType,
-  allowSingletons: boolean
+  allowSingletons: boolean,
 ): number[] => {
-  const normalized = uniqueSortedIndices(
-    proposedIndices
-  ).filter(
-    (index) => index >= 0 && index < 6
+  const normalized = uniqueSortedIndices(proposedIndices).filter(
+    (index) => index >= 0 && index < 6,
   );
 
   if (normalized.length === 0) {
@@ -437,9 +401,7 @@ const filterSafeLocks = (
       return normalized;
     }
 
-    const lockedValues = normalized.map(
-      (index) => dice[index]
-    );
+    const lockedValues = normalized.map((index) => dice[index]);
     const uniqueValues = new Set(lockedValues);
 
     // Partial sequence lock is valid only when keeping distinct values.
@@ -454,38 +416,32 @@ const filterSafeLocks = (
 
   normalized.forEach((index) => {
     const value = dice[index];
-    proposedValueCounts[value] =
-      (proposedValueCounts[value] || 0) + 1;
+    proposedValueCounts[value] = (proposedValueCounts[value] || 0) + 1;
   });
 
   // For non-sequence strategies, keep only duplicate contributors.
   // Low-value single locks create noisy turns and weak direction.
   return normalized.filter((index) => {
     const value = dice[index];
-    return (
-      (proposedValueCounts[value] || 0) >= 2
-    );
+    return (proposedValueCounts[value] || 0) >= 2;
   });
 };
 
 const buildMissingPattern = (
   requirements: TemplateRequirement[],
-  lockCounts: Record<number, number>
+  lockCounts: Record<number, number>,
 ): string[] => {
   return requirements
     .map(({ value, count }) => {
-      const missing =
-        count - (lockCounts[value] || 0);
-      return missing > 0
-        ? `${value}x${missing}`
-        : null;
+      const missing = count - (lockCounts[value] || 0);
+      return missing > 0 ? `${value}x${missing}` : null;
     })
     .filter((entry): entry is string => entry !== null);
 };
 
 const getLockCounts = (
   dice: number[],
-  lockIndices: number[]
+  lockIndices: number[],
 ): Record<number, number> => {
   const counts: Record<number, number> = {};
 
@@ -499,15 +455,13 @@ const getLockCounts = (
 
 const supportsTemplateWithLock = (
   lockCounts: Record<number, number>,
-  requirements: TemplateRequirement[]
+  requirements: TemplateRequirement[],
 ): boolean => {
   for (const [valueText, count] of Object.entries(lockCounts)) {
     const value = Number(valueText);
     const requirementCount =
-      requirements.find(
-        (requirement) =>
-          requirement.value === value
-      )?.count ?? 0;
+      requirements.find((requirement) => requirement.value === value)?.count ??
+      0;
 
     if (count > requirementCount) {
       return false;
@@ -521,11 +475,9 @@ const enrichLockForOpenStrategy = (
   dice: number[],
   lockIndices: number[],
   targetType: CombinationType,
-  remainingRolls: number | undefined
+  remainingRolls: number | undefined,
 ): number[] => {
-  const normalized = uniqueSortedIndices(
-    lockIndices
-  );
+  const normalized = uniqueSortedIndices(lockIndices);
 
   if ((remainingRolls ?? 0) < 2) {
     return normalized;
@@ -541,10 +493,7 @@ const enrichLockForOpenStrategy = (
       value,
       index,
     }))
-    .filter(
-      ({ index, value }) =>
-        !result.has(index) && value >= 4
-    )
+    .filter(({ index, value }) => !result.has(index) && value >= 4)
     .sort((a, b) => {
       if (b.value !== a.value) {
         return b.value - a.value;
@@ -560,22 +509,15 @@ const enrichLockForOpenStrategy = (
     result.add(index);
   }
 
-  return Array.from(result).sort(
-    (a, b) => a - b
-  );
+  return Array.from(result).sort((a, b) => a - b);
 };
 
-const isStructuralTarget = (
-  targetType: CombinationType
-): boolean =>
+const isStructuralTarget = (targetType: CombinationType): boolean =>
   targetType === "Pyramida" ||
   targetType === "Hrozen" ||
   targetType === "Postupka";
 
-const buildPyramidLocks = (
-  dice: number[],
-  lockIndices: number[]
-): number[] => {
+const buildPyramidLocks = (dice: number[], lockIndices: number[]): number[] => {
   const seed = uniqueSortedIndices(lockIndices);
   const preferred = dice
     .map((value, index) => ({ value, index }))
@@ -588,18 +530,12 @@ const buildPyramidLocks = (
     })
     .map(({ index }) => index);
 
-  const merged = uniqueSortedIndices([
-    ...seed,
-    ...preferred,
-  ]);
+  const merged = uniqueSortedIndices([...seed, ...preferred]);
 
   return merged.slice(0, 5);
 };
 
-const buildHrozenLocks = (
-  dice: number[],
-  lockIndices: number[]
-): number[] => {
+const buildHrozenLocks = (dice: number[], lockIndices: number[]): number[] => {
   const seed = uniqueSortedIndices(lockIndices);
   const preferred = dice
     .map((value, index) => ({ value, index }))
@@ -612,17 +548,14 @@ const buildHrozenLocks = (
     })
     .map(({ index }) => index);
 
-  const merged = uniqueSortedIndices([
-    ...seed,
-    ...preferred,
-  ]);
+  const merged = uniqueSortedIndices([...seed, ...preferred]);
 
   return merged.slice(0, 5);
 };
 
 const buildStraightLocks = (
   dice: number[],
-  lockIndices: number[]
+  lockIndices: number[],
 ): number[] => {
   const valueToIndex = new Map<number, number>();
 
@@ -632,39 +565,19 @@ const buildStraightLocks = (
     }
   });
 
-  const distinctValues = Array.from(
-    valueToIndex.keys()
-  ).sort((a, b) => a - b);
+  const distinctValues = Array.from(valueToIndex.keys()).sort((a, b) => a - b);
 
-  let bestRun: number[] = [];
-  let currentRun: number[] = [];
-
-  for (const value of distinctValues) {
-    if (
-      currentRun.length === 0 ||
-      value === currentRun[currentRun.length - 1] + 1
-    ) {
-      currentRun.push(value);
-    } else {
-      if (currentRun.length > bestRun.length) {
-        bestRun = [...currentRun];
-      }
-      currentRun = [value];
-    }
-  }
-
-  if (currentRun.length > bestRun.length) {
-    bestRun = [...currentRun];
-  }
-
-  if (bestRun.length >= 2) {
-    return bestRun
+  // For Postupka progress, every unique value 1..6 is useful,
+  // not only values in one consecutive run.
+  if (distinctValues.length >= 2) {
+    const uniqueProgressLocks = distinctValues
       .map((value) => valueToIndex.get(value))
-      .filter(
-        (index): index is number =>
-          typeof index === "number"
-      )
+      .filter((index): index is number => typeof index === "number")
       .sort((a, b) => a - b);
+
+    return uniqueProgressLocks.length > 5
+      ? uniqueProgressLocks.slice(0, 5)
+      : uniqueProgressLocks;
   }
 
   const seed = uniqueSortedIndices(lockIndices)
@@ -672,7 +585,7 @@ const buildStraightLocks = (
       index,
       value: dice[index],
     }))
-    .filter(({ value }) => value >= 2 && value <= 6)
+    .filter(({ value }) => value >= 1 && value <= 6)
     .sort((a, b) => b.value - a.value)
     .map(({ index }) => index);
 
@@ -682,7 +595,7 @@ const buildStraightLocks = (
 const getTargetSpecificLocks = (
   targetType: CombinationType,
   dice: number[],
-  lockIndices: number[]
+  lockIndices: number[],
 ): {
   locks: number[];
   builderUsed: string | null;
@@ -721,7 +634,7 @@ const evaluateOpenOptionsForLock = (
   lockCompatibility: Record<string, boolean>,
   playerScores: Record<string, number>,
   remainingRolls: number | undefined,
-  scoreContextModifier: number
+  scoreContextModifier: number,
 ): {
   openOptionsScore: number;
   openOptions: OpenOptionSummary[];
@@ -730,22 +643,14 @@ const evaluateOpenOptionsForLock = (
   selectedBecauseMultiTargetPotential: boolean;
   remainingRollsOpenStrategyBonus: number;
 } => {
-  const lockCounts = getLockCounts(
-    dice,
-    lockIndices
-  );
+  const lockCounts = getLockCounts(dice, lockIndices);
   const openOptions: OpenOptionSummary[] = [];
   let scoreboardFilteredOptions = 0;
 
   for (const combType of combinationTypes) {
-    const targetCategory =
-      combinationToCategoryId[combType];
+    const targetCategory = combinationToCategoryId[combType];
 
-    if (
-      !availableTargetCategories.includes(
-        targetCategory
-      )
-    ) {
+    if (!availableTargetCategories.includes(targetCategory)) {
       scoreboardFilteredOptions += 1;
       continue;
     }
@@ -755,51 +660,32 @@ const evaluateOpenOptionsForLock = (
       continue;
     }
 
-    const templates =
-      getTemplatesForCombination(combType);
+    const templates = getTemplatesForCombination(combType);
     let bestOption: OpenOptionSummary | null = null;
 
     for (const template of templates) {
-      if (
-        !supportsTemplateWithLock(
-          lockCounts,
-          template.requirements
-        )
-      ) {
+      if (!supportsTemplateWithLock(lockCounts, template.requirements)) {
         continue;
       }
 
-      const currentProgress =
-        template.requirements.reduce(
-          (sum, requirement) =>
-            sum +
-            Math.min(
-              requirement.count,
-              lockCounts[requirement.value] || 0
-            ),
-          0
-        );
+      const currentProgress = template.requirements.reduce(
+        (sum, requirement) =>
+          sum + Math.min(requirement.count, lockCounts[requirement.value] || 0),
+        0,
+      );
 
-      const missingPattern =
-        buildMissingPattern(
-          template.requirements,
-          lockCounts
-        );
+      const missingPattern = buildMissingPattern(
+        template.requirements,
+        lockCounts,
+      );
 
       const completionChance = Number(
-        Math.max(
-          0,
-          Math.min(1, currentProgress / 6)
-        ).toFixed(2)
+        Math.max(0, Math.min(1, currentProgress / 6)).toFixed(2),
       );
 
       const remainingRollsFit =
         typeof remainingRolls === "number"
-          ? Math.max(
-              0,
-              remainingRolls -
-                Math.max(0, missingPattern.length - 1)
-            )
+          ? Math.max(0, remainingRolls - Math.max(0, missingPattern.length - 1))
           : 0;
 
       const optionScore =
@@ -814,10 +700,7 @@ const evaluateOpenOptionsForLock = (
         type: combType,
         targetCategory,
         targetPattern: `${combType}:${template.requirements
-          .map(
-            (requirement) =>
-              `${requirement.value}x${requirement.count}`
-          )
+          .map((requirement) => `${requirement.value}x${requirement.count}`)
           .join("|")}`,
         currentProgress,
         completionChance,
@@ -827,10 +710,7 @@ const evaluateOpenOptionsForLock = (
         optionScore,
       };
 
-      if (
-        bestOption === null ||
-        option.optionScore > bestOption.optionScore
-      ) {
+      if (bestOption === null || option.optionScore > bestOption.optionScore) {
         bestOption = option;
       }
     }
@@ -840,24 +720,18 @@ const evaluateOpenOptionsForLock = (
     }
   }
 
-  openOptions.sort(
-    (a, b) => b.optionScore - a.optionScore
-  );
+  openOptions.sort((a, b) => b.optionScore - a.optionScore);
   const topOpenOptions = openOptions.slice(0, 4);
   const remainingRollsOpenStrategyBonus =
     (remainingRolls ?? 0) >= 2
       ? topOpenOptions.length * 36
       : topOpenOptions.length * 12;
   const openOptionsScore =
-    topOpenOptions.reduce(
-      (sum, option) => sum + option.optionScore,
-      0
-    ) + remainingRollsOpenStrategyBonus;
+    topOpenOptions.reduce((sum, option) => sum + option.optionScore, 0) +
+    remainingRollsOpenStrategyBonus;
   const rejectedBecauseTooNarrow =
-    (remainingRolls ?? 0) >= 2 &&
-    topOpenOptions.length <= 1;
-  const selectedBecauseMultiTargetPotential =
-    topOpenOptions.length >= 2;
+    (remainingRolls ?? 0) >= 2 && topOpenOptions.length <= 1;
+  const selectedBecauseMultiTargetPotential = topOpenOptions.length >= 2;
 
   return {
     openOptionsScore,
@@ -872,27 +746,19 @@ const evaluateOpenOptionsForLock = (
 const hasStrategicDirection = (
   dice: number[],
   candidate: CandidateCombination,
-  phasePolicy: PhasePolicy
+  phasePolicy: PhasePolicy,
 ): boolean => {
-  const safeLocks =
-    candidate.safeLockedDiceIndices;
+  const safeLocks = candidate.safeLockedDiceIndices;
 
-  if (
-    safeLocks.length <
-    phasePolicy.minRelevantIndices
-  ) {
+  if (safeLocks.length < phasePolicy.minRelevantIndices) {
     return false;
   }
 
   if (candidate.type === "Postupka") {
-    const distinctValues = new Set(
-      safeLocks.map((index) => dice[index])
-    ).size;
+    const distinctValues = new Set(safeLocks.map((index) => dice[index])).size;
 
     return (
-      candidate.isComplete ||
-      distinctValues >=
-        phasePolicy.minSequenceDistinct
+      candidate.isComplete || distinctValues >= phasePolicy.minSequenceDistinct
     );
   }
 
@@ -901,7 +767,7 @@ const hasStrategicDirection = (
       phasePolicy.allowStrategicGeneralSingleton &&
       safeLocks.length >= 1 &&
       candidate.lockValues.every(
-        (v) => v >= phasePolicy.strategicGeneralSingletonMinValue
+        (v) => v >= phasePolicy.strategicGeneralSingletonMinValue,
       )
     ) {
       return true;
@@ -917,28 +783,21 @@ const hasStrategicDirection = (
     return candidate.currentMatchCount >= 2;
   }
 
-  if (
-    candidate.type === "Pyramida" ||
-    candidate.type === "Hrozen"
-  ) {
+  if (candidate.type === "Pyramida" || candidate.type === "Hrozen") {
     return candidate.currentMatchCount >= 3;
   }
 
   return true;
 };
 
-const isGroupedSeedTarget = (
-  targetType: CombinationType
-) =>
+const isGroupedSeedTarget = (targetType: CombinationType) =>
   targetType === "Dvojice" ||
   targetType === "Trojice" ||
   targetType === "Čtyři-dvě" ||
   targetType === "Pyramida" ||
   targetType === "Hrozen";
 
-const hasHighValueSeedPattern = (
-  lockValues: number[]
-) => {
+const hasHighValueSeedPattern = (lockValues: number[]) => {
   if (lockValues.length === 0) {
     return false;
   }
@@ -947,9 +806,7 @@ const hasHighValueSeedPattern = (
   const values = Array.from(distinct);
   const hasSingleHighSeed =
     lockValues.length === 1 &&
-    (lockValues[0] === 6 ||
-      lockValues[0] === 5 ||
-      lockValues[0] === 4);
+    (lockValues[0] === 6 || lockValues[0] === 5 || lockValues[0] === 4);
 
   const hasTwoValueHighSeed =
     (distinct.has(6) && distinct.has(5)) ||
@@ -957,9 +814,7 @@ const hasHighValueSeedPattern = (
     (distinct.has(5) && distinct.has(4));
 
   const hasThreeValueHighSeed =
-    distinct.has(4) &&
-    distinct.has(5) &&
-    distinct.has(6);
+    distinct.has(4) && distinct.has(5) && distinct.has(6);
 
   return (
     hasSingleHighSeed ||
@@ -969,25 +824,18 @@ const hasHighValueSeedPattern = (
   );
 };
 
-const getLongestConsecutiveRun = (
-  values: number[]
-) => {
+const getLongestConsecutiveRun = (values: number[]) => {
   if (values.length === 0) {
     return 0;
   }
 
-  const uniqueSorted = Array.from(
-    new Set(values)
-  ).sort((a, b) => a - b);
+  const uniqueSorted = Array.from(new Set(values)).sort((a, b) => a - b);
 
   let longest = 1;
   let current = 1;
 
   for (let index = 1; index < uniqueSorted.length; index += 1) {
-    if (
-      uniqueSorted[index] ===
-      uniqueSorted[index - 1] + 1
-    ) {
+    if (uniqueSorted[index] === uniqueSorted[index - 1] + 1) {
       current += 1;
       longest = Math.max(longest, current);
     } else {
@@ -998,9 +846,73 @@ const getLongestConsecutiveRun = (
   return longest;
 };
 
+const parseRequiredPattern = (
+  requiredDicePattern: string[] | undefined,
+): TemplateRequirement[] => {
+  if (!requiredDicePattern || requiredDicePattern.length === 0) {
+    return [];
+  }
+
+  return requiredDicePattern
+    .map((token) => {
+      const [valuePart, countPart] = token.split("x");
+      const value = Number(valuePart);
+      const count = Number(countPart);
+
+      if (!Number.isInteger(value) || !Number.isInteger(count)) {
+        return null;
+      }
+
+      if (value < 1 || value > 6 || count <= 0) {
+        return null;
+      }
+
+      return { value, count };
+    })
+    .filter((entry): entry is TemplateRequirement => entry !== null);
+};
+
+const isTemplateCompatibleWithFixedLocks = (
+  requirements: TemplateRequirement[],
+  dice: number[],
+  fixedLocks: boolean[],
+): boolean => {
+  if (requirements.length === 0) {
+    return true;
+  }
+
+  const remainingRequirementCounts = new Map<number, number>();
+
+  requirements.forEach(({ value, count }) => {
+    remainingRequirementCounts.set(
+      value,
+      (remainingRequirementCounts.get(value) ?? 0) + count,
+    );
+  });
+
+  dice.forEach((value, index) => {
+    if (!fixedLocks[index]) {
+      return;
+    }
+
+    const remainingCount = remainingRequirementCounts.get(value) ?? 0;
+
+    if (remainingCount <= 0) {
+      remainingRequirementCounts.set(value, -1);
+      return;
+    }
+
+    remainingRequirementCounts.set(value, remainingCount - 1);
+  });
+
+  return Array.from(remainingRequirementCounts.values()).every(
+    (count) => count >= 0,
+  );
+};
+
 const canBuildProgressFromSeed = (
   candidate: CandidateCombination,
-  remainingRolls: number | undefined
+  remainingRolls: number | undefined,
 ) => {
   if ((remainingRolls ?? 0) <= 0) {
     return {
@@ -1012,25 +924,20 @@ const canBuildProgressFromSeed = (
 
   const lockValues = candidate.lockValues;
   const seedAcceptedBecauseHighValue =
-    isGroupedSeedTarget(candidate.type) &&
-    hasHighValueSeedPattern(lockValues);
+    isGroupedSeedTarget(candidate.type) && hasHighValueSeedPattern(lockValues);
 
   const seedAcceptedBecauseStraightProgress =
-    candidate.type === "Postupka" &&
-    getLongestConsecutiveRun(lockValues) >= 3;
+    candidate.type === "Postupka" && getLongestConsecutiveRun(lockValues) >= 3;
 
   return {
     seedAcceptedBecauseHighValue,
     seedAcceptedBecauseStraightProgress,
     buildProgressFromSeed:
-      seedAcceptedBecauseHighValue ||
-      seedAcceptedBecauseStraightProgress,
+      seedAcceptedBecauseHighValue || seedAcceptedBecauseStraightProgress,
   };
 };
 
-const getValueCounts = (
-  values: number[]
-) => {
+const getValueCounts = (values: number[]) => {
   const counts: Record<number, number> = {};
 
   values.forEach((value) => {
@@ -1040,9 +947,7 @@ const getValueCounts = (
   return counts;
 };
 
-const isLowPairStartCandidate = (
-  candidate: CandidateCombination
-) => {
+const isLowPairStartCandidate = (candidate: CandidateCombination) => {
   if (candidate.type !== "Dvojice") {
     return false;
   }
@@ -1053,8 +958,7 @@ const isLowPairStartCandidate = (
 
   const lockValues = candidate.lockValues;
   const lowOnly =
-    lockValues.length > 0 &&
-    lockValues.every((value) => value <= 3);
+    lockValues.length > 0 && lockValues.every((value) => value <= 3);
 
   if (!lowOnly) {
     return false;
@@ -1062,14 +966,10 @@ const isLowPairStartCandidate = (
 
   const counts = getValueCounts(lockValues);
 
-  return Object.values(counts).some(
-    (count) => count >= 2
-  );
+  return Object.values(counts).some((count) => count >= 2);
 };
 
-const isLowTripleStartCandidate = (
-  candidate: CandidateCombination
-) => {
+const isLowTripleStartCandidate = (candidate: CandidateCombination) => {
   if (candidate.type !== "Trojice") {
     return false;
   }
@@ -1080,8 +980,7 @@ const isLowTripleStartCandidate = (
 
   const lockValues = candidate.lockValues;
   const lowOnly =
-    lockValues.length > 0 &&
-    lockValues.every((value) => value <= 3);
+    lockValues.length > 0 && lockValues.every((value) => value <= 3);
 
   if (!lowOnly) {
     return false;
@@ -1089,13 +988,11 @@ const isLowTripleStartCandidate = (
 
   const counts = getValueCounts(lockValues);
 
-  return Object.values(counts).some(
-    (count) => count >= 3
-  );
+  return Object.values(counts).some((count) => count >= 3);
 };
 
 const isLowValueCompletionSupplementCandidate = (
-  candidate: CandidateCombination
+  candidate: CandidateCombination,
 ) => {
   if (candidate.isComplete) {
     return false;
@@ -1114,24 +1011,19 @@ const isLowValueCompletionSupplementCandidate = (
     return false;
   }
 
-  return candidate.lockValues.some(
-    (value) => value <= 3
-  );
+  return candidate.lockValues.some((value) => value <= 3);
 };
 
 const isPreferredHighValueBuilderCandidate = (
   candidate: CandidateCombination,
   availableTargetCategories: string[],
-  lockCompatibility: Record<string, boolean>
+  lockCompatibility: Record<string, boolean>,
 ) => {
-  const targetCategory =
-    combinationToCategoryId[candidate.type] ?? null;
+  const targetCategory = combinationToCategoryId[candidate.type] ?? null;
 
   if (
     targetCategory === null ||
-    !availableTargetCategories.includes(
-      targetCategory
-    ) ||
+    !availableTargetCategories.includes(targetCategory) ||
     !lockCompatibility[targetCategory]
   ) {
     return false;
@@ -1141,12 +1033,19 @@ const isPreferredHighValueBuilderCandidate = (
     return false;
   }
 
-  const hasHighValueLocks =
-    candidate.lockValues.some(
-      (value) => value >= 4
-    );
+  const hasHighValueLocks = candidate.lockValues.some((value) => value >= 4);
 
   if (!hasHighValueLocks) {
+    return false;
+  }
+
+  // For Postupka, explicit high-value builder seeds can regress to
+  // one-die lock behavior; keep Postupka on its normal sequence path.
+  if (
+    candidate.type === "Postupka" &&
+    (candidate.highValueBuilderGeneratedFromSingleDie ||
+      candidate.highValueBuilderGeneratedFromPattern)
+  ) {
     return false;
   }
 
@@ -1159,7 +1058,7 @@ const isPreferredHighValueBuilderCandidate = (
 
 const selectHighValueBuilderTargetCategory = (
   availableTargetCategories: string[],
-  lockCompatibility: Record<string, boolean>
+  lockCompatibility: Record<string, boolean>,
 ) => {
   const priority = [
     "general",
@@ -1173,9 +1072,7 @@ const selectHighValueBuilderTargetCategory = (
 
   for (const categoryId of priority) {
     if (
-      availableTargetCategories.includes(
-        categoryId
-      ) &&
+      availableTargetCategories.includes(categoryId) &&
       lockCompatibility[categoryId]
     ) {
       return categoryId;
@@ -1198,7 +1095,7 @@ const HIGH_VALUE_BUILDER_PATTERNS: number[][] = [
 const getHighValuePatternIndices = (
   pattern: number[],
   currentDice: number[],
-  fixedLocks: boolean[]
+  fixedLocks: boolean[],
 ): number[] | null => {
   const used = new Set<number>();
   const indices: number[] = [];
@@ -1206,9 +1103,7 @@ const getHighValuePatternIndices = (
   for (const value of pattern) {
     const index = currentDice.findIndex(
       (dieValue, dieIndex) =>
-        dieValue === value &&
-        !fixedLocks[dieIndex] &&
-        !used.has(dieIndex)
+        dieValue === value && !fixedLocks[dieIndex] && !used.has(dieIndex),
     );
 
     if (index < 0) {
@@ -1228,17 +1123,16 @@ const createExplicitHighValueBuilderCandidates = (
   fixedLocks: boolean[],
   remainingRolls: number | undefined,
   availableTargetCategories: string[],
-  lockCompatibility: Record<string, boolean>
+  lockCompatibility: Record<string, boolean>,
 ): CandidateCombination[] => {
   if ((remainingRolls ?? 0) <= 0) {
     return [];
   }
 
-  const targetCategory =
-    selectHighValueBuilderTargetCategory(
-      availableTargetCategories,
-      lockCompatibility
-    );
+  const targetCategory = selectHighValueBuilderTargetCategory(
+    availableTargetCategories,
+    lockCompatibility,
+  );
 
   if (!targetCategory) {
     return [];
@@ -1246,10 +1140,7 @@ const createExplicitHighValueBuilderCandidates = (
 
   const baseCandidate =
     candidates.find(
-      (candidate) =>
-        combinationToCategoryId[
-          candidate.type
-        ] === targetCategory
+      (candidate) => combinationToCategoryId[candidate.type] === targetCategory,
     ) ?? null;
 
   if (!baseCandidate) {
@@ -1259,28 +1150,26 @@ const createExplicitHighValueBuilderCandidates = (
   const generated: CandidateCombination[] = [];
 
   for (const pattern of HIGH_VALUE_BUILDER_PATTERNS) {
+    if (targetCategory === "ctyri_dva" && pattern.some((value) => value < 5)) {
+      continue;
+    }
+
     const lockIndices = getHighValuePatternIndices(
       pattern,
       currentDice,
-      fixedLocks
+      fixedLocks,
     );
 
     if (!lockIndices) {
       continue;
     }
 
-    const lockValues = lockIndices.map(
-      (index) => currentDice[index]
-    );
-    const lockValueSum = lockValues.reduce(
-      (sum, value) => sum + value,
-      0
-    );
+    const lockValues = lockIndices.map((index) => currentDice[index]);
+    const lockValueSum = lockValues.reduce((sum, value) => sum + value, 0);
 
     generated.push({
       ...baseCandidate,
-      highValueBuilderGeneratedFromSingleDie:
-        pattern.length === 1,
+      highValueBuilderGeneratedFromSingleDie: pattern.length === 1,
       highValueBuilderGeneratedFromPattern: true,
       highValueBuilderPattern: [...pattern],
       highValueBuilderValues: lockValues,
@@ -1294,28 +1183,18 @@ const createExplicitHighValueBuilderCandidates = (
       safeLockedDiceIndices: lockIndices,
       lockValues,
       lockValueSum,
-      lockMinValue:
-        lockValues.length > 0
-          ? Math.min(...lockValues)
-          : 0,
+      lockMinValue: lockValues.length > 0 ? Math.min(...lockValues) : 0,
       lockRecommendation: lockValues.join(","),
       currentProgress: lockValues.length,
       completionChance: Number(
-        Math.max(
-          0,
-          Math.min(1, lockValues.length / 6)
-        ).toFixed(2)
+        Math.max(0, Math.min(1, lockValues.length / 6)).toFixed(2),
       ),
-      remainingRollsFit: Math.max(
-        0,
-        (remainingRolls ?? 0) - 1
-      ),
+      remainingRollsFit: Math.max(0, (remainingRolls ?? 0) - 1),
       expectedNextTurnValue: Math.max(
         baseCandidate.expectedNextTurnValue,
-        lockValueSum
+        lockValueSum,
       ),
-      validationReason:
-        "high-value-pattern-builder-generated",
+      validationReason: "high-value-pattern-builder-generated",
     });
   }
 
@@ -1325,7 +1204,7 @@ const createExplicitHighValueBuilderCandidates = (
 const getProjectedScore = (
   templateScore: number,
   currentMatchCount: number,
-  totalRequired: number
+  totalRequired: number,
 ): number => {
   const missing = totalRequired - currentMatchCount;
   if (missing <= 0) {
@@ -1337,7 +1216,7 @@ const getProjectedScore = (
 };
 
 const getTemplatesForCombination = (
-  combinationType: CombinationType
+  combinationType: CombinationType,
 ): CombinationTemplate[] => {
   switch (combinationType) {
     case "Generál":
@@ -1362,19 +1241,14 @@ const getTemplatesForCombination = (
 
     case "Čtyři-dvě": {
       const templates: CombinationTemplate[] = [];
-      for (let four = 1; four <= 6; four += 1) {
-        for (let two = 1; two <= 6; two += 1) {
-          if (two === four) {
-            continue;
-          }
-          templates.push({
-            requirements: [
-              { value: four, count: 4 },
-              { value: two, count: 2 },
-            ],
-            templateScore: four * 4 + two * 2,
-          });
-        }
+      for (let four = 5; four <= 6; four += 1) {
+        templates.push({
+          requirements: [
+            { value: four, count: 4 },
+            { value: 4, count: 2 },
+          ],
+          templateScore: four * 4 + 4 * 2,
+        });
       }
       return templates;
     }
@@ -1398,24 +1272,15 @@ const getTemplatesForCombination = (
     case "Dvojice": {
       const templates: CombinationTemplate[] = [];
       for (let first = 1; first <= 6; first += 1) {
-        for (
-          let second = first + 1;
-          second <= 6;
-          second += 1
-        ) {
-          for (
-            let third = second + 1;
-            third <= 6;
-            third += 1
-          ) {
+        for (let second = first + 1; second <= 6; second += 1) {
+          for (let third = second + 1; third <= 6; third += 1) {
             templates.push({
               requirements: [
                 { value: first, count: 2 },
                 { value: second, count: 2 },
                 { value: third, count: 2 },
               ],
-              templateScore:
-                first * 2 + second * 2 + third * 2,
+              templateScore: first * 2 + second * 2 + third * 2,
             });
           }
         }
@@ -1428,11 +1293,7 @@ const getTemplatesForCombination = (
       for (let triple = 1; triple <= 6; triple += 1) {
         for (let pair = 1; pair <= 6; pair += 1) {
           for (let single = 1; single <= 6; single += 1) {
-            if (
-              triple === pair ||
-              pair === single ||
-              triple === single
-            ) {
+            if (triple === pair || pair === single || triple === single) {
               continue;
             }
             if (!(triple > pair && pair > single)) {
@@ -1445,8 +1306,7 @@ const getTemplatesForCombination = (
                 { value: pair, count: 2 },
                 { value: single, count: 1 },
               ],
-              templateScore:
-                triple * 3 + pair * 2 + single,
+              templateScore: triple * 3 + pair * 2 + single,
             });
           }
         }
@@ -1459,11 +1319,7 @@ const getTemplatesForCombination = (
       for (let triple = 1; triple <= 6; triple += 1) {
         for (let pair = 1; pair <= 6; pair += 1) {
           for (let single = 1; single <= 6; single += 1) {
-            if (
-              triple === pair ||
-              pair === single ||
-              triple === single
-            ) {
+            if (triple === pair || pair === single || triple === single) {
               continue;
             }
             if (!(triple < pair && pair < single)) {
@@ -1476,8 +1332,7 @@ const getTemplatesForCombination = (
                 { value: pair, count: 2 },
                 { value: single, count: 1 },
               ],
-              templateScore:
-                triple * 3 + pair * 2 + single,
+              templateScore: triple * 3 + pair * 2 + single,
             });
           }
         }
@@ -1498,12 +1353,11 @@ const evaluateCombination = (
   allowRewrite: boolean,
   availableCategoryCount: number,
   minTemplateMatchCount: number,
-  remainingRolls?: number
+  fixedLocks: boolean[],
+  remainingRolls?: number,
 ): CandidateCombination | null => {
   const byValue = getIndicesByValue(dice);
-  const templates = getTemplatesForCombination(
-    combinationType
-  );
+  const templates = getTemplatesForCombination(combinationType);
 
   if (templates.length === 0) {
     return null;
@@ -1521,40 +1375,39 @@ const evaluateCombination = (
     | undefined;
 
   templates.forEach((template) => {
+    if (
+      !isTemplateCompatibleWithFixedLocks(
+        template.requirements,
+        dice,
+        fixedLocks,
+      )
+    ) {
+      return;
+    }
+
     let currentMatchCount = 0;
     const relevantIndices: number[] = [];
 
-    template.requirements.forEach(
-      ({ value, count }) => {
-        const matchingIndices =
-          byValue[value] || [];
-        const matchedCount = Math.min(
-          matchingIndices.length,
-          count
-        );
+    template.requirements.forEach(({ value, count }) => {
+      const matchingIndices = byValue[value] || [];
+      const matchedCount = Math.min(matchingIndices.length, count);
 
-        currentMatchCount += matchedCount;
-        relevantIndices.push(
-          ...matchingIndices.slice(0, matchedCount)
-        );
-      }
-    );
+      currentMatchCount += matchedCount;
+      relevantIndices.push(...matchingIndices.slice(0, matchedCount));
+    });
 
     const missingCount = 6 - currentMatchCount;
     const projectedScore = getProjectedScore(
       template.templateScore,
       currentMatchCount,
-      6
+      6,
     );
 
     if (
       !bestTemplate ||
-      currentMatchCount >
-        bestTemplate.currentMatchCount ||
-      (currentMatchCount ===
-        bestTemplate.currentMatchCount &&
-        projectedScore >
-          bestTemplate.projectedScore)
+      currentMatchCount > bestTemplate.currentMatchCount ||
+      (currentMatchCount === bestTemplate.currentMatchCount &&
+        projectedScore > bestTemplate.projectedScore)
     ) {
       bestTemplate = {
         relevantIndices,
@@ -1571,50 +1424,32 @@ const evaluateCombination = (
     return null;
   }
 
-  if (
-    bestTemplate.currentMatchCount <
-    minTemplateMatchCount
-  ) {
+  if (bestTemplate.currentMatchCount < minTemplateMatchCount) {
     return null;
   }
 
-  const isComplete =
-    bestTemplate.missingCount === 0;
-
-  if (
-    (combinationType === "Pyramida" ||
-      combinationType === "Hrozen") &&
-    !isComplete
-  ) {
-    return null;
-  }
+  const isComplete = bestTemplate.missingCount === 0;
 
   const absoluteScoreSignal = isComplete
     ? dice.reduce((sum, value) => sum + value, 0)
     : bestTemplate.projectedScore;
-  const maxPossibleScore =
-    combinationMaxScore[combinationType];
+  const maxPossibleScore = combinationMaxScore[combinationType];
   const targetPattern = `${combinationType}:${bestTemplate.requirements
     .map(({ value, count }) => `${value}x${count}`)
     .join("|")}`;
-  const requiredDicePattern =
-    bestTemplate.requirements.map(
-      ({ value, count }) => `${value}x${count}`
-    );
+  const requiredDicePattern = bestTemplate.requirements.map(
+    ({ value, count }) => `${value}x${count}`,
+  );
   const completionChance = Number(
-    Math.max(0, Math.min(1, bestTemplate.currentMatchCount / 6)).toFixed(2)
+    Math.max(0, Math.min(1, bestTemplate.currentMatchCount / 6)).toFixed(2),
   );
   const remainingRollsFit =
     typeof remainingRolls === "number"
-      ? Math.max(
-          0,
-          remainingRolls - Math.max(0, bestTemplate.missingCount - 1)
-        )
+      ? Math.max(0, remainingRolls - Math.max(0, bestTemplate.missingCount - 1))
       : 0;
 
   let canWrite = true;
-  let writeState: "free" | "rewrite" =
-    "free";
+  let writeState: "free" | "rewrite" = "free";
   let rewriteGainSignal = 0;
 
   if (existingScore !== undefined) {
@@ -1626,8 +1461,7 @@ const evaluateCombination = (
       if (maxPossibleScore <= existingScore) {
         canWrite = false;
       } else {
-        rewriteGainSignal =
-          absoluteScoreSignal - existingScore;
+        rewriteGainSignal = absoluteScoreSignal - existingScore;
         if (isComplete && rewriteGainSignal <= 0) {
           canWrite = false;
         }
@@ -1639,34 +1473,21 @@ const evaluateCombination = (
     return null;
   }
 
-  const progressRatio =
-    bestTemplate.currentMatchCount / 6;
-  const writeBonus =
-    writeState === "free" ? 220 : 130;
+  const progressRatio = bestTemplate.currentMatchCount / 6;
+  const writeBonus = writeState === "free" ? 220 : 130;
   const rewriteImprovementBonus =
-    writeState === "rewrite"
-      ? Math.max(0, rewriteGainSignal) * 8
-      : 0;
-  const categoryBonus =
-    combinationPriority[combinationType] * 25;
-  const completionBonus = isComplete
-    ? 120
-    : progressRatio * 70;
+    writeState === "rewrite" ? Math.max(0, rewriteGainSignal) * 8 : 0;
+  const categoryBonus = combinationPriority[combinationType] * 25;
+  const completionBonus = isComplete ? 120 : progressRatio * 70;
   const potentialBonus =
-    Math.max(
-      0,
-      maxPossibleScore - absoluteScoreSignal
-    ) * 1.2;
+    Math.max(0, maxPossibleScore - absoluteScoreSignal) * 1.2;
 
   let rollPressure = 0;
   if (typeof remainingRolls === "number") {
     if (remainingRolls <= 1) {
-      rollPressure = isComplete
-        ? 80
-        : -bestTemplate.missingCount * 28;
+      rollPressure = isComplete ? 80 : -bestTemplate.missingCount * 28;
     } else {
-      rollPressure =
-        bestTemplate.missingCount <= 2 ? 15 : 0;
+      rollPressure = bestTemplate.missingCount <= 2 ? 15 : 0;
     }
   }
 
@@ -1682,18 +1503,12 @@ const evaluateCombination = (
       phaseAdjustment += 40;
     }
 
-    if (
-      combinationType === "Generál" &&
-      bestTemplate.currentMatchCount >= 1
-    ) {
+    if (combinationType === "Generál" && bestTemplate.currentMatchCount >= 1) {
       phaseAdjustment += 75;
     }
   }
 
-  if (
-    combinationType === "Postupka" &&
-    bestTemplate.currentMatchCount >= 4
-  ) {
+  if (combinationType === "Postupka" && bestTemplate.currentMatchCount >= 4) {
     phaseAdjustment += 140;
   }
 
@@ -1718,26 +1533,22 @@ const evaluateCombination = (
     lockRecommendation: "derive-after-validation",
     rejectedSingleValueHeuristic: false,
     fallbackOneFiveEligible: false,
-    currentMatchCount:
-      bestTemplate.currentMatchCount,
+    currentMatchCount: bestTemplate.currentMatchCount,
     totalRequired: 6,
     missingCount: bestTemplate.missingCount,
     isComplete,
-    projectedScore:
-      bestTemplate.projectedScore,
+    projectedScore: bestTemplate.projectedScore,
     absoluteScoreSignal,
     maxPossibleScore,
     canWrite,
     writeState,
     rewriteGainSignal,
-    relevantIndices:
-      bestTemplate.relevantIndices,
+    relevantIndices: bestTemplate.relevantIndices,
     safeLockedDiceIndices: [],
     lockValues: [],
     lockValueSum: 0,
     lockMinValue: 0,
-    expectedNextTurnValue:
-      bestTemplate.projectedScore,
+    expectedNextTurnValue: bestTemplate.projectedScore,
     evaluationBreakdown: {
       writeBonus,
       rewriteImprovementBonus,
@@ -1753,39 +1564,29 @@ const evaluateCombination = (
 
 const getAvailableCategoryCount = (
   playerScores: Record<string, number>,
-  allowRewrite: boolean
+  allowRewrite: boolean,
 ): number => {
-  return combinationTypes.reduce(
-    (count, combType) => {
-      const categoryId =
-        combinationToCategoryId[combType];
-      const existingScore =
-        playerScores[categoryId];
+  return combinationTypes.reduce((count, combType) => {
+    const categoryId = combinationToCategoryId[combType];
+    const existingScore = playerScores[categoryId];
 
-      if (existingScore === undefined) {
-        return count + 1;
-      }
+    if (existingScore === undefined) {
+      return count + 1;
+    }
 
-      if (!allowRewrite) {
-        return count;
-      }
-
-      if (
-        combinationMaxScore[combType] >
-        existingScore
-      ) {
-        return count + 1;
-      }
-
+    if (!allowRewrite) {
       return count;
-    },
-    0
-  );
+    }
+
+    if (combinationMaxScore[combType] > existingScore) {
+      return count + 1;
+    }
+
+    return count;
+  }, 0);
 };
 
-const getPhasePolicy = (
-  availableCategoryCount: number
-): PhasePolicy => {
+const getPhasePolicy = (availableCategoryCount: number): PhasePolicy => {
   if (availableCategoryCount >= 6) {
     return {
       minTemplateMatchCount: 2,
@@ -1826,51 +1627,32 @@ const getPhasePolicy = (
 
 const getProjectedMaxScoreFromLock = (
   candidate: CandidateCombination,
-  remainingRolls: number | undefined
+  remainingRolls: number | undefined,
 ): number => {
-  const unlockedSlots =
-    Math.max(
-      0,
-      6 - candidate.safeLockedDiceIndices.length
-    );
+  const unlockedSlots = Math.max(0, 6 - candidate.safeLockedDiceIndices.length);
 
   if ((remainingRolls ?? 0) <= 0) {
-    return Math.min(
-      candidate.maxPossibleScore,
-      candidate.absoluteScoreSignal
-    );
+    return Math.min(candidate.maxPossibleScore, candidate.absoluteScoreSignal);
   }
 
-  const perSlotPotential =
-    (remainingRolls ?? 0) >= 2 ? 6 : 5;
+  const perSlotPotential = (remainingRolls ?? 0) >= 2 ? 6 : 5;
 
-  const projected =
-    candidate.lockValueSum +
-    unlockedSlots * perSlotPotential;
+  const projected = candidate.lockValueSum + unlockedSlots * perSlotPotential;
 
-  return Math.min(
-    candidate.maxPossibleScore,
-    projected
-  );
+  return Math.min(candidate.maxPossibleScore, projected);
 };
 
 const getMinimumAcceptableScore = (
   remainingRolls: number | undefined,
-  context: MatchContext
+  context: MatchContext,
 ): number =>
   Math.max(
     8,
-    context.endgameMode
-      ? 8
-      : (remainingRolls ?? 0) >= 3
-      ? 14
-      : 10,
-    context.riskBecauseBehind ? 10 : 0
+    context.endgameMode ? 8 : (remainingRolls ?? 0) >= 3 ? 14 : 10,
+    context.riskBecauseBehind ? 10 : 0,
   );
 
-const isLowTripleBase = (
-  candidate: CandidateCombination
-): boolean => {
+const isLowTripleBase = (candidate: CandidateCombination): boolean => {
   if (
     candidate.safeLockedDiceIndices.length < 3 ||
     candidate.lockValues.length < 3
@@ -1883,12 +1665,11 @@ const isLowTripleBase = (
       acc[value] = (acc[value] || 0) + 1;
       return acc;
     },
-    {} as Record<number, number>
+    {} as Record<number, number>,
   );
 
   return Object.entries(counts).some(
-    ([valueText, count]) =>
-      Number(valueText) <= 3 && count >= 3
+    ([valueText, count]) => Number(valueText) <= 3 && count >= 3,
   );
 };
 
@@ -1898,7 +1679,7 @@ const shouldRejectLowTriplePreLock = (
   minimumAcceptableScore: number,
   remainingRolls: number | undefined,
   context: MatchContext,
-  availableCategoryCount: number
+  availableCategoryCount: number,
 ): {
   reject: boolean;
   lowTriplePenaltyApplied: boolean;
@@ -1914,22 +1695,17 @@ const shouldRejectLowTriplePreLock = (
     };
   }
 
-  const isEarlyOrMidGame =
-    !context.endgameMode &&
-    availableCategoryCount >= 3;
-  const hasRiskWindow =
-    (remainingRolls ?? 0) >= 2;
-  const lowTriplePenaltyApplied =
-    isEarlyOrMidGame && hasRiskWindow;
+  const isEarlyOrMidGame = !context.endgameMode && availableCategoryCount >= 3;
+  const hasRiskWindow = (remainingRolls ?? 0) >= 2;
+  const lowTriplePenaltyApplied = isEarlyOrMidGame && hasRiskWindow;
 
-  const lowTripleExceptionReason =
-    context.endgameMode
-      ? "endgame"
-      : (remainingRolls ?? 0) <= 1
+  const lowTripleExceptionReason = context.endgameMode
+    ? "endgame"
+    : (remainingRolls ?? 0) <= 1
       ? "last-roll"
       : availableCategoryCount <= 1
-      ? "no-better-legal-option"
-      : null;
+        ? "no-better-legal-option"
+        : null;
 
   if (lowTripleExceptionReason) {
     return {
@@ -1943,28 +1719,61 @@ const shouldRejectLowTriplePreLock = (
     return {
       reject: true,
       lowTriplePenaltyApplied: true,
-      lowTripleAcceptedReason:
-        "rejected-below-minimum-potential",
+      lowTripleAcceptedReason: "rejected-below-minimum-potential",
     };
   }
 
   return {
     reject: false,
     lowTriplePenaltyApplied,
-    lowTripleAcceptedReason:
-      "accepted-meets-minimum-potential",
+    lowTripleAcceptedReason: "accepted-meets-minimum-potential",
   };
 };
 
-const shouldDebugAIDecision =
-  process.env.NODE_ENV !== "production";
+const shouldDebugAIDecision = process.env.NODE_ENV !== "production";
+
+const tempAIDecisionAuditStorageKey = "heroDiceTempAiDecisionAudit";
+const tempAIDecisionAuditMaxEntries = 60;
+const tempAIDecisionAuditTtlMs = 1000 * 60 * 60 * 6;
+
+const appendTempAIDecisionAudit = (entry: Record<string, unknown>) => {
+  if (!shouldDebugAIDecision || typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const now = Date.now();
+    const existingRaw = window.localStorage.getItem(
+      tempAIDecisionAuditStorageKey,
+    );
+    const existing = existingRaw ? (JSON.parse(existingRaw) as unknown[]) : [];
+
+    const filtered = existing.filter((item) => {
+      if (!item || typeof item !== "object") {
+        return false;
+      }
+
+      const timestamp = (item as { timestampMs?: unknown }).timestampMs;
+      return (
+        typeof timestamp === "number" &&
+        now - timestamp <= tempAIDecisionAuditTtlMs
+      );
+    });
+
+    const next = [...filtered, entry].slice(-tempAIDecisionAuditMaxEntries);
+    window.localStorage.setItem(
+      tempAIDecisionAuditStorageKey,
+      JSON.stringify(next),
+    );
+  } catch {
+    // Best-effort temp diagnostics only.
+  }
+};
 
 const getCandidateStrategicStrength = (
-  candidate: CandidateCombination
+  candidate: CandidateCombination,
 ): number => {
-  const completeBonus = candidate.isComplete
-    ? 900
-    : 0;
+  const completeBonus = candidate.isComplete ? 900 : 0;
 
   return (
     completeBonus +
@@ -1983,10 +1792,9 @@ const computeLegalPathsForCandidate = (
   availableTargetCategories: string[],
   lockCompatibility: Record<string, boolean>,
   targetType: CombinationType,
-  previousTargetCategory: string | null
+  previousTargetCategory: string | null,
 ): LegalPathsAnalysis => {
-  const candidateTargetCategory =
-    combinationToCategoryId[targetType] ?? null;
+  const candidateTargetCategory = combinationToCategoryId[targetType] ?? null;
 
   // Check which categories remain writable after this lock
   const liveTargetCategories: string[] = [];
@@ -2000,10 +1808,7 @@ const computeLegalPathsForCandidate = (
       targetType === "Postupka";
 
     // After this lock is applied, can we still write to this category?
-    if (
-      isStructural &&
-      categoryId !== candidateTargetCategory
-    ) {
+    if (isStructural && categoryId !== candidateTargetCategory) {
       // Structural locks (Pyramida, Hrozen, Postupka) are specific
       // Check if this category remains compatible
       if (lockCompatibility[categoryId]) {
@@ -2031,14 +1836,12 @@ const computeLegalPathsForCandidate = (
   const primaryPathBlocked =
     previousTargetCategory !== null &&
     deadTargetCategories.includes(previousTargetCategory);
-  const alternativePathsAvailable =
-    liveTargetCategories.length >= 2;
+  const alternativePathsAvailable = liveTargetCategories.length >= 2;
 
   // Flexibility score: based on number of remaining legal paths
   // Penalty if we killed the primary path
   let flexibilityScore =
-    liveTargetCategories.length * 85 -
-    deadTargetCategories.length * 120;
+    liveTargetCategories.length * 85 - deadTargetCategories.length * 120;
 
   if (primaryPathBlocked && previousTargetCategory) {
     flexibilityScore -= 180;
@@ -2070,31 +1873,26 @@ const getCandidateStrategyScore = (
   playerScores: Record<string, number>,
   legalMoveContext: AILegalMoveContext,
   allowRewrite: boolean,
-  previousTargetCategory: string | null = null
+  previousTargetCategory: string | null = null,
 ): {
   total: number;
   breakdown: StrategyScoreBreakdown;
 } => {
-  const categoryId =
-    combinationToCategoryId[candidate.type];
+  const categoryId = combinationToCategoryId[candidate.type];
   const existingScore =
-    categoryId !== undefined
-      ? playerScores[categoryId]
-      : undefined;
+    categoryId !== undefined ? playerScores[categoryId] : undefined;
 
   // Compute legal paths after this lock
-  const legalPathsAnalysis =
-    computeLegalPathsForCandidate(
-      candidate,
-      legalMoveContext.availableTargetCategories,
-      legalMoveContext.lockCompatibility,
-      candidate.type,
-      previousTargetCategory
-    );
+  const legalPathsAnalysis = computeLegalPathsForCandidate(
+    candidate,
+    legalMoveContext.availableTargetCategories,
+    legalMoveContext.lockCompatibility,
+    candidate.type,
+    previousTargetCategory,
+  );
 
   const baseScoreValue = candidate.maxPossibleScore;
-  const expectedScoreValue =
-    candidate.projectedScore;
+  const expectedScoreValue = candidate.projectedScore;
   const targetPatternBonus =
     (candidate.currentProgress ?? candidate.currentMatchCount) * 48 +
     (candidate.isComplete ? 120 : 0);
@@ -2103,29 +1901,25 @@ const getCandidateStrategyScore = (
   const completionProbability =
     candidate.completionChance ??
     Number(
-      Math.max(0, Math.min(1, candidate.currentMatchCount / 6)).toFixed(2)
+      Math.max(0, Math.min(1, candidate.currentMatchCount / 6)).toFixed(2),
     );
   const remainingRollsModifier =
     typeof remainingRolls === "number"
       ? Math.max(0, remainingRolls) *
-        Math.max(0, 6 - candidate.missingCount) * 3
+        Math.max(0, 6 - candidate.missingCount) *
+        3
       : 0;
 
   const fixedLocksCompatibility =
     candidate.safeLockedDiceIndices.length * 10 +
-    (candidate.safeLockedDiceIndices.length === 6
-      ? 60
-      : 0);
+    (candidate.safeLockedDiceIndices.length === 6 ? 60 : 0);
 
   const categoryAvailability =
     existingScore === undefined
       ? 140
       : allowRewrite
-      ? Math.max(
-          0,
-          candidate.maxPossibleScore - existingScore
-        ) * 2 + 40
-      : -120;
+        ? Math.max(0, candidate.maxPossibleScore - existingScore) * 2 + 40
+        : -120;
 
   const scoreContextModifier =
     (candidate.currentProgress ?? candidate.currentMatchCount) * 14 +
@@ -2134,14 +1928,10 @@ const getCandidateStrategyScore = (
 
   const minimumAcceptableScore =
     candidate.minimumAcceptableScore ??
-    getMinimumAcceptableScore(
-      remainingRolls,
-      context
-    );
+    getMinimumAcceptableScore(remainingRolls, context);
 
   const minimumAcceptableScorePenalty =
-    candidate.absoluteScoreSignal <
-      minimumAcceptableScore &&
+    candidate.absoluteScoreSignal < minimumAcceptableScore &&
     !context.endgameMode &&
     (remainingRolls ?? 0) >= 2
       ? -140
@@ -2152,10 +1942,10 @@ const getCandidateStrategyScore = (
       ? 110
       : -candidate.missingCount * 24
     : context.riskBecauseBehind
-    ? candidate.missingCount <= 2
-      ? 60
-      : -20
-    : 0;
+      ? candidate.missingCount <= 2
+        ? 60
+        : -20
+      : 0;
 
   const endgameModifier = context.endgameMode
     ? candidate.isComplete
@@ -2165,8 +1955,7 @@ const getCandidateStrategyScore = (
 
   const rewriteModifier =
     candidate.writeState === "rewrite"
-      ? Math.max(0, candidate.rewriteGainSignal) * 6 +
-        20
+      ? Math.max(0, candidate.rewriteGainSignal) * 6 + 20
       : 0;
 
   const combinationBias =
@@ -2184,39 +1973,31 @@ const getCandidateStrategyScore = (
   const oneFiveFallbackPenalty =
     candidate.safeLockedDiceIndices.length === 1 &&
     candidate.lockValues.length === 1 &&
-    (candidate.lockValues[0] === 1 ||
-      candidate.lockValues[0] === 5)
+    (candidate.lockValues[0] === 1 || candidate.lockValues[0] === 5)
       ? context.endgameMode || (remainingRolls ?? 0) <= 1
         ? 0
         : -120
       : 0;
 
-  const lowValuePenalty =
-    candidate.lowValuePenaltyApplied
-      ? candidate.playModeRiskProfile === "ambitious"
-        ? -520
-        : candidate.playModeRiskProfile === "balanced"
+  const lowValuePenalty = candidate.lowValuePenaltyApplied
+    ? candidate.playModeRiskProfile === "ambitious"
+      ? -520
+      : candidate.playModeRiskProfile === "balanced"
         ? -120
         : -30
-      : 0;
+    : 0;
 
-  const earlyGamePenalty =
-    candidate.earlyGamePenalty ?? 0;
+  const earlyGamePenalty = candidate.earlyGamePenalty ?? 0;
 
-  const openOptionsScore =
-    candidate.openOptionsScore ?? 0;
+  const openOptionsScore = candidate.openOptionsScore ?? 0;
   const remainingRollsOpenStrategyBonus =
     candidate.remainingRollsOpenStrategyBonus ?? 0;
-  const tooNarrowPenalty =
-    candidate.rejectedBecauseTooNarrow
-      ? -180
-      : 0;
+  const tooNarrowPenalty = candidate.rejectedBecauseTooNarrow ? -180 : 0;
 
   const detectedCombinationModifier =
     legalMoveContext.currentCombination &&
     combinationToCategoryId[
-      legalMoveContext.currentCombination
-        .combination as CombinationType
+      legalMoveContext.currentCombination.combination as CombinationType
     ] === categoryId
       ? legalMoveContext.writableSaveCandidate.canSave
         ? 120
@@ -2273,15 +2054,14 @@ const getCandidateStrategyScore = (
       remainingRollsOpenStrategyBonus,
       tooNarrowPenalty,
       detectedCombinationModifier,
-      legalPathsFlexibilityScore:
-        legalPathsAnalysis.legalPathsFlexibilityScore,
+      legalPathsFlexibilityScore: legalPathsAnalysis.legalPathsFlexibilityScore,
     },
   };
 };
 
 const compareCandidatesByPolicy = (
   a: CandidateCombination,
-  b: CandidateCombination
+  b: CandidateCombination,
 ): number => {
   const strategyDiff =
     (b.strategyScore ?? b.evaluationScore) -
@@ -2295,39 +2075,33 @@ const compareCandidatesByPolicy = (
   const isCloseQuality =
     Math.abs(
       (a.strategyScore ?? a.evaluationScore) -
-        (b.strategyScore ?? b.evaluationScore)
+        (b.strategyScore ?? b.evaluationScore),
     ) <= closeScoreWindow;
 
   if (isCloseQuality) {
     const strengthDiff =
-      getCandidateStrategicStrength(b) -
-      getCandidateStrategicStrength(a);
+      getCandidateStrategicStrength(b) - getCandidateStrategicStrength(a);
     if (strengthDiff !== 0) {
       return strengthDiff;
     }
 
     const lockCountDiff =
-      b.safeLockedDiceIndices.length -
-      a.safeLockedDiceIndices.length;
+      b.safeLockedDiceIndices.length - a.safeLockedDiceIndices.length;
     if (lockCountDiff !== 0) {
       return lockCountDiff;
     }
 
-    const expectedTurnDiff =
-      b.expectedNextTurnValue -
-      a.expectedNextTurnValue;
+    const expectedTurnDiff = b.expectedNextTurnValue - a.expectedNextTurnValue;
     if (expectedTurnDiff !== 0) {
       return expectedTurnDiff;
     }
 
-    const lockValueSumDiff =
-      b.lockValueSum - a.lockValueSum;
+    const lockValueSumDiff = b.lockValueSum - a.lockValueSum;
     if (lockValueSumDiff !== 0) {
       return lockValueSumDiff;
     }
 
-    const lockMinDiff =
-      b.lockMinValue - a.lockMinValue;
+    const lockMinDiff = b.lockMinValue - a.lockMinValue;
     if (lockMinDiff !== 0) {
       return lockMinDiff;
     }
@@ -2341,24 +2115,12 @@ const compareCandidatesByPolicy = (
     return b.evaluationScore - a.evaluationScore;
   }
 
-  if (
-    a.absoluteScoreSignal !==
-    b.absoluteScoreSignal
-  ) {
-    return (
-      b.absoluteScoreSignal -
-      a.absoluteScoreSignal
-    );
+  if (a.absoluteScoreSignal !== b.absoluteScoreSignal) {
+    return b.absoluteScoreSignal - a.absoluteScoreSignal;
   }
 
-  if (
-    a.currentMatchCount !==
-    b.currentMatchCount
-  ) {
-    return (
-      b.currentMatchCount -
-      a.currentMatchCount
-    );
+  if (a.currentMatchCount !== b.currentMatchCount) {
+    return b.currentMatchCount - a.currentMatchCount;
   }
 
   if (a.lockValueSum !== b.lockValueSum) {
@@ -2376,38 +2138,30 @@ const compareCandidatesByPolicy = (
 
 const explainWhyWinnerBeats = (
   winner: CandidateCombination,
-  loser: CandidateCombination
+  loser: CandidateCombination,
 ): string => {
   const closeScoreWindow = 35;
   const isCloseQuality =
     Math.abs(
-      (winner.strategyScore ??
-        winner.evaluationScore) -
-        (loser.strategyScore ??
-          loser.evaluationScore)
+      (winner.strategyScore ?? winner.evaluationScore) -
+        (loser.strategyScore ?? loser.evaluationScore),
     ) <= closeScoreWindow;
 
   if (isCloseQuality) {
-    const winnerStrength =
-      getCandidateStrategicStrength(winner);
-    const loserStrength =
-      getCandidateStrategicStrength(loser);
+    const winnerStrength = getCandidateStrategicStrength(winner);
+    const loserStrength = getCandidateStrategicStrength(loser);
 
     if (winnerStrength !== loserStrength) {
       return "higher strategic strength";
     }
 
     if (
-      winner.safeLockedDiceIndices.length !==
-      loser.safeLockedDiceIndices.length
+      winner.safeLockedDiceIndices.length !== loser.safeLockedDiceIndices.length
     ) {
       return "more locked dice";
     }
 
-    if (
-      winner.expectedNextTurnValue !==
-      loser.expectedNextTurnValue
-    ) {
+    if (winner.expectedNextTurnValue !== loser.expectedNextTurnValue) {
       return "higher expected next-turn value";
     }
 
@@ -2431,17 +2185,11 @@ const explainWhyWinnerBeats = (
     return "higher evaluation score";
   }
 
-  if (
-    winner.absoluteScoreSignal !==
-    loser.absoluteScoreSignal
-  ) {
+  if (winner.absoluteScoreSignal !== loser.absoluteScoreSignal) {
     return "higher absolute score signal";
   }
 
-  if (
-    winner.currentMatchCount !==
-    loser.currentMatchCount
-  ) {
+  if (winner.currentMatchCount !== loser.currentMatchCount) {
     return "higher match count";
   }
 
@@ -2453,12 +2201,10 @@ const logAIDecisionAudit = (
   remainingRolls: number | undefined,
   matchContext: MatchContext,
   auditEntries: CandidateAuditEntry[],
-  selected:
-    | CandidateCombination
-    | null,
+  selected: CandidateCombination | null,
   finalLockedDiceIndices: number[],
   rankedCandidates: CandidateCombination[],
-  extra?: Record<string, unknown>
+  extra?: Record<string, unknown>,
 ) => {
   if (!shouldDebugAIDecision) {
     return;
@@ -2469,533 +2215,332 @@ const logAIDecisionAudit = (
     remainingRolls,
     matchContext,
     candidates: auditEntries,
-    generatedCombinationCandidates:
-      rankedCandidates.map((candidate) => ({
-        candidateOrder:
-          candidate.candidateOrder,
-        type: candidate.type,
-        seedCandidateGenerated:
-          candidate.seedCandidateGenerated,
-        seedTargetCategory:
-          candidate.seedTargetCategory,
-        seedAcceptedBecauseHighValue:
-          candidate.seedAcceptedBecauseHighValue,
-        seedAcceptedBecauseStraightProgress:
-          candidate.seedAcceptedBecauseStraightProgress,
-        rejectedBecauseOnlyWaitingForPairDisabled:
-          candidate.rejectedBecauseOnlyWaitingForPairDisabled,
-        buildProgressFromSeed:
-          candidate.buildProgressFromSeed,
-        seedLockApplied:
-          candidate.seedLockApplied,
-        targetPattern:
-          candidate.targetPattern,
-        requiredDicePattern:
-          candidate.requiredDicePattern,
-        currentProgress:
-          candidate.currentProgress,
-        completionChance:
-          candidate.completionChance,
-        remainingRollsFit:
-          candidate.remainingRollsFit,
-        lockRecommendation:
-          candidate.lockRecommendation,
-        minimumAcceptableScore:
-          candidate.minimumAcceptableScore,
-        playModeRiskModifier:
-          candidate.playModeRiskModifier,
-        scoreContextModifier:
-          candidate.scoreContextModifier,
-        targetScorePotential:
-          candidate.targetScorePotential,
-        missingPattern:
-          candidate.missingPattern,
-        openOptionsScore:
-          candidate.openOptionsScore,
-        openOptions:
-          candidate.openOptions,
-        scoreboardFilteredOptions:
-          candidate.scoreboardFilteredOptions,
-        rejectedBecauseTooNarrow:
-          candidate.rejectedBecauseTooNarrow,
-        selectedBecauseMultiTargetPotential:
-          candidate.selectedBecauseMultiTargetPotential,
-        remainingRollsOpenStrategyBonus:
-          candidate.remainingRollsOpenStrategyBonus,
-        rejectedBeforeStrategy:
-          candidate.rejectedBeforeStrategy,
-        categoryRejectedBecauseTooLow:
-          candidate.categoryRejectedBecauseTooLow,
-        earlyGeneralRejected:
-          candidate.earlyGeneralRejected,
-        earlyGamePenalty:
-          candidate.earlyGamePenalty,
-        rejectedSingleValueHeuristic:
-          candidate.rejectedSingleValueHeuristic,
-        fallbackOneFiveEligible:
-          candidate.fallbackOneFiveEligible,
-        rejectedBecauseAlreadyScored:
-          candidate.rejectedBecauseAlreadyScored,
-        rewriteAllowed:
-          candidate.rewriteAllowed,
-        diceValuePolicy:
-          candidate.diceValuePolicy,
-        playModeRiskProfile:
-          candidate.playModeRiskProfile,
-        lowValuePenaltyApplied:
-          candidate.lowValuePenaltyApplied,
-        lowTripleExceptionReason:
-          candidate.lowTripleExceptionReason,
-        structuralLowBaseRejected:
-          candidate.structuralLowBaseRejected,
-        rejectedBecauseWeakStructuralSeed:
-          candidate.rejectedBecauseWeakStructuralSeed,
-        seedLockRejectedBeforeBuilderMerge:
-          candidate.seedLockRejectedBeforeBuilderMerge,
-        structuralTargetCategory:
-          candidate.structuralTargetCategory,
-        oneFiveFallbackAttempted:
-          candidate.oneFiveFallbackAttempted,
-        oneFiveFallbackBlocked:
-          candidate.oneFiveFallbackBlocked,
-        targetSpecificLockBuilderUsed:
-          candidate.targetSpecificLockBuilderUsed,
-        targetProgressBeforeRoll:
-          candidate.targetProgressBeforeRoll,
-        targetProgressAfterRoll:
-          candidate.targetProgressAfterRoll,
-        noProgressReevaluationTriggered:
-          candidate.noProgressReevaluationTriggered,
-        rejectedBeforeLockBecauseNotWritable:
-          candidate.rejectedBeforeLockBecauseNotWritable,
-        candidateDice:
-          candidate.candidateDice,
-        candidateCombinationFromGameValidator:
-          candidate.candidateCombinationFromGameValidator,
-        candidateCombinationCategoryId:
-          candidate.candidateCombinationCategoryId,
-        rejectedBecauseNoCombination:
-          candidate.rejectedBecauseNoCombination,
-        rejectedBecauseIncompatibleWithFixedLocks:
-          candidate.rejectedBecauseIncompatibleWithFixedLocks,
-        rejectedBecauseFullLockWithoutValidCombination:
-          candidate.rejectedBecauseFullLockWithoutValidCombination,
-        selectedCandidateValidationResult:
-          candidate.selectedCandidateValidationResult,
-        validationReason:
-          candidate.validationReason,
-        strategyScore:
-          candidate.strategyScore,
-        strategyBreakdown:
-          candidate.strategyBreakdown,
-        evaluationScore:
-          candidate.evaluationScore,
-        currentMatchCount:
-          candidate.currentMatchCount,
-        missingCount:
-          candidate.missingCount,
-        lockValues:
-          candidate.lockValues,
-        safeLockedDiceIndices:
-          candidate.safeLockedDiceIndices,
-        expectedNextTurnValue:
-          candidate.expectedNextTurnValue,
-        evaluationBreakdown:
-          candidate.evaluationBreakdown,
-      })),
-    rankedCandidates: rankedCandidates.map(
-      (candidate) => ({
-        candidateOrder:
-          candidate.candidateOrder,
-        type: candidate.type,
-        seedCandidateGenerated:
-          candidate.seedCandidateGenerated,
-        seedTargetCategory:
-          candidate.seedTargetCategory,
-        seedAcceptedBecauseHighValue:
-          candidate.seedAcceptedBecauseHighValue,
-        seedAcceptedBecauseStraightProgress:
-          candidate.seedAcceptedBecauseStraightProgress,
-        rejectedBecauseOnlyWaitingForPairDisabled:
-          candidate.rejectedBecauseOnlyWaitingForPairDisabled,
-        buildProgressFromSeed:
-          candidate.buildProgressFromSeed,
-        seedLockApplied:
-          candidate.seedLockApplied,
-        targetPattern:
-          candidate.targetPattern,
-        requiredDicePattern:
-          candidate.requiredDicePattern,
-        currentProgress:
-          candidate.currentProgress,
-        completionChance:
-          candidate.completionChance,
-        remainingRollsFit:
-          candidate.remainingRollsFit,
-        lockRecommendation:
-          candidate.lockRecommendation,
-        minimumAcceptableScore:
-          candidate.minimumAcceptableScore,
-        playModeRiskModifier:
-          candidate.playModeRiskModifier,
-        scoreContextModifier:
-          candidate.scoreContextModifier,
-        targetScorePotential:
-          candidate.targetScorePotential,
-        missingPattern:
-          candidate.missingPattern,
-        openOptionsScore:
-          candidate.openOptionsScore,
-        openOptions:
-          candidate.openOptions,
-        scoreboardFilteredOptions:
-          candidate.scoreboardFilteredOptions,
-        rejectedBecauseTooNarrow:
-          candidate.rejectedBecauseTooNarrow,
-        selectedBecauseMultiTargetPotential:
-          candidate.selectedBecauseMultiTargetPotential,
-        remainingRollsOpenStrategyBonus:
-          candidate.remainingRollsOpenStrategyBonus,
-        rejectedBeforeStrategy:
-          candidate.rejectedBeforeStrategy,
-        categoryRejectedBecauseTooLow:
-          candidate.categoryRejectedBecauseTooLow,
-        earlyGeneralRejected:
-          candidate.earlyGeneralRejected,
-        earlyGamePenalty:
-          candidate.earlyGamePenalty,
-        rejectedSingleValueHeuristic:
-          candidate.rejectedSingleValueHeuristic,
-        fallbackOneFiveEligible:
-          candidate.fallbackOneFiveEligible,
-        rejectedBecauseAlreadyScored:
-          candidate.rejectedBecauseAlreadyScored,
-        rewriteAllowed:
-          candidate.rewriteAllowed,
-        diceValuePolicy:
-          candidate.diceValuePolicy,
-        playModeRiskProfile:
-          candidate.playModeRiskProfile,
-        lowValuePenaltyApplied:
-          candidate.lowValuePenaltyApplied,
-        lowTripleExceptionReason:
-          candidate.lowTripleExceptionReason,
-        structuralLowBaseRejected:
-          candidate.structuralLowBaseRejected,
-        rejectedBecauseWeakStructuralSeed:
-          candidate.rejectedBecauseWeakStructuralSeed,
-        seedLockRejectedBeforeBuilderMerge:
-          candidate.seedLockRejectedBeforeBuilderMerge,
-        structuralTargetCategory:
-          candidate.structuralTargetCategory,
-        oneFiveFallbackAttempted:
-          candidate.oneFiveFallbackAttempted,
-        oneFiveFallbackBlocked:
-          candidate.oneFiveFallbackBlocked,
-        targetSpecificLockBuilderUsed:
-          candidate.targetSpecificLockBuilderUsed,
-        targetProgressBeforeRoll:
-          candidate.targetProgressBeforeRoll,
-        targetProgressAfterRoll:
-          candidate.targetProgressAfterRoll,
-        noProgressReevaluationTriggered:
-          candidate.noProgressReevaluationTriggered,
-        rejectedBeforeLockBecauseNotWritable:
-          candidate.rejectedBeforeLockBecauseNotWritable,
-        candidateDice:
-          candidate.candidateDice,
-        candidateCombinationFromGameValidator:
-          candidate.candidateCombinationFromGameValidator,
-        candidateCombinationCategoryId:
-          candidate.candidateCombinationCategoryId,
-        rejectedBecauseNoCombination:
-          candidate.rejectedBecauseNoCombination,
-        rejectedBecauseIncompatibleWithFixedLocks:
-          candidate.rejectedBecauseIncompatibleWithFixedLocks,
-        rejectedBecauseFullLockWithoutValidCombination:
-          candidate.rejectedBecauseFullLockWithoutValidCombination,
-        selectedCandidateValidationResult:
-          candidate.selectedCandidateValidationResult,
-        validationReason:
-          candidate.validationReason,
-        strategyScore:
-          candidate.strategyScore,
-        strategyBreakdown:
-          candidate.strategyBreakdown,
-        evaluationScore:
-          candidate.evaluationScore,
-        currentMatchCount:
-          candidate.currentMatchCount,
-        missingCount:
-          candidate.missingCount,
-        lockValues:
-          candidate.lockValues,
-        safeLockedDiceIndices:
-          candidate.safeLockedDiceIndices,
-        expectedNextTurnValue:
-          candidate.expectedNextTurnValue,
-        evaluationBreakdown:
-          candidate.evaluationBreakdown,
-      })
-    ),
-      ...extra,
+    generatedCombinationCandidates: rankedCandidates.map((candidate) => ({
+      candidateOrder: candidate.candidateOrder,
+      type: candidate.type,
+      seedCandidateGenerated: candidate.seedCandidateGenerated,
+      seedTargetCategory: candidate.seedTargetCategory,
+      seedAcceptedBecauseHighValue: candidate.seedAcceptedBecauseHighValue,
+      seedAcceptedBecauseStraightProgress:
+        candidate.seedAcceptedBecauseStraightProgress,
+      rejectedBecauseOnlyWaitingForPairDisabled:
+        candidate.rejectedBecauseOnlyWaitingForPairDisabled,
+      buildProgressFromSeed: candidate.buildProgressFromSeed,
+      seedLockApplied: candidate.seedLockApplied,
+      targetPattern: candidate.targetPattern,
+      requiredDicePattern: candidate.requiredDicePattern,
+      currentProgress: candidate.currentProgress,
+      completionChance: candidate.completionChance,
+      remainingRollsFit: candidate.remainingRollsFit,
+      lockRecommendation: candidate.lockRecommendation,
+      minimumAcceptableScore: candidate.minimumAcceptableScore,
+      playModeRiskModifier: candidate.playModeRiskModifier,
+      scoreContextModifier: candidate.scoreContextModifier,
+      targetScorePotential: candidate.targetScorePotential,
+      missingPattern: candidate.missingPattern,
+      openOptionsScore: candidate.openOptionsScore,
+      openOptions: candidate.openOptions,
+      scoreboardFilteredOptions: candidate.scoreboardFilteredOptions,
+      rejectedBecauseTooNarrow: candidate.rejectedBecauseTooNarrow,
+      selectedBecauseMultiTargetPotential:
+        candidate.selectedBecauseMultiTargetPotential,
+      remainingRollsOpenStrategyBonus:
+        candidate.remainingRollsOpenStrategyBonus,
+      rejectedBeforeStrategy: candidate.rejectedBeforeStrategy,
+      categoryRejectedBecauseTooLow: candidate.categoryRejectedBecauseTooLow,
+      earlyGeneralRejected: candidate.earlyGeneralRejected,
+      earlyGamePenalty: candidate.earlyGamePenalty,
+      rejectedSingleValueHeuristic: candidate.rejectedSingleValueHeuristic,
+      fallbackOneFiveEligible: candidate.fallbackOneFiveEligible,
+      rejectedBecauseAlreadyScored: candidate.rejectedBecauseAlreadyScored,
+      rewriteAllowed: candidate.rewriteAllowed,
+      diceValuePolicy: candidate.diceValuePolicy,
+      playModeRiskProfile: candidate.playModeRiskProfile,
+      lowValuePenaltyApplied: candidate.lowValuePenaltyApplied,
+      lowTripleExceptionReason: candidate.lowTripleExceptionReason,
+      structuralLowBaseRejected: candidate.structuralLowBaseRejected,
+      rejectedBecauseWeakStructuralSeed:
+        candidate.rejectedBecauseWeakStructuralSeed,
+      seedLockRejectedBeforeBuilderMerge:
+        candidate.seedLockRejectedBeforeBuilderMerge,
+      structuralTargetCategory: candidate.structuralTargetCategory,
+      oneFiveFallbackAttempted: candidate.oneFiveFallbackAttempted,
+      oneFiveFallbackBlocked: candidate.oneFiveFallbackBlocked,
+      targetSpecificLockBuilderUsed: candidate.targetSpecificLockBuilderUsed,
+      targetProgressBeforeRoll: candidate.targetProgressBeforeRoll,
+      targetProgressAfterRoll: candidate.targetProgressAfterRoll,
+      noProgressReevaluationTriggered:
+        candidate.noProgressReevaluationTriggered,
+      rejectedBeforeLockBecauseNotWritable:
+        candidate.rejectedBeforeLockBecauseNotWritable,
+      candidateDice: candidate.candidateDice,
+      candidateCombinationFromGameValidator:
+        candidate.candidateCombinationFromGameValidator,
+      candidateCombinationCategoryId: candidate.candidateCombinationCategoryId,
+      rejectedBecauseNoCombination: candidate.rejectedBecauseNoCombination,
+      rejectedBecauseIncompatibleWithFixedLocks:
+        candidate.rejectedBecauseIncompatibleWithFixedLocks,
+      rejectedBecauseFullLockWithoutValidCombination:
+        candidate.rejectedBecauseFullLockWithoutValidCombination,
+      selectedCandidateValidationResult:
+        candidate.selectedCandidateValidationResult,
+      validationReason: candidate.validationReason,
+      strategyScore: candidate.strategyScore,
+      strategyBreakdown: candidate.strategyBreakdown,
+      evaluationScore: candidate.evaluationScore,
+      currentMatchCount: candidate.currentMatchCount,
+      missingCount: candidate.missingCount,
+      lockValues: candidate.lockValues,
+      safeLockedDiceIndices: candidate.safeLockedDiceIndices,
+      expectedNextTurnValue: candidate.expectedNextTurnValue,
+      evaluationBreakdown: candidate.evaluationBreakdown,
+    })),
+    rankedCandidates: rankedCandidates.map((candidate) => ({
+      candidateOrder: candidate.candidateOrder,
+      type: candidate.type,
+      seedCandidateGenerated: candidate.seedCandidateGenerated,
+      seedTargetCategory: candidate.seedTargetCategory,
+      seedAcceptedBecauseHighValue: candidate.seedAcceptedBecauseHighValue,
+      seedAcceptedBecauseStraightProgress:
+        candidate.seedAcceptedBecauseStraightProgress,
+      rejectedBecauseOnlyWaitingForPairDisabled:
+        candidate.rejectedBecauseOnlyWaitingForPairDisabled,
+      buildProgressFromSeed: candidate.buildProgressFromSeed,
+      seedLockApplied: candidate.seedLockApplied,
+      targetPattern: candidate.targetPattern,
+      requiredDicePattern: candidate.requiredDicePattern,
+      currentProgress: candidate.currentProgress,
+      completionChance: candidate.completionChance,
+      remainingRollsFit: candidate.remainingRollsFit,
+      lockRecommendation: candidate.lockRecommendation,
+      minimumAcceptableScore: candidate.minimumAcceptableScore,
+      playModeRiskModifier: candidate.playModeRiskModifier,
+      scoreContextModifier: candidate.scoreContextModifier,
+      targetScorePotential: candidate.targetScorePotential,
+      missingPattern: candidate.missingPattern,
+      openOptionsScore: candidate.openOptionsScore,
+      openOptions: candidate.openOptions,
+      scoreboardFilteredOptions: candidate.scoreboardFilteredOptions,
+      rejectedBecauseTooNarrow: candidate.rejectedBecauseTooNarrow,
+      selectedBecauseMultiTargetPotential:
+        candidate.selectedBecauseMultiTargetPotential,
+      remainingRollsOpenStrategyBonus:
+        candidate.remainingRollsOpenStrategyBonus,
+      rejectedBeforeStrategy: candidate.rejectedBeforeStrategy,
+      categoryRejectedBecauseTooLow: candidate.categoryRejectedBecauseTooLow,
+      earlyGeneralRejected: candidate.earlyGeneralRejected,
+      earlyGamePenalty: candidate.earlyGamePenalty,
+      rejectedSingleValueHeuristic: candidate.rejectedSingleValueHeuristic,
+      fallbackOneFiveEligible: candidate.fallbackOneFiveEligible,
+      rejectedBecauseAlreadyScored: candidate.rejectedBecauseAlreadyScored,
+      rewriteAllowed: candidate.rewriteAllowed,
+      diceValuePolicy: candidate.diceValuePolicy,
+      playModeRiskProfile: candidate.playModeRiskProfile,
+      lowValuePenaltyApplied: candidate.lowValuePenaltyApplied,
+      lowTripleExceptionReason: candidate.lowTripleExceptionReason,
+      structuralLowBaseRejected: candidate.structuralLowBaseRejected,
+      rejectedBecauseWeakStructuralSeed:
+        candidate.rejectedBecauseWeakStructuralSeed,
+      seedLockRejectedBeforeBuilderMerge:
+        candidate.seedLockRejectedBeforeBuilderMerge,
+      structuralTargetCategory: candidate.structuralTargetCategory,
+      oneFiveFallbackAttempted: candidate.oneFiveFallbackAttempted,
+      oneFiveFallbackBlocked: candidate.oneFiveFallbackBlocked,
+      targetSpecificLockBuilderUsed: candidate.targetSpecificLockBuilderUsed,
+      targetProgressBeforeRoll: candidate.targetProgressBeforeRoll,
+      targetProgressAfterRoll: candidate.targetProgressAfterRoll,
+      noProgressReevaluationTriggered:
+        candidate.noProgressReevaluationTriggered,
+      rejectedBeforeLockBecauseNotWritable:
+        candidate.rejectedBeforeLockBecauseNotWritable,
+      candidateDice: candidate.candidateDice,
+      candidateCombinationFromGameValidator:
+        candidate.candidateCombinationFromGameValidator,
+      candidateCombinationCategoryId: candidate.candidateCombinationCategoryId,
+      rejectedBecauseNoCombination: candidate.rejectedBecauseNoCombination,
+      rejectedBecauseIncompatibleWithFixedLocks:
+        candidate.rejectedBecauseIncompatibleWithFixedLocks,
+      rejectedBecauseFullLockWithoutValidCombination:
+        candidate.rejectedBecauseFullLockWithoutValidCombination,
+      selectedCandidateValidationResult:
+        candidate.selectedCandidateValidationResult,
+      validationReason: candidate.validationReason,
+      strategyScore: candidate.strategyScore,
+      strategyBreakdown: candidate.strategyBreakdown,
+      evaluationScore: candidate.evaluationScore,
+      currentMatchCount: candidate.currentMatchCount,
+      missingCount: candidate.missingCount,
+      lockValues: candidate.lockValues,
+      safeLockedDiceIndices: candidate.safeLockedDiceIndices,
+      expectedNextTurnValue: candidate.expectedNextTurnValue,
+      evaluationBreakdown: candidate.evaluationBreakdown,
+    })),
+    ...extra,
     selectedTargetPattern: selected?.targetPattern ?? null,
-    rejectedSingleValueHeuristic:
-      rankedCandidates.some(
-        (candidate) =>
-          !!candidate.rejectedSingleValueHeuristic
-      ),
+    rejectedSingleValueHeuristic: rankedCandidates.some(
+      (candidate) => !!candidate.rejectedSingleValueHeuristic,
+    ),
     rejectedBecauseBetterCombinationExists:
       selected !== null &&
       rankedCandidates.some(
         (candidate) =>
           candidate !== selected &&
-          (candidate.strategyScore ??
-            candidate.evaluationScore) >
-            (selected.strategyScore ??
-              selected.evaluationScore)
+          (candidate.strategyScore ?? candidate.evaluationScore) >
+            (selected.strategyScore ?? selected.evaluationScore),
       ),
-    fallbackOneFiveUsed:
-      selected?.fallbackOneFiveEligible ?? false,
+    fallbackOneFiveUsed: selected?.fallbackOneFiveEligible ?? false,
     fallbackOneFiveReason: selected
       ? selected.fallbackOneFiveEligible
         ? "one-five-singleton-only-as-fallback"
         : "not-used"
       : "not-selected",
-    rejectedBecauseAlreadyScored:
-      auditEntries.some(
-        (entry) => entry.rejectedBecauseAlreadyScored
-      ),
-    rejectedBeforeLockBecauseAlreadyScored:
-      auditEntries.some(
-        (entry) => entry.rejectedBecauseAlreadyScored
-      ),
-    rejectedBeforeLockBecauseNotWritable:
-      auditEntries.some(
-        (entry) =>
-          entry.rejectedBeforeLockBecauseNotWritable
-      ),
-    rejectedBeforeStrategy:
-      auditEntries.some(
-        (entry) => entry.rejectedBeforeStrategy
-      ),
-    earlyGeneralRejected:
-      auditEntries.some(
-        (entry) => entry.earlyGeneralRejected
-      ),
-    categoryRejectedBecauseTooLow:
-      auditEntries.some(
-        (entry) =>
-          entry.categoryRejectedBecauseTooLow
-      ),
-    requiredScoreEstimate:
-      matchContext.requiredScoreEstimate,
-    lowValuePenaltyApplied:
-      selected?.lowValuePenaltyApplied ?? false,
+    rejectedBecauseAlreadyScored: auditEntries.some(
+      (entry) => entry.rejectedBecauseAlreadyScored,
+    ),
+    rejectedBeforeLockBecauseAlreadyScored: auditEntries.some(
+      (entry) => entry.rejectedBecauseAlreadyScored,
+    ),
+    rejectedBeforeLockBecauseNotWritable: auditEntries.some(
+      (entry) => entry.rejectedBeforeLockBecauseNotWritable,
+    ),
+    rejectedBeforeStrategy: auditEntries.some(
+      (entry) => entry.rejectedBeforeStrategy,
+    ),
+    earlyGeneralRejected: auditEntries.some(
+      (entry) => entry.earlyGeneralRejected,
+    ),
+    categoryRejectedBecauseTooLow: auditEntries.some(
+      (entry) => entry.categoryRejectedBecauseTooLow,
+    ),
+    requiredScoreEstimate: matchContext.requiredScoreEstimate,
+    lowValuePenaltyApplied: selected?.lowValuePenaltyApplied ?? false,
     selectedTargetIsWritable:
-      (extra?.selectedTargetIsWritable as
-        | boolean
-        | undefined) ?? (selected ? true : false),
+      (extra?.selectedTargetIsWritable as boolean | undefined) ??
+      (selected ? true : false),
     lockBlockedBecauseTargetNotWritable:
-      (extra?.lockBlockedBecauseTargetNotWritable as
-        | boolean
-        | undefined) ?? false,
+      (extra?.lockBlockedBecauseTargetNotWritable as boolean | undefined) ??
+      false,
     lowScoreRejectedButFallbackExists:
-      (extra?.lowScoreRejectedButFallbackExists as
-        | boolean
-        | undefined) ?? false,
+      (extra?.lowScoreRejectedButFallbackExists as boolean | undefined) ??
+      false,
     lowScoreAcceptedBecauseNoBetterLegalOption:
       (extra?.lowScoreAcceptedBecauseNoBetterLegalOption as
-        | boolean
-        | undefined) ?? false,
+        boolean | undefined) ?? false,
     saveCandidateDetected:
-      (extra?.saveCandidateDetected as
-        | boolean
-        | undefined) ??
-      (selected?.isComplete ?? false),
+      (extra?.saveCandidateDetected as boolean | undefined) ??
+      selected?.isComplete ??
+      false,
     saveCandidateWritable:
-      (extra?.saveCandidateWritable as
-        | boolean
-        | undefined) ??
+      (extra?.saveCandidateWritable as boolean | undefined) ??
       (selected
-        ? selected.selectedCandidateValidationResult !==
-          "rejected"
+        ? selected.selectedCandidateValidationResult !== "rejected"
         : false),
     saveCandidateScore:
-      (extra?.saveCandidateScore as
-        | number
-        | undefined) ??
-      (selected?.absoluteScoreSignal ?? 0),
+      (extra?.saveCandidateScore as number | undefined) ??
+      selected?.absoluteScoreSignal ??
+      0,
     saveBlockedReason:
-      (extra?.saveBlockedReason as
-        | string
-        | null
-        | undefined) ?? null,
+      (extra?.saveBlockedReason as string | null | undefined) ?? null,
     strategyFilterBlockedSave:
-      (extra?.strategyFilterBlockedSave as
-        | boolean
-        | undefined) ?? false,
+      (extra?.strategyFilterBlockedSave as boolean | undefined) ?? false,
     rollbackSimplifiedPolicyUsed:
-      (extra?.rollbackSimplifiedPolicyUsed as
-        | boolean
-        | undefined) ?? false,
-    openOptionsScore:
-      selected?.openOptionsScore ?? 0,
-    openOptions:
-      selected?.openOptions ?? [],
-    scoreboardFilteredOptions:
-      selected?.scoreboardFilteredOptions ?? 0,
-    rejectedBecauseTooNarrow:
-      selected?.rejectedBecauseTooNarrow ?? false,
+      (extra?.rollbackSimplifiedPolicyUsed as boolean | undefined) ?? false,
+    openOptionsScore: selected?.openOptionsScore ?? 0,
+    openOptions: selected?.openOptions ?? [],
+    scoreboardFilteredOptions: selected?.scoreboardFilteredOptions ?? 0,
+    rejectedBecauseTooNarrow: selected?.rejectedBecauseTooNarrow ?? false,
     selectedBecauseMultiTargetPotential:
       selected?.selectedBecauseMultiTargetPotential ?? false,
     remainingRollsOpenStrategyBonus:
       selected?.remainingRollsOpenStrategyBonus ?? 0,
     winnerReasons: selected
-      ? rankedCandidates
-          .slice(1)
-          .map((candidate) => ({
-            againstType: candidate.type,
-            reason: explainWhyWinnerBeats(
-              selected,
-              candidate
-            ),
-          }))
+      ? rankedCandidates.slice(1).map((candidate) => ({
+          againstType: candidate.type,
+          reason: explainWhyWinnerBeats(selected, candidate),
+        }))
       : [],
     selectedCandidate: selected
       ? {
-          candidateOrder:
-            selected.candidateOrder,
+          candidateOrder: selected.candidateOrder,
           type: selected.type,
-          seedCandidateGenerated:
-            selected.seedCandidateGenerated,
-          seedTargetCategory:
-            selected.seedTargetCategory,
-          seedAcceptedBecauseHighValue:
-            selected.seedAcceptedBecauseHighValue,
+          seedCandidateGenerated: selected.seedCandidateGenerated,
+          seedTargetCategory: selected.seedTargetCategory,
+          seedAcceptedBecauseHighValue: selected.seedAcceptedBecauseHighValue,
           seedAcceptedBecauseStraightProgress:
             selected.seedAcceptedBecauseStraightProgress,
           rejectedBecauseOnlyWaitingForPairDisabled:
             selected.rejectedBecauseOnlyWaitingForPairDisabled,
-          buildProgressFromSeed:
-            selected.buildProgressFromSeed,
-          seedLockApplied:
-            selected.seedLockApplied,
+          buildProgressFromSeed: selected.buildProgressFromSeed,
+          seedLockApplied: selected.seedLockApplied,
           targetPattern: selected.targetPattern,
-          requiredDicePattern:
-            selected.requiredDicePattern,
-          currentProgress:
-            selected.currentProgress,
-          completionChance:
-            selected.completionChance,
-          remainingRollsFit:
-            selected.remainingRollsFit,
-          lockRecommendation:
-            selected.lockRecommendation,
-          minimumAcceptableScore:
-            selected.minimumAcceptableScore,
-          playModeRiskModifier:
-            selected.playModeRiskModifier,
-          scoreContextModifier:
-            selected.scoreContextModifier,
-          targetScorePotential:
-            selected.targetScorePotential,
-          missingPattern:
-            selected.missingPattern,
-          openOptionsScore:
-            selected.openOptionsScore,
-          openOptions:
-            selected.openOptions,
-          scoreboardFilteredOptions:
-            selected.scoreboardFilteredOptions,
-          rejectedBecauseTooNarrow:
-            selected.rejectedBecauseTooNarrow,
+          requiredDicePattern: selected.requiredDicePattern,
+          currentProgress: selected.currentProgress,
+          completionChance: selected.completionChance,
+          remainingRollsFit: selected.remainingRollsFit,
+          lockRecommendation: selected.lockRecommendation,
+          minimumAcceptableScore: selected.minimumAcceptableScore,
+          playModeRiskModifier: selected.playModeRiskModifier,
+          scoreContextModifier: selected.scoreContextModifier,
+          targetScorePotential: selected.targetScorePotential,
+          missingPattern: selected.missingPattern,
+          openOptionsScore: selected.openOptionsScore,
+          openOptions: selected.openOptions,
+          scoreboardFilteredOptions: selected.scoreboardFilteredOptions,
+          rejectedBecauseTooNarrow: selected.rejectedBecauseTooNarrow,
           selectedBecauseMultiTargetPotential:
             selected.selectedBecauseMultiTargetPotential,
           remainingRollsOpenStrategyBonus:
             selected.remainingRollsOpenStrategyBonus,
-          rejectedBeforeStrategy:
-            selected.rejectedBeforeStrategy,
-          categoryRejectedBecauseTooLow:
-            selected.categoryRejectedBecauseTooLow,
-          earlyGeneralRejected:
-            selected.earlyGeneralRejected,
-          earlyGamePenalty:
-            selected.earlyGamePenalty,
-          rejectedSingleValueHeuristic:
-            selected.rejectedSingleValueHeuristic,
-          fallbackOneFiveEligible:
-            selected.fallbackOneFiveEligible,
-          rejectedBecauseAlreadyScored:
-            selected.rejectedBecauseAlreadyScored,
-          rewriteAllowed:
-            selected.rewriteAllowed,
-          diceValuePolicy:
-            selected.diceValuePolicy,
-          playModeRiskProfile:
-            selected.playModeRiskProfile,
-          lowValuePenaltyApplied:
-            selected.lowValuePenaltyApplied,
-          lowTripleExceptionReason:
-            selected.lowTripleExceptionReason,
-          structuralLowBaseRejected:
-            selected.structuralLowBaseRejected,
+          rejectedBeforeStrategy: selected.rejectedBeforeStrategy,
+          categoryRejectedBecauseTooLow: selected.categoryRejectedBecauseTooLow,
+          earlyGeneralRejected: selected.earlyGeneralRejected,
+          earlyGamePenalty: selected.earlyGamePenalty,
+          rejectedSingleValueHeuristic: selected.rejectedSingleValueHeuristic,
+          fallbackOneFiveEligible: selected.fallbackOneFiveEligible,
+          rejectedBecauseAlreadyScored: selected.rejectedBecauseAlreadyScored,
+          rewriteAllowed: selected.rewriteAllowed,
+          diceValuePolicy: selected.diceValuePolicy,
+          playModeRiskProfile: selected.playModeRiskProfile,
+          lowValuePenaltyApplied: selected.lowValuePenaltyApplied,
+          lowTripleExceptionReason: selected.lowTripleExceptionReason,
+          structuralLowBaseRejected: selected.structuralLowBaseRejected,
           rejectedBecauseWeakStructuralSeed:
             selected.rejectedBecauseWeakStructuralSeed,
           seedLockRejectedBeforeBuilderMerge:
             selected.seedLockRejectedBeforeBuilderMerge,
-          structuralTargetCategory:
-            selected.structuralTargetCategory,
-          oneFiveFallbackAttempted:
-            selected.oneFiveFallbackAttempted,
-          oneFiveFallbackBlocked:
-            selected.oneFiveFallbackBlocked,
-          targetSpecificLockBuilderUsed:
-            selected.targetSpecificLockBuilderUsed,
-          targetProgressBeforeRoll:
-            selected.targetProgressBeforeRoll,
-          targetProgressAfterRoll:
-            selected.targetProgressAfterRoll,
+          structuralTargetCategory: selected.structuralTargetCategory,
+          oneFiveFallbackAttempted: selected.oneFiveFallbackAttempted,
+          oneFiveFallbackBlocked: selected.oneFiveFallbackBlocked,
+          targetSpecificLockBuilderUsed: selected.targetSpecificLockBuilderUsed,
+          targetProgressBeforeRoll: selected.targetProgressBeforeRoll,
+          targetProgressAfterRoll: selected.targetProgressAfterRoll,
           noProgressReevaluationTriggered:
             selected.noProgressReevaluationTriggered,
           rejectedBeforeLockBecauseNotWritable:
             selected.rejectedBeforeLockBecauseNotWritable,
-          candidateDice:
-            selected.candidateDice,
+          candidateDice: selected.candidateDice,
           candidateCombinationFromGameValidator:
             selected.candidateCombinationFromGameValidator,
           candidateCombinationCategoryId:
             selected.candidateCombinationCategoryId,
-          rejectedBecauseNoCombination:
-            selected.rejectedBecauseNoCombination,
+          rejectedBecauseNoCombination: selected.rejectedBecauseNoCombination,
           rejectedBecauseIncompatibleWithFixedLocks:
             selected.rejectedBecauseIncompatibleWithFixedLocks,
           rejectedBecauseFullLockWithoutValidCombination:
             selected.rejectedBecauseFullLockWithoutValidCombination,
           selectedCandidateValidationResult:
             selected.selectedCandidateValidationResult,
-          validationReason:
-            selected.validationReason,
-          strategyScore:
-            selected.strategyScore,
-          strategyBreakdown:
-            selected.strategyBreakdown,
-          evaluationScore:
-            selected.evaluationScore,
-          currentMatchCount:
-            selected.currentMatchCount,
-          missingCount:
-            selected.missingCount,
-          lockValues:
-            selected.lockValues,
-          relevantIndices:
-            selected.relevantIndices,
-          safeLockedDiceIndices:
-            selected.safeLockedDiceIndices,
-          expectedNextTurnValue:
-            selected.expectedNextTurnValue,
-          evaluationBreakdown:
-            selected.evaluationBreakdown,
+          validationReason: selected.validationReason,
+          strategyScore: selected.strategyScore,
+          strategyBreakdown: selected.strategyBreakdown,
+          evaluationScore: selected.evaluationScore,
+          currentMatchCount: selected.currentMatchCount,
+          missingCount: selected.missingCount,
+          lockValues: selected.lockValues,
+          relevantIndices: selected.relevantIndices,
+          safeLockedDiceIndices: selected.safeLockedDiceIndices,
+          expectedNextTurnValue: selected.expectedNextTurnValue,
+          evaluationBreakdown: selected.evaluationBreakdown,
         }
       : null,
     selectedCombinationCandidate: selected
@@ -3003,27 +2548,71 @@ const logAIDecisionAudit = (
           type: selected.type,
           targetPattern: selected.targetPattern,
           strategyScore: selected.strategyScore,
-          openOptionsScore:
-            selected.openOptionsScore,
-          lockRecommendation:
-            selected.lockRecommendation,
+          openOptionsScore: selected.openOptionsScore,
+          lockRecommendation: selected.lockRecommendation,
         }
       : null,
     finalLockedDiceIndices,
   });
+
+  appendTempAIDecisionAudit({
+    timestamp: new Date().toISOString(),
+    timestampMs: Date.now(),
+    dice,
+    remainingRolls: remainingRolls ?? null,
+    matchContext,
+    finalLockedDiceIndices,
+    selected: selected
+      ? {
+          type: selected.type,
+          targetPattern: selected.targetPattern,
+          strategyScore: selected.strategyScore,
+          evaluationScore: selected.evaluationScore,
+          currentProgress: selected.currentProgress,
+          missingCount: selected.missingCount,
+          safeLockedDiceIndices: selected.safeLockedDiceIndices,
+          lockValues: selected.lockValues,
+          expectedNextTurnValue: selected.expectedNextTurnValue,
+          selectedCandidateValidationResult:
+            selected.selectedCandidateValidationResult,
+          validationReason: selected.validationReason,
+        }
+      : null,
+    candidateAudit: auditEntries.map((entry) => ({
+      stage: entry.stage,
+      type: entry.type,
+      targetPattern: entry.targetPattern,
+      currentProgress: entry.currentProgress,
+      missingPattern: entry.missingPattern,
+      strategyScore: entry.strategyScore,
+      evaluationScore: entry.evaluationScore,
+      validationReason: entry.validationReason,
+      rejectedBecauseAlreadyScored: entry.rejectedBecauseAlreadyScored,
+      rejectedBeforeLockBecauseNotWritable:
+        entry.rejectedBeforeLockBecauseNotWritable,
+      rejectedBeforeStrategy: entry.rejectedBeforeStrategy,
+      rejectedBecauseNoCombination: entry.rejectedBecauseNoCombination,
+    })),
+    rankedTopCandidates: rankedCandidates.slice(0, 10).map((candidate) => ({
+      type: candidate.type,
+      targetPattern: candidate.targetPattern,
+      strategyScore: candidate.strategyScore,
+      evaluationScore: candidate.evaluationScore,
+      currentProgress: candidate.currentProgress,
+      missingCount: candidate.missingCount,
+      safeLockedDiceIndices: candidate.safeLockedDiceIndices,
+      lockValues: candidate.lockValues,
+      expectedNextTurnValue: candidate.expectedNextTurnValue,
+      selectedCandidateValidationResult:
+        candidate.selectedCandidateValidationResult,
+      validationReason: candidate.validationReason,
+    })),
+    extra: extra ?? null,
+  });
 };
 
-const toLockMask = (
-  lockedDiceIndices: number[]
-): boolean[] => {
-  const mask = [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ];
+const toLockMask = (lockedDiceIndices: number[]): boolean[] => {
+  const mask = [false, false, false, false, false, false];
 
   lockedDiceIndices.forEach((index) => {
     if (index >= 0 && index < 6) {
@@ -3034,42 +2623,27 @@ const toLockMask = (
   return mask;
 };
 
-const getPlayerTotalScore = (
-  playerScores: Record<string, number>
-) =>
-  Object.values(playerScores).reduce(
-    (sum, score) => sum + score,
-    0
-  );
+const getPlayerTotalScore = (playerScores: Record<string, number>) =>
+  Object.values(playerScores).reduce((sum, score) => sum + score, 0);
 
-const getBestOpponentScore = (
-  scores: ScoreMap,
-  playerId: string
-) =>
-  Object.entries(scores).reduce(
-    (best, [candidateId, candidateScores]) => {
-      if (candidateId === playerId) {
-        return best;
-      }
+const getBestOpponentScore = (scores: ScoreMap, playerId: string) =>
+  Object.entries(scores).reduce((best, [candidateId, candidateScores]) => {
+    if (candidateId === playerId) {
+      return best;
+    }
 
-      const candidateTotal = getPlayerTotalScore(
-        candidateScores
-      );
+    const candidateTotal = getPlayerTotalScore(candidateScores);
 
-      return Math.max(best, candidateTotal);
-    },
-    0
-  );
+    return Math.max(best, candidateTotal);
+  }, 0);
 
 const getRemainingPotential = (
   playerScores: Record<string, number>,
-  allowRewrite: boolean
+  allowRewrite: boolean,
 ) =>
   combinationTypes.reduce((sum, combType) => {
-    const categoryId =
-      combinationToCategoryId[combType];
-    const maxCategoryScore =
-      combinationMaxScore[combType];
+    const categoryId = combinationToCategoryId[combType];
+    const maxCategoryScore = combinationMaxScore[combType];
     const existingScore = playerScores[categoryId];
 
     if (existingScore === undefined) {
@@ -3080,51 +2654,36 @@ const getRemainingPotential = (
       return sum;
     }
 
-    return (
-      sum +
-      Math.max(
-        0,
-        maxCategoryScore - existingScore
-      )
-    );
+    return sum + Math.max(0, maxCategoryScore - existingScore);
   }, 0);
 
 const getBestOpponentContext = (
   scores: ScoreMap,
   playerId: string,
-  allowRewrite: boolean
+  allowRewrite: boolean,
 ) =>
   Object.entries(scores).reduce(
-    (
-      best,
-      [candidateId, candidateScores]
-    ) => {
+    (best, [candidateId, candidateScores]) => {
       if (candidateId === playerId) {
         return best;
       }
 
-      const totalScore =
-        getPlayerTotalScore(candidateScores);
-      const remainingPotential =
-        getRemainingPotential(
-          candidateScores,
-          allowRewrite
-        );
-      const projectedTotal =
-        totalScore + remainingPotential;
+      const totalScore = getPlayerTotalScore(candidateScores);
+      const remainingPotential = getRemainingPotential(
+        candidateScores,
+        allowRewrite,
+      );
+      const projectedTotal = totalScore + remainingPotential;
 
       return {
-        bestOpponentScore: Math.max(
-          best.bestOpponentScore,
-          totalScore
-        ),
+        bestOpponentScore: Math.max(best.bestOpponentScore, totalScore),
         opponentRemainingPotential: Math.max(
           best.opponentRemainingPotential,
-          remainingPotential
+          remainingPotential,
         ),
         bestOpponentProjectedTotal: Math.max(
           best.bestOpponentProjectedTotal,
-          projectedTotal
+          projectedTotal,
         ),
       };
     },
@@ -3132,29 +2691,19 @@ const getBestOpponentContext = (
       bestOpponentScore: 0,
       opponentRemainingPotential: 0,
       bestOpponentProjectedTotal: 0,
-    }
+    },
   );
 
-const getUndefinedCategoryIds = (
-  playerScores: Record<string, number>
-) =>
+const getUndefinedCategoryIds = (playerScores: Record<string, number>) =>
   combinationTypes
-    .map((combType) =>
-      combinationToCategoryId[combType]
-    )
-    .filter(
-      (categoryId) =>
-        playerScores[categoryId] === undefined
-    );
+    .map((combType) => combinationToCategoryId[combType])
+    .filter((categoryId) => playerScores[categoryId] === undefined);
 
 const getCombinationTypeByCategoryId = (
-  categoryId: string
+  categoryId: string,
 ): CombinationType | null => {
   for (const combType of combinationTypes) {
-    if (
-      combinationToCategoryId[combType] ===
-      categoryId
-    ) {
+    if (combinationToCategoryId[combType] === categoryId) {
       return combType;
     }
   }
@@ -3212,19 +2761,13 @@ type AIActionDecision = {
 
 const getPlayModeRiskProfile = (
   remainingRolls: number | undefined,
-  context: MatchContext
+  context: MatchContext,
 ): "ambitious" | "balanced" | "pragmatic" => {
-  if (
-    !context.endgameMode &&
-    (remainingRolls ?? 0) >= 3
-  ) {
+  if (!context.endgameMode && (remainingRolls ?? 0) >= 3) {
     return "ambitious";
   }
 
-  if (
-    context.endgameMode ||
-    (remainingRolls ?? 0) <= 1
-  ) {
+  if (context.endgameMode || (remainingRolls ?? 0) <= 1) {
     return "pragmatic";
   }
 
@@ -3232,7 +2775,7 @@ const getPlayModeRiskProfile = (
 };
 
 const getDiceValuePolicy = (
-  riskProfile: "ambitious" | "balanced" | "pragmatic"
+  riskProfile: "ambitious" | "balanced" | "pragmatic",
 ): string => {
   if (riskProfile === "ambitious") {
     return "prefer-6-5-4-penalize-1-2-3";
@@ -3247,23 +2790,17 @@ const getDiceValuePolicy = (
 
 const toRiskLevel = (
   remainingRolls: number | undefined,
-  context: MatchContext
+  context: MatchContext,
 ): AIRiskLevel => {
   if (context.endgameMode && context.riskBecauseBehind) {
     return "high";
   }
 
-  if (
-    context.riskBecauseBehind &&
-    (remainingRolls ?? 0) >= 2
-  ) {
+  if (context.riskBecauseBehind && (remainingRolls ?? 0) >= 2) {
     return "high";
   }
 
-  if (
-    context.endgameMode &&
-    context.requiredScoreEstimate > 0
-  ) {
+  if (context.endgameMode && context.requiredScoreEstimate > 0) {
     return "medium";
   }
 
@@ -3278,16 +2815,11 @@ const toRiskLevel = (
   return "low";
 };
 
-const toConfidence = (
-  candidate: CandidateCombination
-): number => {
+const toConfidence = (candidate: CandidateCombination): number => {
   const raw =
-    candidate.currentMatchCount / 6 +
-    (candidate.isComplete ? 0.35 : 0);
+    candidate.currentMatchCount / 6 + (candidate.isComplete ? 0.35 : 0);
 
-  return Number(
-    Math.max(0, Math.min(1, raw)).toFixed(2)
-  );
+  return Number(Math.max(0, Math.min(1, raw)).toFixed(2));
 };
 
 const decideAction = (
@@ -3296,11 +2828,9 @@ const decideAction = (
   context: MatchContext,
   playerScores: Record<string, number>,
   hasBetterLegalAlternative: boolean,
-  isLastLegalOption: boolean
+  isLastLegalOption: boolean,
 ): AIActionDecision => {
-  if (
-    candidate.isComplete
-  ) {
+  if (candidate.isComplete) {
     return {
       action: "save",
       saveRejectedBecauseTooLow: false,
@@ -3318,10 +2848,7 @@ const decideAction = (
   }
 
   return {
-    action:
-      (remainingRolls ?? 0) > 0
-        ? "roll"
-        : "end_turn",
+    action: (remainingRolls ?? 0) > 0 ? "roll" : "end_turn",
     saveRejectedBecauseTooLow: false,
     lowScoreRejectedButFallbackExists: false,
     lowScoreAcceptedBecauseNoBetterLegalOption: false,
@@ -3337,7 +2864,7 @@ const decideAction = (
 
 /**
  * Main AI decision function
- * 
+ *
  * @param currentDice - Array of 6 dice values [1-6]
  * @param currentCombination - Currently detected combination (if any)
  * @param scores - All player scores
@@ -3352,20 +2879,13 @@ export function makeAIDecision(
   playerId: string,
   playModeAllowRewrite: boolean,
   remainingRolls?: number,
-  strategyContext?: Partial<AIPivotContext>
+  strategyContext?: Partial<AIPivotContext>,
 ): AIDecision {
   // Guard: validate inputs
   if (!currentDice || currentDice.length !== 6 || !playerId) {
     return {
       targetCategory: null,
-      lockMask: [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ],
+      lockMask: [false, false, false, false, false, false],
       lockedDiceIndices: [],
       action: "end_turn",
       confidence: 0,
@@ -3393,51 +2913,32 @@ export function makeAIDecision(
   const fixedLocks =
     strategyContext?.fixedLocks?.length === 6
       ? [...strategyContext.fixedLocks]
-      : [
-          false,
-          false,
-          false,
-          false,
-          false,
-          false,
-        ];
+      : [false, false, false, false, false, false];
 
-  const legalMoveContext =
-    strategyContext?.legalMoveContext ?? null;
+  const legalMoveContext = strategyContext?.legalMoveContext ?? null;
 
   const previousTargetCategory =
-    strategyContext?.previousTargetCategory ??
-    null;
+    strategyContext?.previousTargetCategory ?? null;
 
   if (!legalMoveContext) {
     return {
       targetCategory: null,
-      lockMask: [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ],
+      lockMask: [false, false, false, false, false, false],
       lockedDiceIndices: [],
       action: (remainingRolls ?? 0) > 0 ? "roll" : "end_turn",
       confidence: 0,
-      riskLevel: toRiskLevel(
-        remainingRolls,
-        {
-          aiScore: 0,
-          bestOpponentScore: 0,
-          aiRemainingPotential: 0,
-          opponentRemainingPotential: 0,
-          endgameMode: false,
-          scoreDelta: 0,
-          requiredScoreEstimate: 0,
-          opponentScore: 0,
-          remainingCategories: 0,
-          riskBecauseBehind: false,
-        }
-      ),
+      riskLevel: toRiskLevel(remainingRolls, {
+        aiScore: 0,
+        bestOpponentScore: 0,
+        aiRemainingPotential: 0,
+        opponentRemainingPotential: 0,
+        endgameMode: false,
+        scoreDelta: 0,
+        requiredScoreEstimate: 0,
+        opponentScore: 0,
+        remainingCategories: 0,
+        riskBecauseBehind: false,
+      }),
       aiScore: 0,
       bestOpponentScore: 0,
       endgameMode: false,
@@ -3459,62 +2960,47 @@ export function makeAIDecision(
   }
 
   const playerScores = scores[playerId] || {};
-  const ownScore = getPlayerTotalScore(
-    playerScores
+  const ownScore = getPlayerTotalScore(playerScores);
+  const aiRemainingPotential = getRemainingPotential(
+    playerScores,
+    playModeAllowRewrite,
   );
-  const aiRemainingPotential =
-    getRemainingPotential(
-      playerScores,
-      playModeAllowRewrite
-    );
 
-  const opponentContext =
-    getBestOpponentContext(
-      scores,
-      playerId,
-      playModeAllowRewrite
-    );
+  const opponentContext = getBestOpponentContext(
+    scores,
+    playerId,
+    playModeAllowRewrite,
+  );
 
-  const opponentScore =
-    opponentContext.bestOpponentScore;
-  const bestOpponentProjectedTotal =
-    opponentContext.bestOpponentProjectedTotal;
+  const opponentScore = opponentContext.bestOpponentScore;
+  const bestOpponentProjectedTotal = opponentContext.bestOpponentProjectedTotal;
 
-  const availableCategoryCount =
-    getAvailableCategoryCount(
-      playerScores,
-      playModeAllowRewrite
-    );
+  const availableCategoryCount = getAvailableCategoryCount(
+    playerScores,
+    playModeAllowRewrite,
+  );
 
   const requiredScoreEstimate =
     availableCategoryCount > 0
       ? Math.max(
           0,
           Math.ceil(
-            (bestOpponentProjectedTotal - ownScore) /
-              availableCategoryCount
-          )
+            (bestOpponentProjectedTotal - ownScore) / availableCategoryCount,
+          ),
         )
-      : Math.max(
-          0,
-          bestOpponentProjectedTotal - ownScore
-        );
+      : Math.max(0, bestOpponentProjectedTotal - ownScore);
 
   const scoreDelta = ownScore - opponentScore;
 
-  const undefinedCategoryIds =
-    getUndefinedCategoryIds(playerScores);
+  const undefinedCategoryIds = getUndefinedCategoryIds(playerScores);
   const forcedEndgameCategoryId =
-    undefinedCategoryIds.length === 1
-      ? undefinedCategoryIds[0]
-      : null;
+    undefinedCategoryIds.length === 1 ? undefinedCategoryIds[0] : null;
 
   const matchContext: MatchContext = {
     aiScore: ownScore,
     bestOpponentScore: opponentScore,
     aiRemainingPotential,
-    opponentRemainingPotential:
-      opponentContext.opponentRemainingPotential,
+    opponentRemainingPotential: opponentContext.opponentRemainingPotential,
     endgameMode: availableCategoryCount <= 2,
     scoreDelta,
     requiredScoreEstimate,
@@ -3523,43 +3009,34 @@ export function makeAIDecision(
     riskBecauseBehind: scoreDelta < 0,
   };
 
-  const phasePolicy = getPhasePolicy(
-    availableCategoryCount
-  );
+  const phasePolicy = getPhasePolicy(availableCategoryCount);
 
-  const playModeRiskProfile =
-    getPlayModeRiskProfile(
-      remainingRolls,
-      matchContext
-    );
-  const diceValuePolicy =
-    getDiceValuePolicy(playModeRiskProfile);
+  const playModeRiskProfile = getPlayModeRiskProfile(
+    remainingRolls,
+    matchContext,
+  );
+  const diceValuePolicy = getDiceValuePolicy(playModeRiskProfile);
 
   const earlyGameWindow =
-    !matchContext.endgameMode &&
-    availableCategoryCount >= 3;
+    !matchContext.endgameMode && availableCategoryCount >= 3;
 
-  const preStrategyCategoryReason =
-    new Map<string, string>();
+  const preStrategyCategoryReason = new Map<string, string>();
 
-  const availableTargetCategories =
-    legalMoveContext.availableTargetCategories;
+  const availableTargetCategories = legalMoveContext.availableTargetCategories;
 
-  const lockCompatibility =
-    legalMoveContext.lockCompatibility;
+  const lockCompatibility = legalMoveContext.lockCompatibility;
 
   for (const categoryId of availableTargetCategories) {
     if (!lockCompatibility[categoryId]) {
       preStrategyCategoryReason.set(
         categoryId,
-        "incompatible-with-fixed-locks"
+        "incompatible-with-fixed-locks",
       );
     }
   }
 
   const auditPolicyContext = {
-    availableTargetCategoriesBeforeDecision:
-      availableTargetCategories,
+    availableTargetCategoriesBeforeDecision: availableTargetCategories,
     availableTargetCategories,
     rewriteAllowed: playModeAllowRewrite,
     diceValuePolicy,
@@ -3571,18 +3048,15 @@ export function makeAIDecision(
 
   // Evaluate all combinations
   let candidates: CandidateCombination[] = [];
-  const candidateAudit: CandidateAuditEntry[] =
-    [];
+  const candidateAudit: CandidateAuditEntry[] = [];
 
   for (const [candidateOrder, combType] of combinationTypes.entries()) {
-    const categoryId =
-      combinationToCategoryId[combType];
+    const categoryId = combinationToCategoryId[combType];
 
     if (!availableTargetCategories.includes(categoryId)) {
       const rejectionReason =
-        preStrategyCategoryReason.get(
-          categoryId
-        ) ?? "category-filtered-before-strategy";
+        preStrategyCategoryReason.get(categoryId) ??
+        "category-filtered-before-strategy";
 
       candidateAudit.push({
         candidateOrder,
@@ -3590,8 +3064,7 @@ export function makeAIDecision(
         stage: "evaluate-rejected",
         rejectedBeforeStrategy: true,
         rejectedBecauseAlreadyScored:
-          rejectionReason ===
-          "already-scored-and-rewrite-disabled",
+          rejectionReason === "already-scored-and-rewrite-disabled",
         categoryRejectedBecauseTooLow: false,
         rewriteAllowed: playModeAllowRewrite,
         diceValuePolicy,
@@ -3610,70 +3083,13 @@ export function makeAIDecision(
         rewriteAllowed: playModeAllowRewrite,
         diceValuePolicy,
         playModeRiskProfile,
-        validationReason:
-          "incompatible-with-fixed-locks-before-lock",
+        validationReason: "incompatible-with-fixed-locks-before-lock",
       });
       continue;
-    }
-
-    // Pyramida/Hrozen: skip unless they are among last 2 remaining categories
-    // EXCEPT: if this is a max-score result, ALWAYS accept it
-    // Exception: if last <=2 categories remain, allow only if writing this score would beat opponent
-    const currentScore = currentDice.reduce((s, v) => s + v, 0);
-    const pyramidaHrozenMaxScores: Record<string, number> = {
-      "Pyramida": 32,
-      "Hrozen": 28,
-    };
-    const isMaxScore = pyramidaHrozenMaxScores[combType] === currentScore;
-    
-    if (
-      (combType === "Pyramida" || combType === "Hrozen") &&
-      availableCategoryCount > 2 &&
-      !isMaxScore
-    ) {
-      candidateAudit.push({
-        candidateOrder,
-        type: combType,
-        stage: "evaluate-rejected",
-        rejectedBeforeStrategy: true,
-        rejectedBecauseAlreadyScored: false,
-        categoryRejectedBecauseTooLow: false,
-        rewriteAllowed: playModeAllowRewrite,
-        diceValuePolicy,
-        playModeRiskProfile,
-        validationReason: "pyramida-hrozen-skipped-not-endgame",
-      });
-      continue;
-    }
-
-    if (
-      (combType === "Pyramida" || combType === "Hrozen") &&
-      availableCategoryCount <= 2
-    ) {
-      // Only allow if this score can help beat the opponent
-      const candidateScore = currentDice.reduce((s, v) => s + v, 0);
-      const projectedAiTotal = matchContext.aiScore + candidateScore;
-      if (projectedAiTotal <= matchContext.bestOpponentScore) {
-        candidateAudit.push({
-          candidateOrder,
-          type: combType,
-          stage: "evaluate-rejected",
-          rejectedBeforeStrategy: true,
-          rejectedBecauseAlreadyScored: false,
-          categoryRejectedBecauseTooLow: true,
-          rewriteAllowed: playModeAllowRewrite,
-          diceValuePolicy,
-          playModeRiskProfile,
-          validationReason: "pyramida-hrozen-endgame-score-insufficient-to-win",
-        });
-        continue;
-      }
     }
 
     const existingScore =
-      categoryId !== undefined
-        ? playerScores[categoryId]
-        : undefined;
+      categoryId !== undefined ? playerScores[categoryId] : undefined;
 
     const minTemplateMatchCountForType =
       (remainingRolls ?? 0) >= 2 &&
@@ -3692,7 +3108,8 @@ export function makeAIDecision(
       playModeAllowRewrite,
       availableCategoryCount,
       minTemplateMatchCountForType,
-      remainingRolls
+      fixedLocks,
+      remainingRolls,
     );
 
     if (!evaluated || !evaluated.canWrite) {
@@ -3704,77 +3121,60 @@ export function makeAIDecision(
       continue;
     }
 
-    const safeLockedDiceIndices =
-      filterSafeLocks(
-        currentDice,
-        evaluated.relevantIndices,
-        evaluated.type,
-        evaluated.isComplete
-      );
+    const safeLockedDiceIndices = filterSafeLocks(
+      currentDice,
+      evaluated.relevantIndices,
+      evaluated.type,
+      evaluated.type === "Pyramida" || evaluated.type === "Hrozen"
+        ? true
+        : evaluated.isComplete,
+    );
 
-    const targetSpecificLockPlan =
-      getTargetSpecificLocks(
-        evaluated.type,
-        currentDice,
-        safeLockedDiceIndices
-      );
+    const targetSpecificLockPlan = getTargetSpecificLocks(
+      evaluated.type,
+      currentDice,
+      safeLockedDiceIndices,
+    );
 
-    const multiTargetLockedDiceIndices =
-      isStructuralTarget(evaluated.type)
-        ? targetSpecificLockPlan.locks
-        : enrichLockForOpenStrategy(
-            currentDice,
-            safeLockedDiceIndices,
-            evaluated.type,
-            remainingRolls
-          );
+    const multiTargetLockedDiceIndices = isStructuralTarget(evaluated.type)
+      ? targetSpecificLockPlan.locks
+      : enrichLockForOpenStrategy(
+          currentDice,
+          safeLockedDiceIndices,
+          evaluated.type,
+          remainingRolls,
+        );
 
     if (multiTargetLockedDiceIndices.length === 0 && !evaluated.isComplete) {
-      const safeRejectedCombination =
-        detectCombination(currentDice);
+      const safeRejectedCombination = detectCombination(currentDice);
 
       candidateAudit.push({
         candidateOrder,
         type: combType,
         stage: "safe-rejected",
-        evaluationScore:
-          evaluated.evaluationScore,
-        currentMatchCount:
-          evaluated.currentMatchCount,
-        missingCount:
-          evaluated.missingCount,
-        relevantIndices:
-          evaluated.relevantIndices,
+        evaluationScore: evaluated.evaluationScore,
+        currentMatchCount: evaluated.currentMatchCount,
+        missingCount: evaluated.missingCount,
+        relevantIndices: evaluated.relevantIndices,
         safeLockedDiceIndices,
-        lockValues:
-          multiTargetLockedDiceIndices.map(
-            (index) => currentDice[index]
-          ),
-        expectedNextTurnValue:
-          evaluated.expectedNextTurnValue,
-        evaluationBreakdown:
-          evaluated.evaluationBreakdown,
+        lockValues: multiTargetLockedDiceIndices.map(
+          (index) => currentDice[index],
+        ),
+        expectedNextTurnValue: evaluated.expectedNextTurnValue,
+        evaluationBreakdown: evaluated.evaluationBreakdown,
         candidateDice: [...currentDice],
-        candidateCombinationFromGameValidator:
-          safeRejectedCombination,
-        candidateCombinationCategoryId:
-          safeRejectedCombination
-            ? combinationToCategoryId[
-                safeRejectedCombination.combination as CombinationType
-              ] ?? null
-            : null,
-        rejectedBecauseNoCombination:
-          safeRejectedCombination === null,
-        rejectedBecauseIncompatibleWithFixedLocks:
-          false,
-        rejectedBecauseFullLockWithoutValidCombination:
-          false,
+        candidateCombinationFromGameValidator: safeRejectedCombination,
+        candidateCombinationCategoryId: safeRejectedCombination
+          ? (combinationToCategoryId[
+              safeRejectedCombination.combination as CombinationType
+            ] ?? null)
+          : null,
+        rejectedBecauseNoCombination: safeRejectedCombination === null,
+        rejectedBecauseIncompatibleWithFixedLocks: false,
+        rejectedBecauseFullLockWithoutValidCombination: false,
         selectedCandidateValidationResult:
-          safeRejectedCombination === null
-            ? "risk"
-            : "accepted",
-        targetSpecificLockBuilderUsed:
-          targetSpecificLockPlan.builderUsed,
+          safeRejectedCombination === null ? "risk" : "accepted",
+        targetSpecificLockBuilderUsed: targetSpecificLockPlan.builderUsed,
         validationReason:
           safeRejectedCombination === null
             ? "safe-lock-rejected-because-game-validator-reports-no-combination"
@@ -3784,70 +3184,50 @@ export function makeAIDecision(
     }
 
     const lockValues = multiTargetLockedDiceIndices.map(
-      (index) => currentDice[index]
+      (index) => currentDice[index],
     );
-    const lockValueSum = lockValues.reduce(
-      (sum, value) => sum + value,
-      0
-    );
+    const lockValueSum = lockValues.reduce((sum, value) => sum + value, 0);
 
     const candidateWithLocks = {
       ...evaluated,
-      safeLockedDiceIndices:
-        multiTargetLockedDiceIndices,
+      safeLockedDiceIndices: multiTargetLockedDiceIndices,
       lockValues,
       lockValueSum,
-      lockMinValue:
-        lockValues.length > 0
-          ? Math.min(...lockValues)
-          : 0,
+      lockMinValue: lockValues.length > 0 ? Math.min(...lockValues) : 0,
     };
 
-    const legalCombination =
-      legalMoveContext.currentCombination;
-    const legalCombinationCategoryId =
-      legalCombination
-        ? combinationToCategoryId[
-            legalCombination.combination as CombinationType
-          ] ?? null
-        : null;
+    const legalCombination = legalMoveContext.currentCombination;
+    const legalCombinationCategoryId = legalCombination
+      ? (combinationToCategoryId[
+          legalCombination.combination as CombinationType
+        ] ?? null)
+      : null;
     const candidateValidation = {
       candidateDice: [...currentDice],
       candidateCombinationFromGameValidator:
-        legalCombinationCategoryId === categoryId
-          ? legalCombination
-          : null,
+        legalCombinationCategoryId === categoryId ? legalCombination : null,
       candidateCombinationCategoryId:
-        legalCombinationCategoryId === categoryId
-          ? categoryId
-          : null,
-      rejectedBecauseNoCombination:
-        legalCombination === null,
-      rejectedBecauseIncompatibleWithFixedLocks:
-        !lockCompatibility[categoryId],
-      rejectedBecauseFullLockWithoutValidCombination:
-        false,
+        legalCombinationCategoryId === categoryId ? categoryId : null,
+      rejectedBecauseNoCombination: legalCombination === null,
+      rejectedBecauseIncompatibleWithFixedLocks: !lockCompatibility[categoryId],
+      rejectedBecauseFullLockWithoutValidCombination: false,
       selectedCandidateValidationResult:
         legalCombination === null
           ? "risk"
           : !lockCompatibility[categoryId]
-          ? "rejected"
-          : "accepted" as
-          | "accepted"
-          | "risk"
-          | "rejected",
+            ? "rejected"
+            : ("accepted" as "accepted" | "risk" | "rejected"),
       validationReason:
         legalCombination === null
           ? "candidate-needs-risk-acceptance-because-game-validator-reports-no-combination"
           : !lockCompatibility[categoryId]
-          ? "incompatible-with-fixed-locks"
-          : "candidate-valid-with-game-validator",
+            ? "incompatible-with-fixed-locks"
+            : "candidate-valid-with-game-validator",
     };
 
     const candidateWithValidation = {
       ...candidateWithLocks,
-      candidateDice:
-        candidateValidation.candidateDice,
+      candidateDice: candidateValidation.candidateDice,
       candidateCombinationFromGameValidator:
         candidateValidation.candidateCombinationFromGameValidator,
       candidateCombinationCategoryId:
@@ -3860,57 +3240,62 @@ export function makeAIDecision(
         candidateValidation.rejectedBecauseFullLockWithoutValidCombination,
       selectedCandidateValidationResult:
         candidateValidation.selectedCandidateValidationResult,
-      validationReason:
-        candidateValidation.validationReason,
+      validationReason: candidateValidation.validationReason,
     };
 
-    const minimumAcceptableScore =
-      getMinimumAcceptableScore(
-        remainingRolls,
-        matchContext
-      );
+    const minimumAcceptableScore = getMinimumAcceptableScore(
+      remainingRolls,
+      matchContext,
+    );
 
-    const projectedMaxScoreFromLock =
-      getProjectedMaxScoreFromLock(
-        candidateWithValidation,
-        remainingRolls
-      );
+    const projectedMaxScoreFromLock = getProjectedMaxScoreFromLock(
+      candidateWithValidation,
+      remainingRolls,
+    );
 
-    const lowTripleDecision =
-      shouldRejectLowTriplePreLock(
-        candidateWithValidation,
-        projectedMaxScoreFromLock,
-        minimumAcceptableScore,
-        remainingRolls,
-        matchContext,
-        availableCategoryCount
-      );
+    const lowTripleDecision = shouldRejectLowTriplePreLock(
+      candidateWithValidation,
+      projectedMaxScoreFromLock,
+      minimumAcceptableScore,
+      remainingRolls,
+      matchContext,
+      availableCategoryCount,
+    );
 
     const lockRejectedBecauseBelowMinimumPotential =
       (remainingRolls ?? 0) >= 2 &&
-      projectedMaxScoreFromLock <
-        minimumAcceptableScore;
+      projectedMaxScoreFromLock < minimumAcceptableScore;
+
+    // Risk profile rule: except Postupka, pursue only lines that can still
+    // reach near-max outcomes (max score or up to 3 points below max).
+    const nearMaxTolerance = 3;
+    const requiredNearMaxScore =
+      candidateWithValidation.maxPossibleScore - nearMaxTolerance;
+    const shouldEnforceNearMaxPotential = (remainingRolls ?? 0) > 0;
+    const lockRejectedBecauseBelowNearMaxPotential =
+      shouldEnforceNearMaxPotential &&
+      candidateWithValidation.type !== "Postupka" &&
+      !(
+        candidateWithValidation.type === "Generál" &&
+        availableCategoryCount <= 1
+      ) &&
+      projectedMaxScoreFromLock < requiredNearMaxScore;
 
     if (
       lockRejectedBecauseBelowMinimumPotential ||
+      lockRejectedBecauseBelowNearMaxPotential ||
       lowTripleDecision.reject
     ) {
       candidateAudit.push({
         candidateOrder,
         type: combType,
         stage: "evaluate-rejected",
-        evaluationScore:
-          candidateWithValidation.evaluationScore,
-        currentMatchCount:
-          candidateWithValidation.currentMatchCount,
-        missingCount:
-          candidateWithValidation.missingCount,
-        safeLockedDiceIndices:
-          candidateWithValidation.safeLockedDiceIndices,
-        lockValues:
-          candidateWithValidation.lockValues,
-        expectedNextTurnValue:
-          candidateWithValidation.expectedNextTurnValue,
+        evaluationScore: candidateWithValidation.evaluationScore,
+        currentMatchCount: candidateWithValidation.currentMatchCount,
+        missingCount: candidateWithValidation.missingCount,
+        safeLockedDiceIndices: candidateWithValidation.safeLockedDiceIndices,
+        lockValues: candidateWithValidation.lockValues,
+        expectedNextTurnValue: candidateWithValidation.expectedNextTurnValue,
         minimumAcceptableScore,
         preLockViabilityChecked: true,
         projectedMaxScoreFromLock,
@@ -3918,26 +3303,23 @@ export function makeAIDecision(
         structuralLowBaseRejected: false,
         rejectedBecauseWeakStructuralSeed: false,
         seedLockRejectedBeforeBuilderMerge: false,
-        lowTriplePenaltyApplied:
-          lowTripleDecision.lowTriplePenaltyApplied,
-        lowTripleAcceptedReason:
-          lowTripleDecision.lowTripleAcceptedReason,
-        lowTripleExceptionReason:
-          lowTripleDecision.lowTripleAcceptedReason,
-        validationReason:
-          lowTripleDecision.reject
-            ? "pre-lock-low-triple-risk-rejected"
+        lowTriplePenaltyApplied: lowTripleDecision.lowTriplePenaltyApplied,
+        lowTripleAcceptedReason: lowTripleDecision.lowTripleAcceptedReason,
+        lowTripleExceptionReason: lowTripleDecision.lowTripleAcceptedReason,
+        validationReason: lowTripleDecision.reject
+          ? "pre-lock-low-triple-risk-rejected"
+          : lockRejectedBecauseBelowNearMaxPotential
+            ? "pre-lock-below-near-max-potential"
             : "pre-lock-below-minimum-potential",
       });
       continue;
     }
 
     const structuralLowBaseRejected =
-      isStructuralTarget(candidateWithValidation.type) &&
-      candidateWithValidation.safeLockedDiceIndices.length >= 3 &&
-      candidateWithValidation.lockValues.every(
-        (value) => value <= 3
-      ) &&
+      candidateWithValidation.type !== "Postupka" &&
+      !candidateWithValidation.isComplete &&
+      candidateWithValidation.safeLockedDiceIndices.length > 0 &&
+      candidateWithValidation.lockValues.every((value) => value <= 3) &&
       (remainingRolls ?? 0) > 1 &&
       !matchContext.endgameMode &&
       availableCategoryCount > 1;
@@ -3947,81 +3329,60 @@ export function makeAIDecision(
         candidateOrder,
         type: combType,
         stage: "evaluate-rejected",
-        evaluationScore:
-          candidateWithValidation.evaluationScore,
-        currentMatchCount:
-          candidateWithValidation.currentMatchCount,
-        missingCount:
-          candidateWithValidation.missingCount,
-        safeLockedDiceIndices:
-          candidateWithValidation.safeLockedDiceIndices,
-        lockValues:
-          candidateWithValidation.lockValues,
-        expectedNextTurnValue:
-          candidateWithValidation.expectedNextTurnValue,
+        evaluationScore: candidateWithValidation.evaluationScore,
+        currentMatchCount: candidateWithValidation.currentMatchCount,
+        missingCount: candidateWithValidation.missingCount,
+        safeLockedDiceIndices: candidateWithValidation.safeLockedDiceIndices,
+        lockValues: candidateWithValidation.lockValues,
+        expectedNextTurnValue: candidateWithValidation.expectedNextTurnValue,
         minimumAcceptableScore,
         preLockViabilityChecked: true,
         projectedMaxScoreFromLock,
         structuralLowBaseRejected: true,
         rejectedBecauseWeakStructuralSeed: true,
         seedLockRejectedBeforeBuilderMerge: true,
-        lowTriplePenaltyApplied:
-          lowTripleDecision.lowTriplePenaltyApplied,
-        lowTripleAcceptedReason:
-          lowTripleDecision.lowTripleAcceptedReason,
-        lowTripleExceptionReason:
-          lowTripleDecision.lowTripleAcceptedReason,
-        validationReason:
-          "weak-structural-seed-rejected-before-builder-merge",
+        lowTriplePenaltyApplied: lowTripleDecision.lowTriplePenaltyApplied,
+        lowTripleAcceptedReason: lowTripleDecision.lowTripleAcceptedReason,
+        lowTripleExceptionReason: lowTripleDecision.lowTripleAcceptedReason,
+        validationReason: "low-value-base-rejected-before-builder-merge",
       });
       continue;
     }
 
     const playModeRiskModifier =
-      (remainingRolls ?? 0) >= 3
-        ? 50
-        : (remainingRolls ?? 0) <= 1
-        ? -30
-        : 0;
+      (remainingRolls ?? 0) >= 3 ? 50 : (remainingRolls ?? 0) <= 1 ? -30 : 0;
 
-    const scoreContextModifier =
-      matchContext.riskBecauseBehind
-        ? 35
-        : matchContext.endgameMode
+    const scoreContextModifier = matchContext.riskBecauseBehind
+      ? 35
+      : matchContext.endgameMode
         ? 20
         : 0;
 
-    const openOptionsEvaluation =
-      evaluateOpenOptionsForLock(
-        currentDice,
-        multiTargetLockedDiceIndices,
-        availableTargetCategories,
-        lockCompatibility,
-        playerScores,
-        remainingRolls,
-        scoreContextModifier
-      );
+    const openOptionsEvaluation = evaluateOpenOptionsForLock(
+      currentDice,
+      multiTargetLockedDiceIndices,
+      availableTargetCategories,
+      lockCompatibility,
+      playerScores,
+      remainingRolls,
+      scoreContextModifier,
+    );
 
     const averageLockValue =
-      lockValues.length > 0
-        ? lockValueSum / lockValues.length
-        : 0;
+      lockValues.length > 0 ? lockValueSum / lockValues.length : 0;
     const lowValuePenaltyApplied =
       averageLockValue > 0 &&
-      ((diceValuePolicy ===
-        "prefer-6-5-4-penalize-1-2-3" &&
+      ((diceValuePolicy === "prefer-6-5-4-penalize-1-2-3" &&
         averageLockValue < 3.5) ||
-        (diceValuePolicy ===
-          "high-values-preferred-balanced" &&
+        (diceValuePolicy === "high-values-preferred-balanced" &&
           averageLockValue < 3));
 
     const generalTargetValueForPolicy =
       candidateWithValidation.type === "Generál"
         ? Number(
-            (
-              candidateWithValidation.requiredDicePattern?.[0] ??
-              "0x0"
-            ).split("x")[0]
+            (candidateWithValidation.requiredDicePattern?.[0] ?? "0x0").split(
+              "x",
+            )[0],
           )
         : 0;
 
@@ -4047,27 +3408,19 @@ export function makeAIDecision(
       diceValuePolicy,
       playModeRiskProfile,
       lowValuePenaltyApplied,
-      lowTriplePenaltyApplied:
-        lowTripleDecision.lowTriplePenaltyApplied,
-      lowTripleAcceptedReason:
-        lowTripleDecision.lowTripleAcceptedReason,
-      lowTripleExceptionReason:
-        lowTripleDecision.lowTripleAcceptedReason,
+      lowTriplePenaltyApplied: lowTripleDecision.lowTriplePenaltyApplied,
+      lowTripleAcceptedReason: lowTripleDecision.lowTripleAcceptedReason,
+      lowTripleExceptionReason: lowTripleDecision.lowTripleAcceptedReason,
       rejectedBeforeLockBecauseNotWritable: false,
       earlyGamePenalty: earlyGamePenaltyForPolicy,
-      targetScorePotential:
-        candidateWithValidation.maxPossibleScore,
+      targetScorePotential: candidateWithValidation.maxPossibleScore,
       missingPattern:
-        openOptionsEvaluation.openOptions[0]
-          ?.missingPattern ?? [],
-      openOptionsScore:
-        openOptionsEvaluation.openOptionsScore,
-      openOptions:
-        openOptionsEvaluation.openOptions,
+        openOptionsEvaluation.openOptions[0]?.missingPattern ?? [],
+      openOptionsScore: openOptionsEvaluation.openOptionsScore,
+      openOptions: openOptionsEvaluation.openOptions,
       scoreboardFilteredOptions:
         openOptionsEvaluation.scoreboardFilteredOptions,
-      rejectedBecauseTooNarrow:
-        openOptionsEvaluation.rejectedBecauseTooNarrow,
+      rejectedBecauseTooNarrow: openOptionsEvaluation.rejectedBecauseTooNarrow,
       selectedBecauseMultiTargetPotential:
         openOptionsEvaluation.selectedBecauseMultiTargetPotential,
       remainingRollsOpenStrategyBonus:
@@ -4077,16 +3430,15 @@ export function makeAIDecision(
       seedLockRejectedBeforeBuilderMerge: false,
     };
 
-    const strategyScoreResult =
-      getCandidateStrategyScore(
-        candidateWithOpenOptions,
-        remainingRolls,
-        matchContext,
-        playerScores,
-        legalMoveContext,
-        playModeAllowRewrite,
-        previousTargetCategory
-      );
+    const strategyScoreResult = getCandidateStrategyScore(
+      candidateWithOpenOptions,
+      remainingRolls,
+      matchContext,
+      playerScores,
+      legalMoveContext,
+      playModeAllowRewrite,
+      previousTargetCategory,
+    );
 
     const candidateWithStrategy = {
       ...candidateWithOpenOptions,
@@ -4094,12 +3446,11 @@ export function makeAIDecision(
       strategyBreakdown: strategyScoreResult.breakdown,
     };
 
-    const structuralTargetCategory =
-      isStructuralTarget(candidateWithStrategy.type)
-        ? combinationToCategoryId[
-            candidateWithStrategy.type
-          ] ?? null
-        : null;
+    const structuralTargetCategory = isStructuralTarget(
+      candidateWithStrategy.type,
+    )
+      ? (combinationToCategoryId[candidateWithStrategy.type] ?? null)
+      : null;
 
     const oneFiveFallbackAttempted =
       candidateWithStrategy.safeLockedDiceIndices.length === 1 &&
@@ -4110,30 +3461,22 @@ export function makeAIDecision(
     const oneFiveFallbackBlocked =
       structuralTargetCategory !== null &&
       oneFiveFallbackAttempted &&
-      !(
-        (remainingRolls ?? 0) <= 0 ||
-        availableCategoryCount <= 1
-      );
+      !((remainingRolls ?? 0) <= 0 || availableCategoryCount <= 1);
 
     if (oneFiveFallbackBlocked) {
       candidateAudit.push({
         candidateOrder,
         type: combType,
         stage: "evaluate-rejected",
-        evaluationScore:
-          candidateWithStrategy.evaluationScore,
-        strategyScore:
-          candidateWithStrategy.strategyScore,
-        safeLockedDiceIndices:
-          candidateWithStrategy.safeLockedDiceIndices,
+        evaluationScore: candidateWithStrategy.evaluationScore,
+        strategyScore: candidateWithStrategy.strategyScore,
+        safeLockedDiceIndices: candidateWithStrategy.safeLockedDiceIndices,
         lockValues: candidateWithStrategy.lockValues,
         structuralTargetCategory,
         oneFiveFallbackAttempted,
         oneFiveFallbackBlocked,
-        targetSpecificLockBuilderUsed:
-          targetSpecificLockPlan.builderUsed,
-        validationReason:
-          "one-five-fallback-blocked-for-structural-target",
+        targetSpecificLockBuilderUsed: targetSpecificLockPlan.builderUsed,
+        validationReason: "one-five-fallback-blocked-for-structural-target",
       });
       continue;
     }
@@ -4160,8 +3503,8 @@ export function makeAIDecision(
         Number(
           Math.max(
             0,
-            Math.min(1, candidateWithStrategy.currentMatchCount / 6)
-          ).toFixed(2)
+            Math.min(1, candidateWithStrategy.currentMatchCount / 6),
+          ).toFixed(2),
         ),
       remainingRollsFit:
         candidateWithStrategy.remainingRollsFit ??
@@ -4169,7 +3512,7 @@ export function makeAIDecision(
           ? Math.max(
               0,
               remainingRolls -
-                Math.max(0, candidateWithStrategy.missingCount - 1)
+                Math.max(0, candidateWithStrategy.missingCount - 1),
             )
           : 0),
       lockRecommendation:
@@ -4190,22 +3533,19 @@ export function makeAIDecision(
       structuralTargetCategory,
       oneFiveFallbackAttempted,
       oneFiveFallbackBlocked,
-      targetSpecificLockBuilderUsed:
-        targetSpecificLockPlan.builderUsed,
-    }
+      targetSpecificLockBuilderUsed: targetSpecificLockPlan.builderUsed,
+    };
 
-    const seedProgress =
-      canBuildProgressFromSeed(
-        candidateWithTargetMetadata,
-        remainingRolls
-      );
+    const seedProgress = canBuildProgressFromSeed(
+      candidateWithTargetMetadata,
+      remainingRolls,
+    );
 
     const candidateWithSeedMetadata = {
       ...candidateWithTargetMetadata,
       ...seedProgress,
       seedLockApplied: false,
-      rejectedBecauseOnlyWaitingForPairDisabled:
-        false,
+      rejectedBecauseOnlyWaitingForPairDisabled: false,
     };
 
     const rejectsLowValueGroupedBase =
@@ -4222,34 +3562,24 @@ export function makeAIDecision(
         candidateOrder,
         type: combType,
         stage: "evaluate-rejected",
-        evaluationScore:
-          candidateWithSeedMetadata.evaluationScore,
-        strategyScore:
-          candidateWithSeedMetadata.strategyScore,
-        targetPattern:
-          candidateWithSeedMetadata.targetPattern,
-        lockRecommendation:
-          candidateWithSeedMetadata.lockRecommendation,
+        evaluationScore: candidateWithSeedMetadata.evaluationScore,
+        strategyScore: candidateWithSeedMetadata.strategyScore,
+        targetPattern: candidateWithSeedMetadata.targetPattern,
+        lockRecommendation: candidateWithSeedMetadata.lockRecommendation,
         lowValuePenaltyApplied:
           candidateWithSeedMetadata.lowValuePenaltyApplied,
-        rewriteAllowed:
-          candidateWithSeedMetadata.rewriteAllowed,
-        diceValuePolicy:
-          candidateWithSeedMetadata.diceValuePolicy,
-        playModeRiskProfile:
-          candidateWithSeedMetadata.playModeRiskProfile,
+        rewriteAllowed: candidateWithSeedMetadata.rewriteAllowed,
+        diceValuePolicy: candidateWithSeedMetadata.diceValuePolicy,
+        playModeRiskProfile: candidateWithSeedMetadata.playModeRiskProfile,
         seedCandidateGenerated:
           candidateWithSeedMetadata.seedCandidateGenerated,
-        seedTargetCategory:
-          candidateWithSeedMetadata.seedTargetCategory,
+        seedTargetCategory: candidateWithSeedMetadata.seedTargetCategory,
         seedAcceptedBecauseHighValue:
           candidateWithSeedMetadata.seedAcceptedBecauseHighValue,
         seedAcceptedBecauseStraightProgress:
           candidateWithSeedMetadata.seedAcceptedBecauseStraightProgress,
-        buildProgressFromSeed:
-          candidateWithSeedMetadata.buildProgressFromSeed,
-        validationReason:
-          "low-value-grouped-base-rejected-in-ambitious-mode",
+        buildProgressFromSeed: candidateWithSeedMetadata.buildProgressFromSeed,
+        validationReason: "low-value-grouped-base-rejected-in-ambitious-mode",
       });
       continue;
     }
@@ -4259,7 +3589,7 @@ export function makeAIDecision(
       hasStrategicDirection(
         currentDice,
         candidateWithSeedMetadata,
-        phasePolicy
+        phasePolicy,
       ) ||
       !!candidateWithSeedMetadata.buildProgressFromSeed;
 
@@ -4267,75 +3597,46 @@ export function makeAIDecision(
       !keepsStrategicDirection &&
       (remainingRolls ?? 0) >= 2 &&
       candidateWithSeedMetadata.safeLockedDiceIndices.length <= 1 &&
-      isGroupedSeedTarget(
-        candidateWithSeedMetadata.type
-      );
+      isGroupedSeedTarget(candidateWithSeedMetadata.type);
 
-    if (
-      !keepsStrategicDirection
-    ) {
+    if (!keepsStrategicDirection) {
       candidateAudit.push({
         candidateOrder,
         type: combType,
         stage: "direction-rejected",
-        evaluationScore:
-          candidateWithSeedMetadata.evaluationScore,
-        strategyScore:
-          candidateWithSeedMetadata.strategyScore,
-        currentMatchCount:
-          candidateWithSeedMetadata.currentMatchCount,
-        missingCount:
-          candidateWithSeedMetadata.missingCount,
-        relevantIndices:
-          candidateWithSeedMetadata.relevantIndices,
-        safeLockedDiceIndices:
-          candidateWithSeedMetadata.safeLockedDiceIndices,
-        lockValues:
-          candidateWithSeedMetadata.lockValues,
-        expectedNextTurnValue:
-          candidateWithSeedMetadata.expectedNextTurnValue,
-        evaluationBreakdown:
-          candidateWithSeedMetadata.evaluationBreakdown,
-        strategyBreakdown:
-          candidateWithSeedMetadata.strategyBreakdown,
-        targetPattern:
-          candidateWithSeedMetadata.targetPattern,
-        requiredDicePattern:
-          candidateWithSeedMetadata.requiredDicePattern,
-        currentProgress:
-          candidateWithSeedMetadata.currentProgress,
-        completionChance:
-          candidateWithSeedMetadata.completionChance,
-        remainingRollsFit:
-          candidateWithSeedMetadata.remainingRollsFit,
-        lockRecommendation:
-          candidateWithSeedMetadata.lockRecommendation,
+        evaluationScore: candidateWithSeedMetadata.evaluationScore,
+        strategyScore: candidateWithSeedMetadata.strategyScore,
+        currentMatchCount: candidateWithSeedMetadata.currentMatchCount,
+        missingCount: candidateWithSeedMetadata.missingCount,
+        relevantIndices: candidateWithSeedMetadata.relevantIndices,
+        safeLockedDiceIndices: candidateWithSeedMetadata.safeLockedDiceIndices,
+        lockValues: candidateWithSeedMetadata.lockValues,
+        expectedNextTurnValue: candidateWithSeedMetadata.expectedNextTurnValue,
+        evaluationBreakdown: candidateWithSeedMetadata.evaluationBreakdown,
+        strategyBreakdown: candidateWithSeedMetadata.strategyBreakdown,
+        targetPattern: candidateWithSeedMetadata.targetPattern,
+        requiredDicePattern: candidateWithSeedMetadata.requiredDicePattern,
+        currentProgress: candidateWithSeedMetadata.currentProgress,
+        completionChance: candidateWithSeedMetadata.completionChance,
+        remainingRollsFit: candidateWithSeedMetadata.remainingRollsFit,
+        lockRecommendation: candidateWithSeedMetadata.lockRecommendation,
         rejectedSingleValueHeuristic:
           candidateWithSeedMetadata.rejectedSingleValueHeuristic,
         fallbackOneFiveEligible:
           candidateWithSeedMetadata.fallbackOneFiveEligible,
-        rewriteAllowed:
-          candidateWithSeedMetadata.rewriteAllowed,
-        diceValuePolicy:
-          candidateWithSeedMetadata.diceValuePolicy,
-        playModeRiskProfile:
-          candidateWithSeedMetadata.playModeRiskProfile,
+        rewriteAllowed: candidateWithSeedMetadata.rewriteAllowed,
+        diceValuePolicy: candidateWithSeedMetadata.diceValuePolicy,
+        playModeRiskProfile: candidateWithSeedMetadata.playModeRiskProfile,
         lowValuePenaltyApplied:
           candidateWithSeedMetadata.lowValuePenaltyApplied,
         minimumAcceptableScore:
           candidateWithSeedMetadata.minimumAcceptableScore,
-        playModeRiskModifier:
-          candidateWithSeedMetadata.playModeRiskModifier,
-        scoreContextModifier:
-          candidateWithSeedMetadata.scoreContextModifier,
-        targetScorePotential:
-          candidateWithSeedMetadata.targetScorePotential,
-        missingPattern:
-          candidateWithSeedMetadata.missingPattern,
-        openOptionsScore:
-          candidateWithSeedMetadata.openOptionsScore,
-        openOptions:
-          candidateWithSeedMetadata.openOptions,
+        playModeRiskModifier: candidateWithSeedMetadata.playModeRiskModifier,
+        scoreContextModifier: candidateWithSeedMetadata.scoreContextModifier,
+        targetScorePotential: candidateWithSeedMetadata.targetScorePotential,
+        missingPattern: candidateWithSeedMetadata.missingPattern,
+        openOptionsScore: candidateWithSeedMetadata.openOptionsScore,
+        openOptions: candidateWithSeedMetadata.openOptions,
         scoreboardFilteredOptions:
           candidateWithSeedMetadata.scoreboardFilteredOptions,
         rejectedBecauseTooNarrow:
@@ -4346,17 +3647,14 @@ export function makeAIDecision(
           candidateWithSeedMetadata.remainingRollsOpenStrategyBonus,
         seedCandidateGenerated:
           candidateWithSeedMetadata.seedCandidateGenerated,
-        seedTargetCategory:
-          candidateWithSeedMetadata.seedTargetCategory,
+        seedTargetCategory: candidateWithSeedMetadata.seedTargetCategory,
         seedAcceptedBecauseHighValue:
           candidateWithSeedMetadata.seedAcceptedBecauseHighValue,
         seedAcceptedBecauseStraightProgress:
           candidateWithSeedMetadata.seedAcceptedBecauseStraightProgress,
-        buildProgressFromSeed:
-          candidateWithSeedMetadata.buildProgressFromSeed,
+        buildProgressFromSeed: candidateWithSeedMetadata.buildProgressFromSeed,
         rejectedBecauseOnlyWaitingForPairDisabled,
-        candidateDice:
-          candidateValidation.candidateDice,
+        candidateDice: candidateValidation.candidateDice,
         candidateCombinationFromGameValidator:
           candidateValidation.candidateCombinationFromGameValidator,
         candidateCombinationCategoryId:
@@ -4369,8 +3667,7 @@ export function makeAIDecision(
           candidateValidation.rejectedBecauseFullLockWithoutValidCombination,
         selectedCandidateValidationResult:
           candidateValidation.selectedCandidateValidationResult,
-        validationReason:
-          candidateValidation.validationReason,
+        validationReason: candidateValidation.validationReason,
       });
       continue;
     }
@@ -4383,28 +3680,17 @@ export function makeAIDecision(
         candidateOrder,
         type: combType,
         stage: "validation-rejected",
-        evaluationScore:
-          candidateWithSeedMetadata.evaluationScore,
-        currentMatchCount:
-          candidateWithSeedMetadata.currentMatchCount,
-        strategyScore:
-          candidateWithSeedMetadata.strategyScore,
-        missingCount:
-          candidateWithSeedMetadata.missingCount,
-        relevantIndices:
-          candidateWithSeedMetadata.relevantIndices,
-        safeLockedDiceIndices:
-          candidateWithSeedMetadata.safeLockedDiceIndices,
-        lockValues:
-          candidateWithSeedMetadata.lockValues,
-        expectedNextTurnValue:
-          candidateWithSeedMetadata.expectedNextTurnValue,
-        evaluationBreakdown:
-          candidateWithSeedMetadata.evaluationBreakdown,
-        strategyBreakdown:
-          candidateWithSeedMetadata.strategyBreakdown,
-        candidateDice:
-          candidateValidation.candidateDice,
+        evaluationScore: candidateWithSeedMetadata.evaluationScore,
+        currentMatchCount: candidateWithSeedMetadata.currentMatchCount,
+        strategyScore: candidateWithSeedMetadata.strategyScore,
+        missingCount: candidateWithSeedMetadata.missingCount,
+        relevantIndices: candidateWithSeedMetadata.relevantIndices,
+        safeLockedDiceIndices: candidateWithSeedMetadata.safeLockedDiceIndices,
+        lockValues: candidateWithSeedMetadata.lockValues,
+        expectedNextTurnValue: candidateWithSeedMetadata.expectedNextTurnValue,
+        evaluationBreakdown: candidateWithSeedMetadata.evaluationBreakdown,
+        strategyBreakdown: candidateWithSeedMetadata.strategyBreakdown,
+        candidateDice: candidateValidation.candidateDice,
         candidateCombinationFromGameValidator:
           candidateValidation.candidateCombinationFromGameValidator,
         candidateCombinationCategoryId:
@@ -4417,47 +3703,31 @@ export function makeAIDecision(
           candidateValidation.rejectedBecauseFullLockWithoutValidCombination,
         selectedCandidateValidationResult:
           candidateValidation.selectedCandidateValidationResult,
-        validationReason:
-          candidateValidation.validationReason,
+        validationReason: candidateValidation.validationReason,
         rejectedBeforeLockBecauseNotWritable: true,
-        targetPattern:
-          candidateWithSeedMetadata.targetPattern,
-        requiredDicePattern:
-          candidateWithSeedMetadata.requiredDicePattern,
-        currentProgress:
-          candidateWithSeedMetadata.currentProgress,
-        completionChance:
-          candidateWithSeedMetadata.completionChance,
-        remainingRollsFit:
-          candidateWithSeedMetadata.remainingRollsFit,
-        lockRecommendation:
-          candidateWithSeedMetadata.lockRecommendation,
+        targetPattern: candidateWithSeedMetadata.targetPattern,
+        requiredDicePattern: candidateWithSeedMetadata.requiredDicePattern,
+        currentProgress: candidateWithSeedMetadata.currentProgress,
+        completionChance: candidateWithSeedMetadata.completionChance,
+        remainingRollsFit: candidateWithSeedMetadata.remainingRollsFit,
+        lockRecommendation: candidateWithSeedMetadata.lockRecommendation,
         rejectedSingleValueHeuristic:
           candidateWithSeedMetadata.rejectedSingleValueHeuristic,
         fallbackOneFiveEligible:
           candidateWithSeedMetadata.fallbackOneFiveEligible,
-        rewriteAllowed:
-          candidateWithSeedMetadata.rewriteAllowed,
-        diceValuePolicy:
-          candidateWithSeedMetadata.diceValuePolicy,
-        playModeRiskProfile:
-          candidateWithSeedMetadata.playModeRiskProfile,
+        rewriteAllowed: candidateWithSeedMetadata.rewriteAllowed,
+        diceValuePolicy: candidateWithSeedMetadata.diceValuePolicy,
+        playModeRiskProfile: candidateWithSeedMetadata.playModeRiskProfile,
         lowValuePenaltyApplied:
           candidateWithSeedMetadata.lowValuePenaltyApplied,
         minimumAcceptableScore:
           candidateWithSeedMetadata.minimumAcceptableScore,
-        playModeRiskModifier:
-          candidateWithSeedMetadata.playModeRiskModifier,
-        scoreContextModifier:
-          candidateWithSeedMetadata.scoreContextModifier,
-        targetScorePotential:
-          candidateWithSeedMetadata.targetScorePotential,
-        missingPattern:
-          candidateWithSeedMetadata.missingPattern,
-        openOptionsScore:
-          candidateWithSeedMetadata.openOptionsScore,
-        openOptions:
-          candidateWithSeedMetadata.openOptions,
+        playModeRiskModifier: candidateWithSeedMetadata.playModeRiskModifier,
+        scoreContextModifier: candidateWithSeedMetadata.scoreContextModifier,
+        targetScorePotential: candidateWithSeedMetadata.targetScorePotential,
+        missingPattern: candidateWithSeedMetadata.missingPattern,
+        openOptionsScore: candidateWithSeedMetadata.openOptionsScore,
+        openOptions: candidateWithSeedMetadata.openOptions,
         scoreboardFilteredOptions:
           candidateWithSeedMetadata.scoreboardFilteredOptions,
         rejectedBecauseTooNarrow:
@@ -4468,14 +3738,12 @@ export function makeAIDecision(
           candidateWithSeedMetadata.remainingRollsOpenStrategyBonus,
         seedCandidateGenerated:
           candidateWithSeedMetadata.seedCandidateGenerated,
-        seedTargetCategory:
-          candidateWithSeedMetadata.seedTargetCategory,
+        seedTargetCategory: candidateWithSeedMetadata.seedTargetCategory,
         seedAcceptedBecauseHighValue:
           candidateWithSeedMetadata.seedAcceptedBecauseHighValue,
         seedAcceptedBecauseStraightProgress:
           candidateWithSeedMetadata.seedAcceptedBecauseStraightProgress,
-        buildProgressFromSeed:
-          candidateWithSeedMetadata.buildProgressFromSeed,
+        buildProgressFromSeed: candidateWithSeedMetadata.buildProgressFromSeed,
       });
       continue;
     }
@@ -4484,28 +3752,17 @@ export function makeAIDecision(
       candidateOrder,
       type: combType,
       stage: "accepted",
-      evaluationScore:
-        candidateWithSeedMetadata.evaluationScore,
-      strategyScore:
-        candidateWithSeedMetadata.strategyScore,
-      currentMatchCount:
-        candidateWithSeedMetadata.currentMatchCount,
-      missingCount:
-        candidateWithSeedMetadata.missingCount,
-      relevantIndices:
-        candidateWithSeedMetadata.relevantIndices,
-      safeLockedDiceIndices:
-        candidateWithSeedMetadata.safeLockedDiceIndices,
-      lockValues:
-        candidateWithSeedMetadata.lockValues,
-      expectedNextTurnValue:
-        candidateWithSeedMetadata.expectedNextTurnValue,
-      evaluationBreakdown:
-        candidateWithSeedMetadata.evaluationBreakdown,
-      strategyBreakdown:
-        candidateWithSeedMetadata.strategyBreakdown,
-      candidateDice:
-        candidateValidation.candidateDice,
+      evaluationScore: candidateWithSeedMetadata.evaluationScore,
+      strategyScore: candidateWithSeedMetadata.strategyScore,
+      currentMatchCount: candidateWithSeedMetadata.currentMatchCount,
+      missingCount: candidateWithSeedMetadata.missingCount,
+      relevantIndices: candidateWithSeedMetadata.relevantIndices,
+      safeLockedDiceIndices: candidateWithSeedMetadata.safeLockedDiceIndices,
+      lockValues: candidateWithSeedMetadata.lockValues,
+      expectedNextTurnValue: candidateWithSeedMetadata.expectedNextTurnValue,
+      evaluationBreakdown: candidateWithSeedMetadata.evaluationBreakdown,
+      strategyBreakdown: candidateWithSeedMetadata.strategyBreakdown,
+      candidateDice: candidateValidation.candidateDice,
       candidateCombinationFromGameValidator:
         candidateValidation.candidateCombinationFromGameValidator,
       candidateCombinationCategoryId:
@@ -4518,46 +3775,28 @@ export function makeAIDecision(
         candidateValidation.rejectedBecauseFullLockWithoutValidCombination,
       selectedCandidateValidationResult:
         candidateValidation.selectedCandidateValidationResult,
-      validationReason:
-        candidateValidation.validationReason,
-      targetPattern:
-        candidateWithSeedMetadata.targetPattern,
-      requiredDicePattern:
-        candidateWithSeedMetadata.requiredDicePattern,
-      currentProgress:
-        candidateWithSeedMetadata.currentProgress,
-      completionChance:
-        candidateWithSeedMetadata.completionChance,
-      remainingRollsFit:
-        candidateWithSeedMetadata.remainingRollsFit,
-      lockRecommendation:
-        candidateWithSeedMetadata.lockRecommendation,
+      validationReason: candidateValidation.validationReason,
+      targetPattern: candidateWithSeedMetadata.targetPattern,
+      requiredDicePattern: candidateWithSeedMetadata.requiredDicePattern,
+      currentProgress: candidateWithSeedMetadata.currentProgress,
+      completionChance: candidateWithSeedMetadata.completionChance,
+      remainingRollsFit: candidateWithSeedMetadata.remainingRollsFit,
+      lockRecommendation: candidateWithSeedMetadata.lockRecommendation,
       rejectedSingleValueHeuristic:
         candidateWithSeedMetadata.rejectedSingleValueHeuristic,
       fallbackOneFiveEligible:
         candidateWithSeedMetadata.fallbackOneFiveEligible,
-      rewriteAllowed:
-        candidateWithSeedMetadata.rewriteAllowed,
-      diceValuePolicy:
-        candidateWithSeedMetadata.diceValuePolicy,
-      playModeRiskProfile:
-        candidateWithSeedMetadata.playModeRiskProfile,
-      lowValuePenaltyApplied:
-        candidateWithSeedMetadata.lowValuePenaltyApplied,
-      minimumAcceptableScore:
-        candidateWithSeedMetadata.minimumAcceptableScore,
-      playModeRiskModifier:
-        candidateWithSeedMetadata.playModeRiskModifier,
-      scoreContextModifier:
-        candidateWithSeedMetadata.scoreContextModifier,
-      targetScorePotential:
-        candidateWithSeedMetadata.targetScorePotential,
-      missingPattern:
-        candidateWithSeedMetadata.missingPattern,
-      openOptionsScore:
-        candidateWithSeedMetadata.openOptionsScore,
-      openOptions:
-        candidateWithSeedMetadata.openOptions,
+      rewriteAllowed: candidateWithSeedMetadata.rewriteAllowed,
+      diceValuePolicy: candidateWithSeedMetadata.diceValuePolicy,
+      playModeRiskProfile: candidateWithSeedMetadata.playModeRiskProfile,
+      lowValuePenaltyApplied: candidateWithSeedMetadata.lowValuePenaltyApplied,
+      minimumAcceptableScore: candidateWithSeedMetadata.minimumAcceptableScore,
+      playModeRiskModifier: candidateWithSeedMetadata.playModeRiskModifier,
+      scoreContextModifier: candidateWithSeedMetadata.scoreContextModifier,
+      targetScorePotential: candidateWithSeedMetadata.targetScorePotential,
+      missingPattern: candidateWithSeedMetadata.missingPattern,
+      openOptionsScore: candidateWithSeedMetadata.openOptionsScore,
+      openOptions: candidateWithSeedMetadata.openOptions,
       scoreboardFilteredOptions:
         candidateWithSeedMetadata.scoreboardFilteredOptions,
       rejectedBecauseTooNarrow:
@@ -4566,20 +3805,15 @@ export function makeAIDecision(
         candidateWithSeedMetadata.selectedBecauseMultiTargetPotential,
       remainingRollsOpenStrategyBonus:
         candidateWithSeedMetadata.remainingRollsOpenStrategyBonus,
-      seedCandidateGenerated:
-        candidateWithSeedMetadata.seedCandidateGenerated,
-      seedTargetCategory:
-        candidateWithSeedMetadata.seedTargetCategory,
+      seedCandidateGenerated: candidateWithSeedMetadata.seedCandidateGenerated,
+      seedTargetCategory: candidateWithSeedMetadata.seedTargetCategory,
       seedAcceptedBecauseHighValue:
         candidateWithSeedMetadata.seedAcceptedBecauseHighValue,
       seedAcceptedBecauseStraightProgress:
         candidateWithSeedMetadata.seedAcceptedBecauseStraightProgress,
-      buildProgressFromSeed:
-        candidateWithSeedMetadata.buildProgressFromSeed,
-      seedLockApplied:
-        candidateWithSeedMetadata.buildProgressFromSeed,
-      rejectedBecauseOnlyWaitingForPairDisabled:
-        false,
+      buildProgressFromSeed: candidateWithSeedMetadata.buildProgressFromSeed,
+      seedLockApplied: candidateWithSeedMetadata.buildProgressFromSeed,
+      rejectedBecauseOnlyWaitingForPairDisabled: false,
     });
 
     candidates.push(candidateWithSeedMetadata);
@@ -4592,172 +3826,132 @@ export function makeAIDecision(
       fixedLocks,
       remainingRolls,
       availableTargetCategories,
-      lockCompatibility
+      lockCompatibility,
     );
 
   for (const explicitBuilder of explicitHighValueBuilderCandidates) {
-    const duplicateBuilder = candidates.some(
-      (candidate) => {
-        if (candidate.type !== explicitBuilder.type) {
-          return false;
-        }
-
-        if (
-          candidate.safeLockedDiceIndices.length !==
-          explicitBuilder.safeLockedDiceIndices.length
-        ) {
-          return false;
-        }
-
-        return candidate.safeLockedDiceIndices.every(
-          (index, idx) =>
-            index ===
-            explicitBuilder.safeLockedDiceIndices[idx]
-        );
+    const duplicateBuilder = candidates.some((candidate) => {
+      if (candidate.type !== explicitBuilder.type) {
+        return false;
       }
-    );
+
+      if (
+        candidate.safeLockedDiceIndices.length !==
+        explicitBuilder.safeLockedDiceIndices.length
+      ) {
+        return false;
+      }
+
+      return candidate.safeLockedDiceIndices.every(
+        (index, idx) => index === explicitBuilder.safeLockedDiceIndices[idx],
+      );
+    });
 
     if (duplicateBuilder) {
       continue;
     }
 
-      candidateAudit.push({
-        candidateOrder: explicitBuilder.candidateOrder,
-        type: explicitBuilder.type,
-        stage: "accepted",
-        highValueBuilderGeneratedFromSingleDie:
-          explicitBuilder.highValueBuilderGeneratedFromSingleDie,
-        highValueBuilderGeneratedFromPattern:
-          true,
-        highValueBuilderPattern:
-          explicitBuilder.highValueBuilderPattern,
-        highValueBuilderValues:
-          explicitBuilder.lockValues,
-        highValueBuilderTargetCategory:
-          explicitBuilder.highValueBuilderTargetCategory,
-        seedCandidateGenerated:
-          explicitBuilder.seedCandidateGenerated,
-        seedTargetCategory:
-          explicitBuilder.seedTargetCategory,
-        seedAcceptedBecauseHighValue:
-          explicitBuilder.seedAcceptedBecauseHighValue,
-        buildProgressFromSeed:
-          explicitBuilder.buildProgressFromSeed,
-        safeLockedDiceIndices:
-          explicitBuilder.safeLockedDiceIndices,
-        lockValues: explicitBuilder.lockValues,
-        strategyScore: explicitBuilder.strategyScore,
-        evaluationScore: explicitBuilder.evaluationScore,
-        validationReason:
-          "high-value-pattern-builder-generated",
-      });
+    candidateAudit.push({
+      candidateOrder: explicitBuilder.candidateOrder,
+      type: explicitBuilder.type,
+      stage: "accepted",
+      highValueBuilderGeneratedFromSingleDie:
+        explicitBuilder.highValueBuilderGeneratedFromSingleDie,
+      highValueBuilderGeneratedFromPattern: true,
+      highValueBuilderPattern: explicitBuilder.highValueBuilderPattern,
+      highValueBuilderValues: explicitBuilder.lockValues,
+      highValueBuilderTargetCategory:
+        explicitBuilder.highValueBuilderTargetCategory,
+      seedCandidateGenerated: explicitBuilder.seedCandidateGenerated,
+      seedTargetCategory: explicitBuilder.seedTargetCategory,
+      seedAcceptedBecauseHighValue:
+        explicitBuilder.seedAcceptedBecauseHighValue,
+      buildProgressFromSeed: explicitBuilder.buildProgressFromSeed,
+      safeLockedDiceIndices: explicitBuilder.safeLockedDiceIndices,
+      lockValues: explicitBuilder.lockValues,
+      strategyScore: explicitBuilder.strategyScore,
+      evaluationScore: explicitBuilder.evaluationScore,
+      validationReason: "high-value-pattern-builder-generated",
+    });
 
-      candidates.push(explicitBuilder);
+    candidates.push(explicitBuilder);
   }
 
-  const rankedHighValueBuilderCandidates =
-    candidates
-      .filter((candidate) =>
-        isPreferredHighValueBuilderCandidate(
-          candidate,
-          availableTargetCategories,
-          lockCompatibility
-        )
-      )
-      .sort(compareCandidatesByPolicy);
+  const rankedHighValueBuilderCandidates = candidates
+    .filter((candidate) =>
+      isPreferredHighValueBuilderCandidate(
+        candidate,
+        availableTargetCategories,
+        lockCompatibility,
+      ),
+    )
+    .sort(compareCandidatesByPolicy);
 
   const bestHighValueBuilder =
     rankedHighValueBuilderCandidates.length > 0
       ? rankedHighValueBuilderCandidates[0]
       : null;
 
-  const highValueBuilderCheckedBeforeReroll =
-    (remainingRolls ?? 0) > 0;
-  const highValueBuilderAvailable =
-    bestHighValueBuilder !== null;
-  const rerollBlockedUntilHighValueBuilderEvaluated =
-    (remainingRolls ?? 0) > 0;
+  const highValueBuilderCheckedBeforeReroll = (remainingRolls ?? 0) > 0;
+  const highValueBuilderAvailable = bestHighValueBuilder !== null;
+  const rerollBlockedUntilHighValueBuilderEvaluated = (remainingRolls ?? 0) > 0;
 
   const allowLowBaseException =
-    (remainingRolls ?? 0) <= 1 ||
-    availableCategoryCount <= 1;
+    (remainingRolls ?? 0) <= 1 || availableCategoryCount <= 1;
 
-  let lowPairRejectedBecauseHighValueBuilderExists =
-    false;
-  let lowTripleRejectedBecauseHighValueBuilderExists =
-    false;
-  let lowValueCompletionRejectedBeforeFinalRoll =
-    false;
+  let lowPairRejectedBecauseHighValueBuilderExists = false;
+  let lowTripleRejectedBecauseHighValueBuilderExists = false;
+  let lowValueCompletionRejectedBeforeFinalRoll = false;
 
-  if (
-    bestHighValueBuilder !== null &&
-    !allowLowBaseException
-  ) {
-    const filteredCandidates =
-      candidates.filter((candidate) => {
-        const lowPair =
-          isLowPairStartCandidate(candidate);
-        const lowTriple =
-          isLowTripleStartCandidate(candidate);
-        const lowValueCompletion =
-          isLowValueCompletionSupplementCandidate(
-            candidate
-          );
+  if (bestHighValueBuilder !== null && !allowLowBaseException) {
+    const filteredCandidates = candidates.filter((candidate) => {
+      const lowPair = isLowPairStartCandidate(candidate);
+      const lowTriple = isLowTripleStartCandidate(candidate);
+      const lowValueCompletion =
+        isLowValueCompletionSupplementCandidate(candidate);
 
-        if (
-          (lowPair ||
-            lowTriple ||
-            lowValueCompletion) &&
-          !candidate.isComplete
-        ) {
-          if (lowPair) {
-            lowPairRejectedBecauseHighValueBuilderExists =
-              true;
-          }
-
-          if (lowTriple) {
-            lowTripleRejectedBecauseHighValueBuilderExists =
-              true;
-          }
-
-          if (lowValueCompletion) {
-            lowValueCompletionRejectedBeforeFinalRoll =
-              true;
-          }
-
-          candidateAudit.push({
-            candidateOrder:
-              candidate.candidateOrder,
-            type: candidate.type,
-            stage: "direction-rejected",
-            seedCandidateGenerated:
-              candidate.seedCandidateGenerated,
-            seedTargetCategory:
-              candidate.seedTargetCategory,
-            seedAcceptedBecauseHighValue:
-              candidate.seedAcceptedBecauseHighValue,
-            seedAcceptedBecauseStraightProgress:
-              candidate.seedAcceptedBecauseStraightProgress,
-            buildProgressFromSeed:
-              candidate.buildProgressFromSeed,
-            seedLockApplied:
-              candidate.seedLockApplied,
-            rejectedBecauseOnlyWaitingForPairDisabled:
-              true,
-            validationReason: lowPair
-              ? "low-pair-rejected-because-high-value-builder-exists"
-              : lowTriple
-              ? "low-triple-rejected-because-high-value-builder-exists"
-              : lowValueCompletion
-              ? "low-value-completion-rejected-before-final-roll"
-              : "low-triple-rejected-because-high-value-builder-exists",
-          });
-
-          return false;
+      if (
+        (lowPair || lowTriple || lowValueCompletion) &&
+        !candidate.isComplete
+      ) {
+        if (lowPair) {
+          lowPairRejectedBecauseHighValueBuilderExists = true;
         }
 
-        return true;
-      });
+        if (lowTriple) {
+          lowTripleRejectedBecauseHighValueBuilderExists = true;
+        }
+
+        if (lowValueCompletion) {
+          lowValueCompletionRejectedBeforeFinalRoll = true;
+        }
+
+        candidateAudit.push({
+          candidateOrder: candidate.candidateOrder,
+          type: candidate.type,
+          stage: "direction-rejected",
+          seedCandidateGenerated: candidate.seedCandidateGenerated,
+          seedTargetCategory: candidate.seedTargetCategory,
+          seedAcceptedBecauseHighValue: candidate.seedAcceptedBecauseHighValue,
+          seedAcceptedBecauseStraightProgress:
+            candidate.seedAcceptedBecauseStraightProgress,
+          buildProgressFromSeed: candidate.buildProgressFromSeed,
+          seedLockApplied: candidate.seedLockApplied,
+          rejectedBecauseOnlyWaitingForPairDisabled: true,
+          validationReason: lowPair
+            ? "low-pair-rejected-because-high-value-builder-exists"
+            : lowTriple
+              ? "low-triple-rejected-because-high-value-builder-exists"
+              : lowValueCompletion
+                ? "low-value-completion-rejected-before-final-roll"
+                : "low-triple-rejected-because-high-value-builder-exists",
+        });
+
+        return false;
+      }
+
+      return true;
+    });
 
     if (filteredCandidates.length > 0) {
       candidates = filteredCandidates;
@@ -4766,21 +3960,59 @@ export function makeAIDecision(
 
   // If no writable combinations, return empty (roll everything)
   if (candidates.length === 0) {
-    const fallbackSaveCandidate =
-      legalMoveContext.writableSaveCandidate;
+    const fallbackSaveCandidate = legalMoveContext.writableSaveCandidate;
     const deadEndDetected = true;
-    const bestLegalFallbackScore =
-      fallbackSaveCandidate.canSave
-        ? fallbackSaveCandidate.score
-        : null;
+    const bestLegalFallbackScore = fallbackSaveCandidate.canSave
+      ? fallbackSaveCandidate.score
+      : null;
+
+    const canKeepTargetOpenWithMask = (lockMask: boolean[]) => {
+      const mergedLocks = fixedLocks.map(
+        (isFixed, index) => isFixed || lockMask[index],
+      );
+
+      return availableTargetCategories.find((targetCategoryId) =>
+        canTargetCategoryWorkWithFixedLocks(
+          targetCategoryId as PlayModeCategoryId,
+          currentDice,
+          mergedLocks,
+        ),
+      );
+    };
+
+    let deadEndFallbackLockMask: boolean[] | null = null;
+    let deadEndFallbackTargetCategory: string | null = null;
+
+    if ((remainingRolls ?? 0) >= 2 && availableTargetCategories.length > 0) {
+      const sortedIndices = currentDice
+        .map((value, index) => ({ value, index }))
+        .sort((a, b) => b.value - a.value)
+        .map((entry) => entry.index);
+
+      for (const index of sortedIndices) {
+        const value = currentDice[index];
+
+        if (value < 4) {
+          continue;
+        }
+
+        const mask = [false, false, false, false, false, false];
+        mask[index] = true;
+
+        const compatibleTarget = canKeepTargetOpenWithMask(mask);
+        if (compatibleTarget) {
+          deadEndFallbackLockMask = mask;
+          deadEndFallbackTargetCategory = compatibleTarget;
+          break;
+        }
+      }
+    }
 
     if (
       (remainingRolls ?? 0) <= 0 &&
       fallbackSaveCandidate.canSave &&
       fallbackSaveCandidate.categoryId &&
-      availableTargetCategories.includes(
-        fallbackSaveCandidate.categoryId
-      )
+      availableTargetCategories.includes(fallbackSaveCandidate.categoryId)
     ) {
       logAIDecisionAudit(
         currentDice,
@@ -4803,50 +4035,32 @@ export function makeAIDecision(
           lowValueAllowedOnlyBecauseFinalRoll: false,
           deadEndDetected,
           bestLegalFallbackScore,
-        }
+        },
       );
 
       return {
-        targetCategory:
-          fallbackSaveCandidate.categoryId,
-        lockMask: [
-          false,
-          false,
-          false,
-          false,
-          false,
-          false,
-        ],
+        targetCategory: fallbackSaveCandidate.categoryId,
+        lockMask: [false, false, false, false, false, false],
         lockedDiceIndices: [],
         action: "save",
         confidence: 0.18,
-        riskLevel: toRiskLevel(
-          remainingRolls,
-          matchContext
-        ),
+        riskLevel: toRiskLevel(remainingRolls, matchContext),
         aiScore: matchContext.aiScore,
-        bestOpponentScore:
-          matchContext.bestOpponentScore,
+        bestOpponentScore: matchContext.bestOpponentScore,
         endgameMode: matchContext.endgameMode,
         scoreDelta: matchContext.scoreDelta,
-        aiRemainingPotential:
-          matchContext.aiRemainingPotential,
-        opponentRemainingPotential:
-          matchContext.opponentRemainingPotential,
-        requiredScoreEstimate:
-          matchContext.requiredScoreEstimate,
+        aiRemainingPotential: matchContext.aiRemainingPotential,
+        opponentRemainingPotential: matchContext.opponentRemainingPotential,
+        requiredScoreEstimate: matchContext.requiredScoreEstimate,
         opponentScore: matchContext.opponentScore,
-        remainingCategories:
-          matchContext.remainingCategories,
-        riskBecauseBehind:
-          matchContext.riskBecauseBehind,
+        remainingCategories: matchContext.remainingCategories,
+        riskBecauseBehind: matchContext.riskBecauseBehind,
         saveRejectedBecauseTooLow: false,
         currentPlanValue: 0,
         alternativePlanValue: 0,
         pivotThreshold: 0,
         pivotReason: "dead-end-save-fallback",
-        reason:
-          "dead-end fallback: save best legal available result",
+        reason: "dead-end fallback: save best legal available result",
         fallbackReason: "dead-end-save-fallback",
       };
     }
@@ -4868,52 +4082,70 @@ export function makeAIDecision(
         highValueBuilderAppliedBeforeReroll: false,
         rerollBlockedUntilHighValueBuilderEvaluated,
         rerollWithoutLockReason:
-          (remainingRolls ?? 0) > 0
-            ? "no-legal-candidates-after-filter"
-            : null,
+          deadEndFallbackLockMask !== null
+            ? "dead-end-single-high-die-fallback"
+            : (remainingRolls ?? 0) > 0
+              ? "no-legal-candidates-after-filter"
+              : null,
         lowValueCompletionRejectedBeforeFinalRoll,
         lowValueAllowedOnlyBecauseFinalRoll: false,
         deadEndDetected,
         bestLegalFallbackScore,
-      }
+        deadEndFallbackTargetCategory,
+        deadEndFallbackLockMask,
+      },
     );
+
+    if (deadEndFallbackLockMask !== null && deadEndFallbackTargetCategory) {
+      const deadEndFallbackIndices = deadEndFallbackLockMask
+        .map((isLocked, index) => (isLocked ? index : -1))
+        .filter((index) => index >= 0);
+
+      return {
+        targetCategory: deadEndFallbackTargetCategory,
+        lockMask: deadEndFallbackLockMask,
+        lockedDiceIndices: deadEndFallbackIndices,
+        action: "roll",
+        confidence: 0.24,
+        riskLevel: toRiskLevel(remainingRolls, matchContext),
+        aiScore: matchContext.aiScore,
+        bestOpponentScore: matchContext.bestOpponentScore,
+        endgameMode: matchContext.endgameMode,
+        scoreDelta: matchContext.scoreDelta,
+        aiRemainingPotential: matchContext.aiRemainingPotential,
+        opponentRemainingPotential: matchContext.opponentRemainingPotential,
+        requiredScoreEstimate: matchContext.requiredScoreEstimate,
+        opponentScore: matchContext.opponentScore,
+        remainingCategories: matchContext.remainingCategories,
+        riskBecauseBehind: matchContext.riskBecauseBehind,
+        saveRejectedBecauseTooLow: false,
+        currentPlanValue: 0,
+        alternativePlanValue: 0,
+        pivotThreshold: 0,
+        pivotReason: "dead-end-single-high-die-fallback",
+        reason:
+          "fallback: keep one high die to avoid no-lock dead-end while preserving writable targets",
+        fallbackReason: "dead-end-single-high-die-fallback",
+      };
+    }
 
     return {
       targetCategory: null,
-      lockMask: [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ],
+      lockMask: [false, false, false, false, false, false],
       lockedDiceIndices: [],
-      action:
-        (remainingRolls ?? 0) > 0
-          ? "roll"
-          : "end_turn",
+      action: (remainingRolls ?? 0) > 0 ? "roll" : "end_turn",
       confidence: 0.2,
-      riskLevel: toRiskLevel(
-        remainingRolls,
-        matchContext
-      ),
+      riskLevel: toRiskLevel(remainingRolls, matchContext),
       aiScore: matchContext.aiScore,
-      bestOpponentScore:
-        matchContext.bestOpponentScore,
+      bestOpponentScore: matchContext.bestOpponentScore,
       endgameMode: matchContext.endgameMode,
       scoreDelta: matchContext.scoreDelta,
-      aiRemainingPotential:
-        matchContext.aiRemainingPotential,
-      opponentRemainingPotential:
-        matchContext.opponentRemainingPotential,
-      requiredScoreEstimate:
-        matchContext.requiredScoreEstimate,
+      aiRemainingPotential: matchContext.aiRemainingPotential,
+      opponentRemainingPotential: matchContext.opponentRemainingPotential,
+      requiredScoreEstimate: matchContext.requiredScoreEstimate,
       opponentScore: matchContext.opponentScore,
-      remainingCategories:
-        matchContext.remainingCategories,
-      riskBecauseBehind:
-        matchContext.riskBecauseBehind,
+      remainingCategories: matchContext.remainingCategories,
+      riskBecauseBehind: matchContext.riskBecauseBehind,
       saveRejectedBecauseTooLow: false,
       currentPlanValue: 0,
       alternativePlanValue: 0,
@@ -4931,90 +4163,84 @@ export function makeAIDecision(
 
   if ((remainingRolls ?? 0) <= 1) {
     const completeCandidates = candidates.filter(
-      (candidate) => candidate.isComplete
+      (candidate) => candidate.isComplete,
     );
 
     if (completeCandidates.length > 0) {
-      completeCandidates.sort(
-        compareCandidatesByPolicy
-      );
+      completeCandidates.sort(compareCandidatesByPolicy);
 
-      const strongestComplete =
-        completeCandidates[0];
-      const strongestCompleteScore =
-        strongestComplete.absoluteScoreSignal;
-      const bestCurrentScore =
-        best.absoluteScoreSignal;
-      const bestCurrentMinimum =
-        best.minimumAcceptableScore ?? 0;
+      const strongestComplete = completeCandidates[0];
+      const strongestCompleteScore = strongestComplete.absoluteScoreSignal;
+      const bestCurrentScore = best.absoluteScoreSignal;
+      const bestCurrentMinimum = best.minimumAcceptableScore ?? 0;
 
       if (
         (remainingRolls ?? 0) <= 0 ||
-        strongestCompleteScore >=
-          Math.max(
-            bestCurrentScore,
-            bestCurrentMinimum
-          )
+        strongestCompleteScore >= Math.max(bestCurrentScore, bestCurrentMinimum)
       ) {
         best = strongestComplete;
       }
     }
   }
 
-  const bestTargetCategory =
-    combinationToCategoryId[best.type] ?? null;
-  const bestTargetWritable =
-    bestTargetCategory !== null &&
-    availableTargetCategories.includes(
-      bestTargetCategory
-    );
+  const candidateKeepsAnyTargetOpen = (
+    candidate: CandidateCombination,
+  ): boolean => {
+    if (availableTargetCategories.length === 0) {
+      return false;
+    }
 
-  // CRITICAL FIX: Check if candidate's locks would block ALL available targets
-  // Merge candidate's locks with fixedLocks to see what remains compatible
-  let locksWouldBlockAllTargets = false;
-  if (
-    best.safeLockedDiceIndices &&
-    best.safeLockedDiceIndices.length > 0 &&
-    availableTargetCategories.length > 0
-  ) {
-    // Create merged locks from fixedLocks + candidate's locks
-    const candidateLockMask = [
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-    ];
-    best.safeLockedDiceIndices.forEach((index) => {
+    if (
+      !candidate.safeLockedDiceIndices ||
+      candidate.safeLockedDiceIndices.length === 0
+    ) {
+      return true;
+    }
+
+    const candidateLockMask = [false, false, false, false, false, false];
+
+    candidate.safeLockedDiceIndices.forEach((index) => {
       if (index >= 0 && index < 6) {
         candidateLockMask[index] = true;
       }
     });
-    
+
     const mergedLocks = fixedLocks.map(
-      (isFixed, index) =>
-        isFixed || candidateLockMask[index]
+      (isFixed, index) => isFixed || candidateLockMask[index],
     );
 
-    // Check if ANY available target is still compatible with merged locks
-    let anyCompatibleTarget = false;
-    for (const targetCategoryId of availableTargetCategories) {
-      // Re-check compatibility with merged locks using the legalMoveContext
-      // If the merged locks DON'T violate this target, it's still viable
-      const isStillCompatible = canTargetCategoryWorkWithFixedLocks(
+    return availableTargetCategories.some((targetCategoryId) =>
+      canTargetCategoryWorkWithFixedLocks(
         targetCategoryId as PlayModeCategoryId,
         currentDice,
-        mergedLocks
-      );
-      if (isStillCompatible) {
-        anyCompatibleTarget = true;
-        break;
-      }
-    }
+        mergedLocks,
+      ),
+    );
+  };
 
-    if (!anyCompatibleTarget) {
-      locksWouldBlockAllTargets = true;
+  let bestTargetCategory = combinationToCategoryId[best.type] ?? null;
+  let bestTargetWritable =
+    bestTargetCategory !== null &&
+    availableTargetCategories.includes(bestTargetCategory);
+  let locksWouldBlockAllTargets = !candidateKeepsAnyTargetOpen(best);
+
+  if (!bestTargetWritable || locksWouldBlockAllTargets) {
+    const compatibleFallbackCandidate = candidates.find((candidate) => {
+      const categoryId = combinationToCategoryId[candidate.type] ?? null;
+      if (!categoryId || !availableTargetCategories.includes(categoryId)) {
+        return false;
+      }
+
+      return candidateKeepsAnyTargetOpen(candidate);
+    });
+
+    if (compatibleFallbackCandidate) {
+      best = compatibleFallbackCandidate;
+      bestTargetCategory = combinationToCategoryId[best.type] ?? null;
+      bestTargetWritable =
+        bestTargetCategory !== null &&
+        availableTargetCategories.includes(bestTargetCategory);
+      locksWouldBlockAllTargets = !candidateKeepsAnyTargetOpen(best);
     }
   }
 
@@ -5029,88 +4255,60 @@ export function makeAIDecision(
       candidates,
       {
         ...auditPolicyContext,
-        selectedTargetAfterScoreboardFilter:
-          bestTargetCategory,
+        selectedTargetAfterScoreboardFilter: bestTargetCategory,
         selectedTargetIsWritable: false,
         lockBlockedBecauseTargetNotWritable: true,
-      }
+      },
     );
 
     return {
       targetCategory: null,
-      lockMask: [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ],
+      lockMask: [false, false, false, false, false, false],
       lockedDiceIndices: [],
-      action:
-        (remainingRolls ?? 0) > 0
-          ? "roll"
-          : "end_turn",
+      action: (remainingRolls ?? 0) > 0 ? "roll" : "end_turn",
       confidence: 0.2,
-      riskLevel: toRiskLevel(
-        remainingRolls,
-        matchContext
-      ),
+      riskLevel: toRiskLevel(remainingRolls, matchContext),
       aiScore: matchContext.aiScore,
-      bestOpponentScore:
-        matchContext.bestOpponentScore,
+      bestOpponentScore: matchContext.bestOpponentScore,
       endgameMode: matchContext.endgameMode,
       scoreDelta: matchContext.scoreDelta,
-      aiRemainingPotential:
-        matchContext.aiRemainingPotential,
-      opponentRemainingPotential:
-        matchContext.opponentRemainingPotential,
-      requiredScoreEstimate:
-        matchContext.requiredScoreEstimate,
+      aiRemainingPotential: matchContext.aiRemainingPotential,
+      opponentRemainingPotential: matchContext.opponentRemainingPotential,
+      requiredScoreEstimate: matchContext.requiredScoreEstimate,
       opponentScore: matchContext.opponentScore,
-      remainingCategories:
-        matchContext.remainingCategories,
-      riskBecauseBehind:
-        matchContext.riskBecauseBehind,
+      remainingCategories: matchContext.remainingCategories,
+      riskBecauseBehind: matchContext.riskBecauseBehind,
       saveRejectedBecauseTooLow: false,
       currentPlanValue: 0,
       alternativePlanValue: 0,
       pivotThreshold: 0,
-      pivotReason:
-        "target-not-writable-blocked-before-lock",
-      reason:
-        "noChange: lock blocked because selected target is not writable",
-      fallbackReason:
-        "target-not-writable-blocked-before-lock",
+      pivotReason: "target-not-writable-blocked-before-lock",
+      reason: "noChange: lock blocked because selected target is not writable",
+      fallbackReason: "target-not-writable-blocked-before-lock",
     };
   }
 
-  const previousPlanCandidate =
-    previousTargetCategory
-      ? candidates.find(
-          (candidate) =>
-            combinationToCategoryId[
-              candidate.type
-            ] === previousTargetCategory
-        ) ?? null
-      : null;
+  const previousPlanCandidate = previousTargetCategory
+    ? (candidates.find(
+        (candidate) =>
+          combinationToCategoryId[candidate.type] === previousTargetCategory,
+      ) ?? null)
+    : null;
 
-  const dynamicPivotThreshold =
-    matchContext.endgameMode
-      ? 12
-      : matchContext.riskBecauseBehind
+  const dynamicPivotThreshold = matchContext.endgameMode
+    ? 12
+    : matchContext.riskBecauseBehind
       ? 18
       : (remainingRolls ?? 0) <= 1
-      ? 24
-      : 28;
+        ? 24
+        : 28;
 
   let currentPlanValue =
     previousPlanCandidate?.strategyScore ??
     previousPlanCandidate?.evaluationScore ??
     best.strategyScore ??
     best.evaluationScore;
-  let alternativePlanValue =
-    best.strategyScore ?? best.evaluationScore;
+  let alternativePlanValue = best.strategyScore ?? best.evaluationScore;
   let pivotReason = "no-previous-plan";
   let pivotAccepted = false;
   let pivotRejectedReason: string | null = null;
@@ -5118,16 +4316,13 @@ export function makeAIDecision(
 
   if (
     previousPlanCandidate &&
-    combinationToCategoryId[
-      previousPlanCandidate.type
-    ] !==
+    combinationToCategoryId[previousPlanCandidate.type] !==
       combinationToCategoryId[best.type]
   ) {
     currentPlanValue =
       previousPlanCandidate.strategyScore ??
       previousPlanCandidate.evaluationScore;
-    alternativePlanValue =
-      best.strategyScore ?? best.evaluationScore;
+    alternativePlanValue = best.strategyScore ?? best.evaluationScore;
 
     const pivotGain =
       (best.strategyScore ?? best.evaluationScore) -
@@ -5136,35 +4331,26 @@ export function makeAIDecision(
 
     const previousOpenOptionsScore =
       previousPlanCandidate.openOptionsScore ?? 0;
-    const bestOpenOptionsScore =
-      best.openOptionsScore ?? 0;
-    openOptionsImprovedBy =
-      bestOpenOptionsScore - previousOpenOptionsScore;
+    const bestOpenOptionsScore = best.openOptionsScore ?? 0;
+    openOptionsImprovedBy = bestOpenOptionsScore - previousOpenOptionsScore;
 
     const expectedValueImprovement =
-      best.expectedNextTurnValue -
-      previousPlanCandidate.expectedNextTurnValue;
+      best.expectedNextTurnValue - previousPlanCandidate.expectedNextTurnValue;
 
-    const remainingRollsAllowsRisk =
-      (remainingRolls ?? 0) >= 2;
+    const remainingRollsAllowsRisk = (remainingRolls ?? 0) >= 2;
 
     const pivotBecausePreviousWeak =
       previousPlanCandidate.missingCount >= 3 &&
-      best.currentMatchCount >=
-        previousPlanCandidate.currentMatchCount +
-          1;
+      best.currentMatchCount >= previousPlanCandidate.currentMatchCount + 1;
 
     const pivotBecauseCompletion =
-      !previousPlanCandidate.isComplete &&
-      best.isComplete;
+      !previousPlanCandidate.isComplete && best.isComplete;
 
     const pivotBecauseOpenOptions =
-      remainingRollsAllowsRisk &&
-      openOptionsImprovedBy >= 120;
+      remainingRollsAllowsRisk && openOptionsImprovedBy >= 120;
 
     const pivotBecauseExpectedValue =
-      remainingRollsAllowsRisk &&
-      expectedValueImprovement >= 4;
+      remainingRollsAllowsRisk && expectedValueImprovement >= 4;
 
     const pivotBecauseSequenceIsNoLongerBest =
       previousPlanCandidate.type === "Postupka" &&
@@ -5172,110 +4358,112 @@ export function makeAIDecision(
       (remainingRolls ?? 0) >= 1 &&
       (openOptionsImprovedBy >= 70 ||
         expectedValueImprovement >= 3 ||
-        best.currentMatchCount >=
-          previousPlanCandidate.currentMatchCount + 1);
+        best.currentMatchCount >= previousPlanCandidate.currentMatchCount + 1);
+
+    const pivotBecauseStructuralAlternativeIsClearlyBetter =
+      (previousPlanCandidate.type === "Pyramida" ||
+        previousPlanCandidate.type === "Hrozen") &&
+      best.type !== previousPlanCandidate.type &&
+      (remainingRolls ?? 0) >= 1 &&
+      (best.currentMatchCount >= previousPlanCandidate.currentMatchCount + 1 ||
+        openOptionsImprovedBy >= 60 ||
+        expectedValueImprovement >= 3);
 
     const preserveVeryGoodCompleteSave =
       previousPlanCandidate.isComplete &&
       !best.isComplete &&
       previousPlanCandidate.absoluteScoreSignal >=
-        Math.floor(
-          previousPlanCandidate.maxPossibleScore * 0.85
-        );
+        Math.floor(previousPlanCandidate.maxPossibleScore * 0.85);
+
+    const preserveNearCompletePostupka =
+      previousPlanCandidate.type === "Postupka" &&
+      best.type !== "Postupka" &&
+      !best.isComplete &&
+      previousPlanCandidate.currentMatchCount >= 5;
+
+    const allowPivotAwayFromNearCompletePostupka =
+      !preserveNearCompletePostupka ||
+      pivotBecauseCompletion ||
+      pivotGain >= dynamicPivotThreshold + 18 ||
+      expectedValueImprovement >= 8;
 
     const shouldPivot =
       !preserveVeryGoodCompleteSave &&
+      allowPivotAwayFromNearCompletePostupka &&
       (pivotGain >= dynamicPivotThreshold ||
         pivotBecausePreviousWeak ||
         pivotBecauseCompletion ||
         pivotBecauseOpenOptions ||
         pivotBecauseExpectedValue ||
-        pivotBecauseSequenceIsNoLongerBest);
+        pivotBecauseSequenceIsNoLongerBest ||
+        pivotBecauseStructuralAlternativeIsClearlyBetter);
 
     if (shouldPivot) {
       pivotAccepted = true;
       if (pivotGain >= dynamicPivotThreshold) {
-        pivotReason =
-          "alternative-evaluation-significantly-better";
+        pivotReason = "alternative-evaluation-significantly-better";
       } else if (pivotBecauseCompletion) {
-        pivotReason =
-          "alternative-is-complete";
+        pivotReason = "alternative-is-complete";
       } else if (pivotBecauseOpenOptions) {
-        pivotReason =
-          "alternative-open-options-significantly-better";
+        pivotReason = "alternative-open-options-significantly-better";
       } else if (pivotBecauseExpectedValue) {
-        pivotReason =
-          "alternative-expected-value-better";
+        pivotReason = "alternative-expected-value-better";
       } else if (pivotBecauseSequenceIsNoLongerBest) {
-        pivotReason =
-          "postupka-no-longer-best-open-plan";
+        pivotReason = "postupka-no-longer-best-open-plan";
+      } else if (pivotBecauseStructuralAlternativeIsClearlyBetter) {
+        pivotReason = "structural-alternative-clearly-better";
       } else {
-        pivotReason =
-          "previous-plan-low-completion-probability";
+        pivotReason = "previous-plan-low-completion-probability";
       }
     } else {
       const retainedAlternativeValue =
         best.strategyScore ?? best.evaluationScore;
       best = previousPlanCandidate;
-      alternativePlanValue =
-        retainedAlternativeValue;
+      alternativePlanValue = retainedAlternativeValue;
       pivotReason = "stay-on-current-plan";
       pivotRejectedReason = preserveVeryGoodCompleteSave
         ? "preserve-very-good-complete-save"
-        : "alternative-not-strong-enough";
+        : preserveNearCompletePostupka
+          ? "preserve-near-complete-postupka"
+          : "alternative-not-strong-enough";
     }
-  } else if (
-    previousTargetCategory &&
-    !previousPlanCandidate
-  ) {
-    pivotReason =
-      "previous-plan-unavailable-or-incompatible";
-    pivotRejectedReason =
-      "previous-target-not-among-legal-candidates";
+  } else if (previousTargetCategory && !previousPlanCandidate) {
+    pivotReason = "previous-plan-unavailable-or-incompatible";
+    pivotRejectedReason = "previous-target-not-among-legal-candidates";
   }
 
-  const detectedCombination =
-    legalMoveContext.currentCombination;
+  const detectedCombination = legalMoveContext.currentCombination;
   const detectedCombinationWritable =
     legalMoveContext.writableSaveCandidate.canSave;
   const detectedCombinationRejectedReason =
     legalMoveContext.writableSaveCandidate.fallbackReason;
-  const detectedCombinationCategoryId =
-    detectedCombination
-      ? combinationToCategoryId[
-          detectedCombination.combination as CombinationType
-        ] ?? null
-      : null;
+  const detectedCombinationCategoryId = detectedCombination
+    ? (combinationToCategoryId[
+        detectedCombination.combination as CombinationType
+      ] ?? null)
+    : null;
 
   const detectedCombinationBlocksPlan =
     !(
       detectedCombinationCategoryId !== null &&
-      !availableTargetCategories.includes(
-        detectedCombinationCategoryId
-      )
+      !availableTargetCategories.includes(detectedCombinationCategoryId)
     ) &&
     detectedCombination !== null &&
     !detectedCombinationWritable &&
-    combinationToCategoryId[best.type] ===
-      detectedCombinationCategoryId;
+    combinationToCategoryId[best.type] === detectedCombinationCategoryId;
 
   if (detectedCombinationBlocksPlan) {
-    const detectedCombinationValue =
-      detectedCombination!;
+    const detectedCombinationValue = detectedCombination!;
 
     if (
       previousPlanCandidate &&
-      combinationToCategoryId[
-        previousPlanCandidate.type
-      ] !==
+      combinationToCategoryId[previousPlanCandidate.type] !==
         detectedCombinationCategoryId
     ) {
       best = previousPlanCandidate;
       currentPlanValue = best.evaluationScore;
-      alternativePlanValue =
-        detectedCombinationValue.score;
-      pivotReason =
-        "detected-combination-not-writable-preserve-plan";
+      alternativePlanValue = detectedCombinationValue.score;
+      pivotReason = "detected-combination-not-writable-preserve-plan";
     } else {
       logAIDecisionAudit(
         currentDice,
@@ -5289,121 +4477,80 @@ export function makeAIDecision(
           ...auditPolicyContext,
           selectedTargetAfterScoreboardFilter:
             combinationToCategoryId[best.type] ?? null,
-          detectedCombination:
-            detectedCombination,
-          detectedCombinationWritable:
-            detectedCombinationWritable,
-          detectedCombinationRejectedReason:
-            detectedCombinationRejectedReason,
+          detectedCombination: detectedCombination,
+          detectedCombinationWritable: detectedCombinationWritable,
+          detectedCombinationRejectedReason: detectedCombinationRejectedReason,
           previousTargetCategory,
           targetPreservedBecauseDetectedNotWritable: false,
           lockBlockedBecauseTargetNotWritable: true,
           fullLockRejectedBecauseNotWritable:
             best.safeLockedDiceIndices.length === 6,
-        }
+        },
       );
 
       return {
         targetCategory: null,
-        lockMask: [
-          false,
-          false,
-          false,
-          false,
-          false,
-          false,
-        ],
+        lockMask: [false, false, false, false, false, false],
         lockedDiceIndices: [],
-        action:
-          (remainingRolls ?? 0) > 0
-            ? "roll"
-            : "end_turn",
+        action: (remainingRolls ?? 0) > 0 ? "roll" : "end_turn",
         confidence: 0.22,
-        riskLevel: toRiskLevel(
-          remainingRolls,
-          matchContext
-        ),
+        riskLevel: toRiskLevel(remainingRolls, matchContext),
         aiScore: matchContext.aiScore,
-        bestOpponentScore:
-          matchContext.bestOpponentScore,
+        bestOpponentScore: matchContext.bestOpponentScore,
         endgameMode: matchContext.endgameMode,
         scoreDelta: matchContext.scoreDelta,
-        aiRemainingPotential:
-          matchContext.aiRemainingPotential,
-        opponentRemainingPotential:
-          matchContext.opponentRemainingPotential,
-        requiredScoreEstimate:
-          matchContext.requiredScoreEstimate,
+        aiRemainingPotential: matchContext.aiRemainingPotential,
+        opponentRemainingPotential: matchContext.opponentRemainingPotential,
+        requiredScoreEstimate: matchContext.requiredScoreEstimate,
         opponentScore: matchContext.opponentScore,
-        remainingCategories:
-          matchContext.remainingCategories,
-        riskBecauseBehind:
-          matchContext.riskBecauseBehind,
+        remainingCategories: matchContext.remainingCategories,
+        riskBecauseBehind: matchContext.riskBecauseBehind,
         saveRejectedBecauseTooLow: false,
         currentPlanValue: 0,
         alternativePlanValue: 0,
         pivotThreshold: 0,
-        pivotReason:
-          "detected-combination-not-writable",
-        reason:
-          `noChange: detected combination not writable | detected=${detectedCombination.combination} | rejectedReason=${detectedCombinationRejectedReason}`,
-        fallbackReason:
-          "detected-combination-not-writable",
+        pivotReason: "detected-combination-not-writable",
+        reason: `noChange: detected combination not writable | detected=${detectedCombination.combination} | rejectedReason=${detectedCombinationRejectedReason}`,
+        fallbackReason: "detected-combination-not-writable",
       };
     }
   }
 
   const hasStrongProgressCandidate =
-    best.currentMatchCount >=
-      phasePolicy.strongProgressMatch &&
-    best.absoluteScoreSignal >=
-      phasePolicy.strongProgressScore;
+    best.currentMatchCount >= phasePolicy.strongProgressMatch &&
+    best.absoluteScoreSignal >= phasePolicy.strongProgressScore;
 
   const hasStrongSequenceDirection =
     best.type === "Postupka" &&
-    best.safeLockedDiceIndices.length >=
-      phasePolicy.minSequenceDistinct;
+    best.safeLockedDiceIndices.length >= phasePolicy.minSequenceDistinct;
 
-  const bestLockDistinctValues =
-    new Set(
-      best.safeLockedDiceIndices.map(
-        (index) => currentDice[index]
-      )
-    ).size;
+  const bestLockDistinctValues = new Set(
+    best.safeLockedDiceIndices.map((index) => currentDice[index]),
+  ).size;
 
   const hasStrongGroupedDirection =
-    best.safeLockedDiceIndices.length >= 3 &&
-    bestLockDistinctValues === 1;
+    best.safeLockedDiceIndices.length >= 3 && bestLockDistinctValues === 1;
 
-  const hasAnyCompleteLegalCandidate =
-    candidates.some(
-      (candidate) =>
+  const hasAnyCompleteLegalCandidate = candidates.some(
+    (candidate) =>
+      candidate.isComplete &&
+      availableTargetCategories.includes(
+        combinationToCategoryId[candidate.type],
+      ),
+  );
+
+  const completeWritableCandidates = candidates
+    .filter((candidate) => {
+      const categoryId = combinationToCategoryId[candidate.type] ?? null;
+
+      return (
         candidate.isComplete &&
-        availableTargetCategories.includes(
-          combinationToCategoryId[
-            candidate.type
-          ]
-        )
-    );
-
-  const completeWritableCandidates =
-    candidates
-      .filter((candidate) => {
-        const categoryId =
-          combinationToCategoryId[
-            candidate.type
-          ] ?? null;
-
-        return (
-          candidate.isComplete &&
-          categoryId !== null &&
-          availableTargetCategories.includes(
-            categoryId
-          ) &&
-          lockCompatibility[categoryId]
-        );
-      })
-      .sort(compareCandidatesByPolicy);
+        categoryId !== null &&
+        availableTargetCategories.includes(categoryId) &&
+        lockCompatibility[categoryId]
+      );
+    })
+    .sort(compareCandidatesByPolicy);
 
   const strongestCompleteWritableCandidate =
     completeWritableCandidates.length > 0
@@ -5414,74 +4561,69 @@ export function makeAIDecision(
     strongestCompleteWritableCandidate !== null &&
     strongestCompleteWritableCandidate.absoluteScoreSignal >=
       Math.max(
-        strongestCompleteWritableCandidate.minimumAcceptableScore ??
-          0,
-        Math.floor(
-          strongestCompleteWritableCandidate.maxPossibleScore *
-            0.8
-        )
+        strongestCompleteWritableCandidate.minimumAcceptableScore ?? 0,
+        Math.floor(strongestCompleteWritableCandidate.maxPossibleScore * 0.8),
       );
 
-  const highValueBuilderCandidates =
-    candidates
-      .filter((candidate) =>
-        isPreferredHighValueBuilderCandidate(
-          candidate,
-          availableTargetCategories,
-          lockCompatibility
-        )
-      )
-      .sort(compareCandidatesByPolicy);
+  const hasNearMaxCompleteWritableSave =
+    strongestCompleteWritableCandidate !== null &&
+    strongestCompleteWritableCandidate.absoluteScoreSignal >=
+      strongestCompleteWritableCandidate.maxPossibleScore - 3;
+
+  if (
+    hasNearMaxCompleteWritableSave &&
+    strongestCompleteWritableCandidate !== null &&
+    !best.isComplete
+  ) {
+    best = strongestCompleteWritableCandidate;
+  }
+
+  const highValueBuilderCandidates = candidates
+    .filter((candidate) =>
+      isPreferredHighValueBuilderCandidate(
+        candidate,
+        availableTargetCategories,
+        lockCompatibility,
+      ),
+    )
+    .sort(compareCandidatesByPolicy);
 
   const bestSeedCandidate =
     highValueBuilderCandidates.length > 0
       ? highValueBuilderCandidates[0]
       : null;
 
-  const highValueBuilderGenerated =
-    highValueBuilderCandidates.length > 0;
-  let highValueBuilderRejectedReason: string | null =
-    null;
+  const highValueBuilderGenerated = highValueBuilderCandidates.length > 0;
+  let highValueBuilderRejectedReason: string | null = null;
 
-  const seedCandidateRank =
-    bestSeedCandidate
-      ? candidates.findIndex(
-          (candidate) =>
-            candidate === bestSeedCandidate
-        ) + 1
-      : null;
+  const seedCandidateRank = bestSeedCandidate
+    ? candidates.findIndex((candidate) => candidate === bestSeedCandidate) + 1
+    : null;
 
-  const highValueBuilderRank =
-    seedCandidateRank;
+  const highValueBuilderRank = seedCandidateRank;
 
   const highValueBuilderGeneratedFromSingleDie =
     !!bestSeedCandidate?.highValueBuilderGeneratedFromSingleDie;
-  const highValueBuilderValues =
-    bestSeedCandidate?.lockValues ?? [];
-  const highValueBuilderTargetCategory =
-    bestSeedCandidate
-      ? combinationToCategoryId[
-          bestSeedCandidate.type
-        ] ?? null
-      : null;
+  const highValueBuilderValues = bestSeedCandidate?.lockValues ?? [];
+  const highValueBuilderTargetCategory = bestSeedCandidate
+    ? (combinationToCategoryId[bestSeedCandidate.type] ?? null)
+    : null;
 
   const selectedBestIsLowCompletion =
     isLowValueCompletionSupplementCandidate(best);
 
-  const lowBaseAcceptedReason =
-    allowLowBaseException
-      ? (remainingRolls ?? 0) <= 1
-        ? "last-roll-window"
-        : availableCategoryCount <= 1
+  const lowBaseAcceptedReason = allowLowBaseException
+    ? (remainingRolls ?? 0) <= 1
+      ? "last-roll-window"
+      : availableCategoryCount <= 1
         ? "last-legal-option"
         : null
-      : null;
+    : null;
 
   let seedPromotedBecauseNoBetterPattern = false;
   let selectedHighValueBuilder = false;
   let highValueBuilderAppliedBeforeReroll = false;
-  let noLockRejectedBecauseHighValueBuilderExists =
-    false;
+  let noLockRejectedBecauseHighValueBuilderExists = false;
   let highValueBuilderPromotedOverNoLock = false;
 
   // Check if high-value builder kills all legal paths before promoting
@@ -5491,26 +4633,23 @@ export function makeAIDecision(
         availableTargetCategories,
         lockCompatibility,
         bestSeedCandidate.type,
-        previousTargetCategory
+        previousTargetCategory,
       )
     : null;
 
-  const builderKillsAllPaths =
-    builderLegalPaths?.lockKillsAllPaths ?? false;
+  const builderKillsAllPaths = builderLegalPaths?.lockKillsAllPaths ?? false;
 
   if (
     bestSeedCandidate !== null &&
     !allowLowBaseException &&
     !best.isComplete &&
-    (selectedBestIsLowCompletion ||
-      best.safeLockedDiceIndices.length === 0) &&
-    !builderKillsAllPaths  // Legal paths check
+    (selectedBestIsLowCompletion || best.safeLockedDiceIndices.length === 0) &&
+    !builderKillsAllPaths // Legal paths check
   ) {
     best = bestSeedCandidate;
     seedPromotedBecauseNoBetterPattern = true;
     selectedHighValueBuilder = true;
-    highValueBuilderAppliedBeforeReroll =
-      (remainingRolls ?? 0) > 0;
+    highValueBuilderAppliedBeforeReroll = (remainingRolls ?? 0) > 0;
     highValueBuilderPromotedOverNoLock = true;
   }
 
@@ -5518,55 +4657,50 @@ export function makeAIDecision(
     (remainingRolls ?? 0) > 0 &&
     best.safeLockedDiceIndices.length === 0 &&
     bestSeedCandidate !== null &&
-    !builderKillsAllPaths  // Legal paths check
+    !builderKillsAllPaths // Legal paths check
   ) {
     best = bestSeedCandidate;
     seedPromotedBecauseNoBetterPattern = true;
     selectedHighValueBuilder = true;
     highValueBuilderAppliedBeforeReroll = true;
-    noLockRejectedBecauseHighValueBuilderExists =
-      true;
+    noLockRejectedBecauseHighValueBuilderExists = true;
     highValueBuilderPromotedOverNoLock = true;
   }
 
   // No-lock safety: if candidate quality is too weak, reroll all.
   if (
-    (remainingRolls ?? 0) > 0 &&
-    (best.missingCount >
-      phasePolicy.maxMissingWithoutStrong &&
+    ((remainingRolls ?? 0) > 0 &&
+      best.missingCount > phasePolicy.maxMissingWithoutStrong &&
       !hasStrongProgressCandidate &&
       !hasStrongSequenceDirection &&
       !hasStrongGroupedDirection) ||
     ((remainingRolls ?? 0) > 0 &&
       !hasAnyCompleteLegalCandidate &&
-      best.safeLockedDiceIndices.length <
-      phasePolicy.minRelevantIndices
-    )
+      best.safeLockedDiceIndices.length < phasePolicy.minRelevantIndices)
   ) {
-      const forceImmediateStrongWritableSave =
-        hasStrongCompleteWritableSave &&
-        strongestCompleteWritableCandidate !== null;
+    const forceImmediateStrongWritableSave =
+      hasStrongCompleteWritableSave &&
+      strongestCompleteWritableCandidate !== null;
 
-      if (forceImmediateStrongWritableSave) {
-        best = strongestCompleteWritableCandidate;
-      }
+    if (forceImmediateStrongWritableSave) {
+      best = strongestCompleteWritableCandidate;
+    }
 
     const canForceBuilderOverNoLock =
-        !forceImmediateStrongWritableSave &&
+      !forceImmediateStrongWritableSave &&
       bestSeedCandidate !== null &&
       (remainingRolls ?? 0) > 0 &&
       !hasStrongCompleteWritableSave &&
-      !builderKillsAllPaths;  // Legal paths check
+      !builderKillsAllPaths; // Legal paths check
 
-      if (forceImmediateStrongWritableSave) {
-        // Strong writable complete save is the only allowed override of high-value builder.
-      } else if (canForceBuilderOverNoLock) {
+    if (forceImmediateStrongWritableSave) {
+      // Strong writable complete save is the only allowed override of high-value builder.
+    } else if (canForceBuilderOverNoLock) {
       best = bestSeedCandidate;
       seedPromotedBecauseNoBetterPattern = true;
       selectedHighValueBuilder = true;
       highValueBuilderAppliedBeforeReroll = true;
-      noLockRejectedBecauseHighValueBuilderExists =
-        true;
+      noLockRejectedBecauseHighValueBuilderExists = true;
       highValueBuilderPromotedOverNoLock = true;
     } else if (
       bestSeedCandidate !== null &&
@@ -5579,149 +4713,308 @@ export function makeAIDecision(
       highValueBuilderAppliedBeforeReroll = true;
       highValueBuilderPromotedOverNoLock = true;
     } else {
-    if (
-      highValueBuilderGenerated &&
-      !selectedHighValueBuilder
-    ) {
-      highValueBuilderRejectedReason =
-        hasStrongCompleteWritableSave
+      if (highValueBuilderGenerated && !selectedHighValueBuilder) {
+        highValueBuilderRejectedReason = hasStrongCompleteWritableSave
           ? "strong-complete-writable-save-exception"
           : "no-lock-safety-overrode-builder";
-    }
+      }
 
-    logAIDecisionAudit(
-      currentDice,
-      remainingRolls,
-      matchContext,
-      candidateAudit,
-      best,
-      [],
-      candidates,
-      {
-        ...auditPolicyContext,
-        selectedTargetAfterScoreboardFilter:
-          combinationToCategoryId[best.type] ?? null,
-        highValueBuilderCandidates:
-          highValueBuilderCandidates.map(
+      logAIDecisionAudit(
+        currentDice,
+        remainingRolls,
+        matchContext,
+        candidateAudit,
+        best,
+        [],
+        candidates,
+        {
+          ...auditPolicyContext,
+          selectedTargetAfterScoreboardFilter:
+            combinationToCategoryId[best.type] ?? null,
+          highValueBuilderCandidates: highValueBuilderCandidates.map(
             (candidate) => ({
               type: candidate.type,
-              targetCategory:
-                combinationToCategoryId[
-                  candidate.type
-                ] ?? null,
+              targetCategory: combinationToCategoryId[candidate.type] ?? null,
               lockValues: candidate.lockValues,
               strategyScore:
-                candidate.strategyScore ??
-                candidate.evaluationScore,
-            })
+                candidate.strategyScore ?? candidate.evaluationScore,
+            }),
           ),
-        selectedHighValueBuilder: false,
-        highValueBuilderGenerated,
-        highValueBuilderGeneratedFromSingleDie,
-        highValueBuilderValues,
-        highValueBuilderTargetCategory,
-        highValueBuilderPromotedOverNoLock,
-        highValueBuilderRejectedReason,
-        highValueBuilderRank,
-        lowPairRejectedBecauseHighValueBuilderExists:
-          lowPairRejectedBecauseHighValueBuilderExists,
-        lowTripleRejectedBecauseHighValueBuilderExists:
-          lowTripleRejectedBecauseHighValueBuilderExists,
-        lowValueCompletionRejectedBeforeFinalRoll,
-        lowValueAllowedOnlyBecauseFinalRoll:
-          selectedBestIsLowCompletion &&
-          (remainingRolls ?? 0) <= 1,
-        highValueBuilderCheckedBeforeReroll,
-        highValueBuilderAvailable,
-        highValueBuilderAppliedBeforeReroll,
-        rerollBlockedUntilHighValueBuilderEvaluated,
-        rerollWithoutLockReason:
-          bestSeedCandidate !== null
-            ? "builder-rejected-by-no-lock-safety"
-            : "opportunity-too-weak-no-high-value-builder",
-        noLockRejectedBecauseHighValueBuilderExists,
-        lowBaseAcceptedReason,
-        seedCandidateRank,
-        selectedCandidateType: null,
-        selectedTargetCategory: null,
-        selectedLockMask: [
-          false,
-          false,
-          false,
-          false,
-          false,
-          false,
-        ],
-        noLockSelectedOverSeed:
-          bestSeedCandidate !== null,
-        noLockSelectedOverSeedReason:
-          bestSeedCandidate !== null
-            ? "no-lock-safety-over-seed"
-            : "no-high-value-builder",
-        seedPromotedBecauseNoBetterPattern: false,
-      }
-    );
+          selectedHighValueBuilder: false,
+          highValueBuilderGenerated,
+          highValueBuilderGeneratedFromSingleDie,
+          highValueBuilderValues,
+          highValueBuilderTargetCategory,
+          highValueBuilderPromotedOverNoLock,
+          highValueBuilderRejectedReason,
+          highValueBuilderRank,
+          lowPairRejectedBecauseHighValueBuilderExists:
+            lowPairRejectedBecauseHighValueBuilderExists,
+          lowTripleRejectedBecauseHighValueBuilderExists:
+            lowTripleRejectedBecauseHighValueBuilderExists,
+          lowValueCompletionRejectedBeforeFinalRoll,
+          lowValueAllowedOnlyBecauseFinalRoll:
+            selectedBestIsLowCompletion && (remainingRolls ?? 0) <= 1,
+          highValueBuilderCheckedBeforeReroll,
+          highValueBuilderAvailable,
+          highValueBuilderAppliedBeforeReroll,
+          rerollBlockedUntilHighValueBuilderEvaluated,
+          rerollWithoutLockReason:
+            bestSeedCandidate !== null
+              ? "builder-rejected-by-no-lock-safety"
+              : "opportunity-too-weak-no-high-value-builder",
+          noLockRejectedBecauseHighValueBuilderExists,
+          lowBaseAcceptedReason,
+          seedCandidateRank,
+          selectedCandidateType: null,
+          selectedTargetCategory: null,
+          selectedLockMask: [false, false, false, false, false, false],
+          noLockSelectedOverSeed: bestSeedCandidate !== null,
+          noLockSelectedOverSeedReason:
+            bestSeedCandidate !== null
+              ? "no-lock-safety-over-seed"
+              : "no-high-value-builder",
+          seedPromotedBecauseNoBetterPattern: false,
+        },
+      );
 
-    return {
-      targetCategory: null,
-      lockMask: [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ],
-      lockedDiceIndices: [],
-      action:
-        (remainingRolls ?? 0) > 0
-          ? "roll"
-          : "end_turn",
-      confidence: 0.3,
-      riskLevel: toRiskLevel(
-        remainingRolls,
-        matchContext
-      ),
-      aiScore: matchContext.aiScore,
-      bestOpponentScore:
-        matchContext.bestOpponentScore,
-      endgameMode: matchContext.endgameMode,
-      scoreDelta: matchContext.scoreDelta,
-      aiRemainingPotential:
-        matchContext.aiRemainingPotential,
-      opponentRemainingPotential:
-        matchContext.opponentRemainingPotential,
-      requiredScoreEstimate:
-        matchContext.requiredScoreEstimate,
-      opponentScore: matchContext.opponentScore,
-      remainingCategories:
-        matchContext.remainingCategories,
-      riskBecauseBehind:
-        matchContext.riskBecauseBehind,
-      saveRejectedBecauseTooLow: false,
-      currentPlanValue: 0,
-      alternativePlanValue: 0,
-      pivotThreshold: 0,
-      pivotReason: "opportunity-too-weak",
-      reason: `noChange: opportunity too weak | endgame=${matchContext.endgameMode} | scoreDelta=${matchContext.scoreDelta} | required=${matchContext.requiredScoreEstimate}`,
-      fallbackReason: "opportunity-too-weak",
-    };
+      return {
+        targetCategory: null,
+        lockMask: [false, false, false, false, false, false],
+        lockedDiceIndices: [],
+        action: (remainingRolls ?? 0) > 0 ? "roll" : "end_turn",
+        confidence: 0.3,
+        riskLevel: toRiskLevel(remainingRolls, matchContext),
+        aiScore: matchContext.aiScore,
+        bestOpponentScore: matchContext.bestOpponentScore,
+        endgameMode: matchContext.endgameMode,
+        scoreDelta: matchContext.scoreDelta,
+        aiRemainingPotential: matchContext.aiRemainingPotential,
+        opponentRemainingPotential: matchContext.opponentRemainingPotential,
+        requiredScoreEstimate: matchContext.requiredScoreEstimate,
+        opponentScore: matchContext.opponentScore,
+        remainingCategories: matchContext.remainingCategories,
+        riskBecauseBehind: matchContext.riskBecauseBehind,
+        saveRejectedBecauseTooLow: false,
+        currentPlanValue: 0,
+        alternativePlanValue: 0,
+        pivotThreshold: 0,
+        pivotReason: "opportunity-too-weak",
+        reason: `noChange: opportunity too weak | endgame=${matchContext.endgameMode} | scoreDelta=${matchContext.scoreDelta} | required=${matchContext.requiredScoreEstimate}`,
+        fallbackReason: "opportunity-too-weak",
+      };
     }
   }
 
-  const selectedStrategyValue =
-    best.strategyScore ?? best.evaluationScore;
-  const hasBetterLegalAlternative =
-    candidates.some(
-      (candidate) =>
-        candidate !== best &&
-        (candidate.strategyScore ??
-          candidate.evaluationScore) >
-          selectedStrategyValue
+  const selectedTargetCategoryForExpansion =
+    combinationToCategoryId[best.type] ?? null;
+
+  const expandedLocksKeepAnyWritableTarget = (
+    candidateLockIndices: number[],
+  ): boolean => {
+    if (availableTargetCategories.length === 0) {
+      return false;
+    }
+
+    if (candidateLockIndices.length === 0) {
+      return true;
+    }
+
+    const candidateLockMask = [false, false, false, false, false, false];
+
+    candidateLockIndices.forEach((index) => {
+      if (index >= 0 && index < 6) {
+        candidateLockMask[index] = true;
+      }
+    });
+
+    const mergedLocks = fixedLocks.map(
+      (isFixed, index) => isFixed || candidateLockMask[index],
     );
+
+    return availableTargetCategories.some((targetCategoryId) =>
+      canTargetCategoryWorkWithFixedLocks(
+        targetCategoryId as PlayModeCategoryId,
+        currentDice,
+        mergedLocks,
+      ),
+    );
+  };
+
+  const canExpandGroupedLocks =
+    (remainingRolls ?? 0) > 0 &&
+    (best.type === "Generál" ||
+      best.type === "Dvojice" ||
+      best.type === "Trojice" ||
+      best.type === "Čtyři-dvě");
+
+  if (canExpandGroupedLocks) {
+    const requirements = parseRequiredPattern(best.requiredDicePattern);
+
+    if (requirements.length > 0) {
+      const expandedLockSet = new Set(best.safeLockedDiceIndices);
+
+      for (const requirement of requirements) {
+        const matchingIndices = currentDice
+          .map((value, index) => ({ value, index }))
+          .filter(({ value }) => value === requirement.value)
+          .sort((left, right) => {
+            const leftAlreadyLocked = expandedLockSet.has(left.index);
+            const rightAlreadyLocked = expandedLockSet.has(right.index);
+
+            if (leftAlreadyLocked !== rightAlreadyLocked) {
+              return leftAlreadyLocked ? -1 : 1;
+            }
+
+            return left.index - right.index;
+          })
+          .map(({ index }) => index)
+          .slice(0, requirement.count);
+
+        for (const index of matchingIndices) {
+          expandedLockSet.add(index);
+        }
+      }
+
+      const expandedLocks = Array.from(expandedLockSet).sort((a, b) => a - b);
+
+      if (expandedLocks.length > best.safeLockedDiceIndices.length) {
+        const expandedStillCompatible =
+          expandedLocksKeepAnyWritableTarget(expandedLocks) &&
+          canTargetCategoryWorkWithFixedLocks(
+            selectedTargetCategoryForExpansion,
+            currentDice,
+            fixedLocks.map(
+              (isFixed, index) => isFixed || expandedLocks.includes(index),
+            ),
+          );
+
+        if (expandedStillCompatible) {
+          const expandedLockValues = expandedLocks.map(
+            (index) => currentDice[index],
+          );
+
+          best = {
+            ...best,
+            safeLockedDiceIndices: expandedLocks,
+            lockValues: expandedLockValues,
+            lockValueSum: expandedLockValues.reduce(
+              (sum, value) => sum + value,
+              0,
+            ),
+            lockMinValue:
+              expandedLockValues.length > 0
+                ? Math.min(...expandedLockValues)
+                : 0,
+          };
+        }
+      }
+    }
+  }
+
+  if ((remainingRolls ?? 0) > 0 && best.type === "Generál") {
+    const requirements = parseRequiredPattern(best.requiredDicePattern);
+    const sortedRequirements = [...requirements].sort(
+      (left, right) => right.count - left.count || right.value - left.value,
+    );
+
+    const targetGeneralValue =
+      sortedRequirements[0]?.value ??
+      (best.lockValues.length > 0 ? Math.max(...best.lockValues) : null);
+
+    if (targetGeneralValue !== null) {
+      const generalLocks = currentDice
+        .map((value, index) => ({ value, index }))
+        .filter(({ value }) => value === targetGeneralValue)
+        .map(({ index }) => index)
+        .sort((a, b) => a - b);
+
+      if (generalLocks.length > 0) {
+        const generalLocksStillCompatible =
+          expandedLocksKeepAnyWritableTarget(generalLocks) &&
+          canTargetCategoryWorkWithFixedLocks(
+            selectedTargetCategoryForExpansion,
+            currentDice,
+            fixedLocks.map(
+              (isFixed, index) => isFixed || generalLocks.includes(index),
+            ),
+          );
+
+        if (generalLocksStillCompatible) {
+          const generalLockValues = generalLocks.map(
+            (index) => currentDice[index],
+          );
+
+          best = {
+            ...best,
+            safeLockedDiceIndices: generalLocks,
+            lockValues: generalLockValues,
+            lockValueSum: generalLockValues.reduce(
+              (sum, value) => sum + value,
+              0,
+            ),
+            lockMinValue:
+              generalLockValues.length > 0 ? Math.min(...generalLockValues) : 0,
+          };
+        }
+      }
+    }
+  }
+
+  if ((remainingRolls ?? 0) > 0 && best.type !== "Generál") {
+    const requirements = parseRequiredPattern(best.requiredDicePattern);
+
+    if (requirements.length > 0) {
+      const allowedValues = new Set(
+        requirements.map((requirement) => requirement.value),
+      );
+      const prunedLocks = best.safeLockedDiceIndices.filter((index) =>
+        allowedValues.has(currentDice[index]),
+      );
+
+      if (
+        prunedLocks.length > 0 &&
+        prunedLocks.length < best.safeLockedDiceIndices.length &&
+        expandedLocksKeepAnyWritableTarget(prunedLocks)
+      ) {
+        const prunedLockValues = prunedLocks.map((index) => currentDice[index]);
+        const prunedMask = toLockMask(prunedLocks);
+        const mergedPrunedLocks = fixedLocks.map(
+          (isFixed, index) => isFixed || prunedMask[index],
+        );
+
+        if (
+          canTargetCategoryWorkWithFixedLocks(
+            selectedTargetCategoryForExpansion,
+            currentDice,
+            mergedPrunedLocks,
+          )
+        ) {
+          best = {
+            ...best,
+            safeLockedDiceIndices: prunedLocks,
+            lockValues: prunedLockValues,
+            lockValueSum: prunedLockValues.reduce(
+              (sum, value) => sum + value,
+              0,
+            ),
+            lockMinValue:
+              prunedLockValues.length > 0 ? Math.min(...prunedLockValues) : 0,
+          };
+        }
+      }
+    }
+  }
+
+  const selectedStrategyValue = best.strategyScore ?? best.evaluationScore;
+  const hasBetterLegalAlternative = candidates.some(
+    (candidate) =>
+      candidate !== best &&
+      (candidate.strategyScore ?? candidate.evaluationScore) >
+        selectedStrategyValue,
+  );
   const isLastLegalOption =
-    candidates.length <= 1 ||
-    availableTargetCategories.length <= 1;
+    candidates.length <= 1 || availableTargetCategories.length <= 1;
 
   const actionDecision = decideAction(
     best,
@@ -5729,32 +5022,23 @@ export function makeAIDecision(
     matchContext,
     playerScores,
     hasBetterLegalAlternative,
-    isLastLegalOption
+    isLastLegalOption,
   );
 
-  if (
-    highValueBuilderGenerated &&
-    !selectedHighValueBuilder
-  ) {
+  if (highValueBuilderGenerated && !selectedHighValueBuilder) {
     highValueBuilderRejectedReason =
-      hasStrongCompleteWritableSave &&
-      best.isComplete
+      hasStrongCompleteWritableSave && best.isComplete
         ? "strong-complete-writable-save-exception"
         : "higher-ranked-legal-candidate";
   }
 
-  const selectedTargetCategory =
-    combinationToCategoryId[best.type] ?? null;
+  const selectedTargetCategory = combinationToCategoryId[best.type] ?? null;
   const selectedTargetIsWritable =
     selectedTargetCategory !== null &&
-    availableTargetCategories.includes(
-      selectedTargetCategory
-    );
+    availableTargetCategories.includes(selectedTargetCategory);
 
   const bestAlternativeCandidate =
-    candidates.find(
-      (candidate) => candidate !== best
-    ) ?? null;
+    candidates.find((candidate) => candidate !== best) ?? null;
 
   const targetProgressBeforeRoll =
     previousPlanCandidate?.currentProgress ??
@@ -5764,9 +5048,7 @@ export function makeAIDecision(
     best.currentProgress ?? best.currentMatchCount;
   const noProgressReevaluationTriggered =
     previousPlanCandidate !== null &&
-    combinationToCategoryId[
-      previousPlanCandidate.type
-    ] !==
+    combinationToCategoryId[previousPlanCandidate.type] !==
       combinationToCategoryId[best.type] &&
     targetProgressBeforeRoll !== null &&
     targetProgressAfterRoll <= targetProgressBeforeRoll;
@@ -5784,20 +5066,14 @@ export function makeAIDecision(
       selectedTargetAfterScoreboardFilter:
         combinationToCategoryId[best.type] ?? null,
       selectedTargetIsWritable,
-      highValueBuilderCandidates:
-        highValueBuilderCandidates.map(
-          (candidate) => ({
-            type: candidate.type,
-            targetCategory:
-              combinationToCategoryId[
-                candidate.type
-              ] ?? null,
-            lockValues: candidate.lockValues,
-            strategyScore:
-              candidate.strategyScore ??
-              candidate.evaluationScore,
-          })
-        ),
+      highValueBuilderCandidates: highValueBuilderCandidates.map(
+        (candidate) => ({
+          type: candidate.type,
+          targetCategory: combinationToCategoryId[candidate.type] ?? null,
+          lockValues: candidate.lockValues,
+          strategyScore: candidate.strategyScore ?? candidate.evaluationScore,
+        }),
+      ),
       selectedHighValueBuilder,
       highValueBuilderGenerated,
       highValueBuilderGeneratedFromSingleDie,
@@ -5830,135 +5106,91 @@ export function makeAIDecision(
       noLockRejectedBecauseHighValueBuilderExists,
       lowBaseAcceptedReason,
       seedCandidateRank,
-      selectedCandidateType:
-        selectedHighValueBuilder
-          ? "high-value-builder"
-          : best.type,
+      selectedCandidateType: selectedHighValueBuilder
+        ? "high-value-builder"
+        : best.type,
       selectedTargetCategory,
-      selectedLockMask: toLockMask(
-        best.safeLockedDiceIndices
-      ),
+      selectedLockMask: toLockMask(best.safeLockedDiceIndices),
       noLockSelectedOverSeed: false,
       noLockSelectedOverSeedReason: null,
       seedPromotedBecauseNoBetterPattern,
       saveCandidateDetected: best.isComplete,
       saveCandidateWritable:
         selectedTargetIsWritable &&
-        best.selectedCandidateValidationResult !==
-          "rejected",
-      saveCandidateScore:
-        best.absoluteScoreSignal,
-      saveBlockedReason:
-        actionDecision.saveBlockedReason,
-      strategyFilterBlockedSave:
-        actionDecision.strategyFilterBlockedSave,
+        best.selectedCandidateValidationResult !== "rejected",
+      saveCandidateScore: best.absoluteScoreSignal,
+      saveBlockedReason: actionDecision.saveBlockedReason,
+      strategyFilterBlockedSave: actionDecision.strategyFilterBlockedSave,
       rollbackSimplifiedPolicyUsed: true,
       lowScoreRejectedButFallbackExists:
         actionDecision.lowScoreRejectedButFallbackExists,
       lowScoreAcceptedBecauseNoBetterLegalOption:
         actionDecision.lowScoreAcceptedBecauseNoBetterLegalOption,
-      lockBlockedBecauseTargetNotWritable:
-        !selectedTargetIsWritable,
-      detectedCombination:
-        detectedCombination,
-      detectedCombinationWritable:
-        detectedCombinationWritable,
-      detectedCombinationRejectedReason:
-        detectedCombinationRejectedReason,
+      lockBlockedBecauseTargetNotWritable: !selectedTargetIsWritable,
+      detectedCombination: detectedCombination,
+      detectedCombinationWritable: detectedCombinationWritable,
+      detectedCombinationRejectedReason: detectedCombinationRejectedReason,
       previousTargetCategory,
       reevaluatedAfterRoll: true,
       currentTargetScore: currentPlanValue,
-      bestAlternativeTarget:
-        bestAlternativeCandidate
-          ? combinationToCategoryId[
-              bestAlternativeCandidate.type
-            ] ?? null
-          : null,
-      bestAlternativeScore:
-        bestAlternativeCandidate
-          ? bestAlternativeCandidate.strategyScore ??
-            bestAlternativeCandidate.evaluationScore
-          : null,
-      preLockViabilityChecked:
-        best.preLockViabilityChecked ?? false,
-      projectedMaxScoreFromLock:
-        best.projectedMaxScoreFromLock ?? null,
-      minimumAcceptableScore:
-        best.minimumAcceptableScore ?? null,
+      bestAlternativeTarget: bestAlternativeCandidate
+        ? (combinationToCategoryId[bestAlternativeCandidate.type] ?? null)
+        : null,
+      bestAlternativeScore: bestAlternativeCandidate
+        ? (bestAlternativeCandidate.strategyScore ??
+          bestAlternativeCandidate.evaluationScore)
+        : null,
+      preLockViabilityChecked: best.preLockViabilityChecked ?? false,
+      projectedMaxScoreFromLock: best.projectedMaxScoreFromLock ?? null,
+      minimumAcceptableScore: best.minimumAcceptableScore ?? null,
       lockRejectedBecauseBelowMinimumPotential:
         best.lockRejectedBecauseBelowMinimumPotential ?? false,
-      lowTriplePenaltyApplied:
-        best.lowTriplePenaltyApplied ?? false,
-      lowTripleAcceptedReason:
-        best.lowTripleAcceptedReason ?? null,
-      structuralTargetCategory:
-        best.structuralTargetCategory ?? null,
-      oneFiveFallbackAttempted:
-        best.oneFiveFallbackAttempted ?? false,
-      oneFiveFallbackBlocked:
-        best.oneFiveFallbackBlocked ?? false,
-      targetSpecificLockBuilderUsed:
-        best.targetSpecificLockBuilderUsed ?? null,
+      lowTriplePenaltyApplied: best.lowTriplePenaltyApplied ?? false,
+      lowTripleAcceptedReason: best.lowTripleAcceptedReason ?? null,
+      structuralTargetCategory: best.structuralTargetCategory ?? null,
+      oneFiveFallbackAttempted: best.oneFiveFallbackAttempted ?? false,
+      oneFiveFallbackBlocked: best.oneFiveFallbackBlocked ?? false,
+      targetSpecificLockBuilderUsed: best.targetSpecificLockBuilderUsed ?? null,
       targetProgressBeforeRoll,
       targetProgressAfterRoll,
       noProgressReevaluationTriggered,
       pivotAccepted,
       pivotRejectedReason,
       openOptionsImprovedBy,
-      saveChosenOverRiskReason:
-        actionDecision.saveChosenOverRiskReason,
-      riskChosenOverSaveReason:
-        actionDecision.riskChosenOverSaveReason,
+      saveChosenOverRiskReason: actionDecision.saveChosenOverRiskReason,
+      riskChosenOverSaveReason: actionDecision.riskChosenOverSaveReason,
       deadEndDetected: false,
       bestLegalFallbackScore: null,
       targetPreservedBecauseDetectedNotWritable:
-        detectedCombinationBlocksPlan &&
-        !!previousPlanCandidate,
+        detectedCombinationBlocksPlan && !!previousPlanCandidate,
       fullLockRejectedBecauseNotWritable:
         detectedCombinationBlocksPlan &&
         best.safeLockedDiceIndices.length === 6,
-    }
+    },
   );
 
   return {
-    targetCategory:
-      combinationToCategoryId[best.type] ?? null,
-    lockMask: toLockMask(
-      best.safeLockedDiceIndices
-    ),
-    selectedCandidateType:
-      selectedHighValueBuilder
-        ? "high-value-builder"
-        : best.type,
-    selectedLockMask: toLockMask(
-      best.safeLockedDiceIndices
-    ),
-    lockedDiceIndices:
-      best.safeLockedDiceIndices,
+    targetCategory: combinationToCategoryId[best.type] ?? null,
+    lockMask: toLockMask(best.safeLockedDiceIndices),
+    selectedCandidateType: selectedHighValueBuilder
+      ? "high-value-builder"
+      : best.type,
+    selectedLockMask: toLockMask(best.safeLockedDiceIndices),
+    lockedDiceIndices: best.safeLockedDiceIndices,
     action: actionDecision.action,
     confidence: toConfidence(best),
-    riskLevel: toRiskLevel(
-      remainingRolls,
-      matchContext
-    ),
+    riskLevel: toRiskLevel(remainingRolls, matchContext),
     aiScore: matchContext.aiScore,
-    bestOpponentScore:
-      matchContext.bestOpponentScore,
+    bestOpponentScore: matchContext.bestOpponentScore,
     endgameMode: matchContext.endgameMode,
     scoreDelta: matchContext.scoreDelta,
-    aiRemainingPotential:
-      matchContext.aiRemainingPotential,
-    opponentRemainingPotential:
-      matchContext.opponentRemainingPotential,
-    requiredScoreEstimate:
-      matchContext.requiredScoreEstimate,
+    aiRemainingPotential: matchContext.aiRemainingPotential,
+    opponentRemainingPotential: matchContext.opponentRemainingPotential,
+    requiredScoreEstimate: matchContext.requiredScoreEstimate,
     opponentScore: matchContext.opponentScore,
-    remainingCategories:
-      matchContext.remainingCategories,
-    riskBecauseBehind:
-      matchContext.riskBecauseBehind,
-    saveRejectedBecauseTooLow:
-      actionDecision.saveRejectedBecauseTooLow,
+    remainingCategories: matchContext.remainingCategories,
+    riskBecauseBehind: matchContext.riskBecauseBehind,
+    saveRejectedBecauseTooLow: actionDecision.saveRejectedBecauseTooLow,
     currentPlanValue,
     alternativePlanValue,
     pivotThreshold: dynamicPivotThreshold,
