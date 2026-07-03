@@ -3684,6 +3684,11 @@ export default function Home() {
           cleanupContext: "effect-dispose",
         });
 
+        // If cleanup cancels a pending AI roll timeout, allow the next
+        // effect pass to re-schedule the same decision instead of being
+        // blocked by an unchanged execution marker.
+        aiControllerExecutionMarkerRef.current = null;
+
         if (aiActiveRollTimeoutIdRef.current === rollTimeoutAuditId) {
           aiActiveRollTimeoutIdRef.current = null;
         }
