@@ -3548,6 +3548,31 @@ export function makeAIDecision(
       rejectedBecauseOnlyWaitingForPairDisabled: false,
     };
 
+    const valueCountsForSeedCandidate = getValueCounts(
+      candidateWithSeedMetadata.lockValues,
+    );
+
+    const rejectsSingleOneSupplementForPairsLastRoll =
+      candidateWithSeedMetadata.type === "Dvojice" &&
+      (remainingRolls ?? 0) <= 1 &&
+      !candidateWithSeedMetadata.isComplete &&
+      (valueCountsForSeedCandidate[1] ?? 0) === 1;
+
+    if (rejectsSingleOneSupplementForPairsLastRoll) {
+      candidateAudit.push({
+        candidateOrder,
+        type: combType,
+        stage: "evaluate-rejected",
+        evaluationScore: candidateWithSeedMetadata.evaluationScore,
+        strategyScore: candidateWithSeedMetadata.strategyScore,
+        targetPattern: candidateWithSeedMetadata.targetPattern,
+        lockRecommendation: candidateWithSeedMetadata.lockRecommendation,
+        validationReason:
+          "single-one-supplement-rejected-for-pairs-last-roll-window",
+      });
+      continue;
+    }
+
     const rejectsLowValueGroupedBase =
       playModeRiskProfile === "ambitious" &&
       (remainingRolls ?? 0) >= 3 &&
@@ -4870,6 +4895,17 @@ export function makeAIDecision(
           })
           .map(({ index }) => index)
           .slice(0, requirement.count);
+
+        const skipSingletonOneExpansionForPairs =
+          best.type === "Dvojice" &&
+          requirement.value === 1 &&
+          matchingIndices.length === 1 &&
+          matchingIndices.length < requirement.count &&
+          (remainingRolls ?? 0) >= 2;
+
+        if (skipSingletonOneExpansionForPairs) {
+          continue;
+        }
 
         for (const index of matchingIndices) {
           expandedLockSet.add(index);

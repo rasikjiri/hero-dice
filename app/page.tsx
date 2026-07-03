@@ -204,7 +204,11 @@ export default function Home() {
 
   const [maxScoreSoundEnabled, setMaxScoreSoundEnabled] = useState(true);
 
+  const [hero36SoundEnabled, setHero36SoundEnabled] = useState(true);
+
   const [maxScoreSoundPlayed, setMaxScoreSoundPlayed] = useState(false);
+
+  const [hero36SoundPlayed, setHero36SoundPlayed] = useState(false);
 
   const [noCombinationSoundEnabled, setNoCombinationSoundEnabled] =
     useState(true);
@@ -340,6 +344,8 @@ export default function Home() {
 
     const maxScore = localStorage.getItem("heroDiceMaxScoreSound");
 
+    const hero36 = localStorage.getItem("heroDiceHero36Sound");
+
     const noCombination = localStorage.getItem("heroDiceNoCombinationSound");
 
     const turnEnd = localStorage.getItem("heroDiceTurnEndSound");
@@ -350,6 +356,10 @@ export default function Home() {
 
     if (maxScore !== null) {
       setMaxScoreSoundEnabled(maxScore === "true");
+    }
+
+    if (hero36 !== null) {
+      setHero36SoundEnabled(hero36 === "true");
     }
 
     if (noCombination !== null) {
@@ -371,6 +381,10 @@ export default function Home() {
       // Preload max-score fanfare
       const fanfareAudio = new Audio("/sounds/win/fanfare.mp3");
       fanfareAudio.preload = "auto";
+
+      // Preload Hero 36 special sound
+      const hero36Audio = new Audio("/sounds/win/hero36.mp3");
+      hero36Audio.preload = "auto";
 
       // Preload turn-end sound
       const turnEndAudio = new Audio("/sounds/playmode/turnend.mp3");
@@ -413,12 +427,15 @@ export default function Home() {
   const saveSettings = (
     celebration: boolean,
     maxScore: boolean,
+    hero36: boolean,
     noCombination: boolean,
     turnEnd: boolean,
   ) => {
     localStorage.setItem("heroDiceCelebrationSound", String(celebration));
 
     localStorage.setItem("heroDiceMaxScoreSound", String(maxScore));
+
+    localStorage.setItem("heroDiceHero36Sound", String(hero36));
 
     localStorage.setItem("heroDiceNoCombinationSound", String(noCombination));
 
@@ -1818,12 +1835,14 @@ export default function Home() {
 
     if (shouldBlockMaxScoreAudio) {
       setMaxScoreSoundPlayed(false);
+      setHero36SoundPlayed(false);
 
       return;
     }
 
-    if (!currentCombination || !maxScoreSoundEnabled) {
+    if (!currentCombination) {
       setMaxScoreSoundPlayed(false);
+      setHero36SoundPlayed(false);
 
       return;
     }
@@ -1832,6 +1851,7 @@ export default function Home() {
 
     if (!categoryId) {
       setMaxScoreSoundPlayed(false);
+      setHero36SoundPlayed(false);
 
       return;
     }
@@ -1840,6 +1860,7 @@ export default function Home() {
 
     if (!category) {
       setMaxScoreSoundPlayed(false);
+      setHero36SoundPlayed(false);
 
       return;
     }
@@ -1853,8 +1874,34 @@ export default function Home() {
       (playModeAllowRewrite && currentCombination.score > existingScore);
 
     const isMaxScore = currentCombination.score === category.max;
+    const isHero36Special =
+      currentCombination.combination === "Generál" &&
+      currentCombination.score === 36 &&
+      playModeDice.length === 6 &&
+      playModeDice.every((value) => value === 6);
 
-    if (isMaxScore && canWrite && !maxScoreSoundPlayed) {
+    if (isHero36Special && canWrite && hero36SoundEnabled && !hero36SoundPlayed) {
+      const audio = new Audio(`/sounds/win/hero36.mp3`);
+
+      audio.volume = 0.9;
+
+      audio.play().catch(() => {});
+
+      setHero36SoundPlayed(true);
+    }
+
+    if (!isHero36Special || !canWrite || !hero36SoundEnabled) {
+      setHero36SoundPlayed(false);
+    }
+
+    const shouldUseStandardMaxScoreSound = isMaxScore && !isHero36Special;
+
+    if (
+      shouldUseStandardMaxScoreSound &&
+      canWrite &&
+      maxScoreSoundEnabled &&
+      !maxScoreSoundPlayed
+    ) {
       const audio = new Audio(`/sounds/win/fanfare.mp3`);
 
       audio.volume = 0.9;
@@ -1864,7 +1911,7 @@ export default function Home() {
       setMaxScoreSoundPlayed(true);
     }
 
-    if (!isMaxScore || !canWrite) {
+    if (!shouldUseStandardMaxScoreSound || !canWrite || !maxScoreSoundEnabled) {
       setMaxScoreSoundPlayed(false);
     }
   }, [
@@ -1872,9 +1919,12 @@ export default function Home() {
     currentPlayPlayerIndex,
     selectedPlayers,
     scores,
+    playModeDice,
     playModeAllowRewrite,
     maxScoreSoundEnabled,
     maxScoreSoundPlayed,
+    hero36SoundEnabled,
+    hero36SoundPlayed,
     isOnlineGame,
     localOnlinePlayerId,
   ]);
@@ -3739,6 +3789,7 @@ export default function Home() {
         setBonusUsed(false);
       }
       setMaxScoreSoundPlayed(false);
+      setHero36SoundPlayed(false);
       setNoCombinationSoundPlayed(false);
       return;
     }
@@ -3864,6 +3915,7 @@ export default function Home() {
         setHasRolledDice(true);
 
         setMaxScoreSoundPlayed(false);
+        setHero36SoundPlayed(false);
         setNoCombinationSoundPlayed(false);
 
         setRemainingRolls((prev) => prev - 1);
@@ -8504,6 +8556,7 @@ export default function Home() {
                     saveSettings(
                       value,
                       maxScoreSoundEnabled,
+                      hero36SoundEnabled,
                       noCombinationSoundEnabled,
                       turnEndSoundEnabled,
                     );
@@ -8528,6 +8581,7 @@ export default function Home() {
                     saveSettings(
                       celebrationSoundEnabled,
                       value,
+                      hero36SoundEnabled,
                       noCombinationSoundEnabled,
                       turnEndSoundEnabled,
                     );
@@ -8540,6 +8594,31 @@ export default function Home() {
                 </button>
               </div>
               <div className="flex items-center justify-between">
+                <span className="font-bold">Hero 36 (6x6)</span>
+
+                <button
+                  onClick={() => {
+                    const value = !hero36SoundEnabled;
+
+                    setHero36SoundEnabled(value);
+
+                    saveSettings(
+                      celebrationSoundEnabled,
+                      maxScoreSoundEnabled,
+                      value,
+                      noCombinationSoundEnabled,
+                      turnEndSoundEnabled,
+                    );
+                  }}
+                  className={`rounded-xl px-5 py-2 font-black ${
+                    hero36SoundEnabled ? "bg-green-600" : "bg-red-600"
+                  }`}
+                >
+                  {hero36SoundEnabled ? "ZAP" : "VYP"}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
                 <span className="font-bold">Není kombinace</span>
 
                 <button
@@ -8551,6 +8630,7 @@ export default function Home() {
                     saveSettings(
                       celebrationSoundEnabled,
                       maxScoreSoundEnabled,
+                      hero36SoundEnabled,
                       value,
                       turnEndSoundEnabled,
                     );
@@ -8575,6 +8655,7 @@ export default function Home() {
                     saveSettings(
                       celebrationSoundEnabled,
                       maxScoreSoundEnabled,
+                      hero36SoundEnabled,
                       noCombinationSoundEnabled,
                       value,
                     );

@@ -585,24 +585,48 @@ Poznámky:
 
 ---
 
-## [3.8] - AI Stabilization
+## [3.8] - AI Stabilization & Gameplay Polish
+
+### Added
+
+#### Gameplay Audio
+
+- Přidán nový speciální zvuk Hero 36 pro unikátní kombinaci šesti šestek (6-6-6-6-6-6).
+- Speciální zvuk má prioritu před standardním zvukem maximálního skóre.
+- Integrován do existující audio logiky bez vytváření paralelního systému.
+- Přidána nová volba Hero 36 (6×6) do nastavení zvuků.
+- Nastavení se ukládá do localStorage a respektuje existující mute/audio preference.
 
 ### Fixed
 
+#### AI Controller
+
 - Opraven bug, kdy se AI hráč po převzetí tahu v některých případech nerozběhl automaticky a čekal na uživatelský klik do herní plochy.
-- Identifikována příčina v orchestration vrstvě AI controlleru (page.tsx), nikoliv ve Strategy Engine.
-- Opraven lifecycle problém, při kterém useEffect cleanup rušil naplánovaný AI roll timeout dříve, než mohl být vykonán.
-- Při cleanupu pending AI roll timeoutu se nyní správně resetuje execution marker, což umožňuje bezpečné znovunaplánování AI akce při dalším průchodu controlleru.
-- Beze změny zůstaly:
-	- AI Decision Engine,
-	- strategie AI,
-	- scoring,
-	- Save-First Guard,
-	- locking logika,
-	- herní pravidla.
+- Identifikována příčina v orchestration vrstvě AI controlleru (page.tsx).
+- Při cleanupu pending AI roll timeoutu se nyní resetuje execution marker, což umožňuje bezpečné znovunaplánování AI akce při dalším průchodu controlleru.
+- Oprava je izolována pouze na orchestration vrstvu a nezasahuje do Decision Engine.
+
+#### AI Decision Engine
+
+- Opraveno lockování osamocené hodnoty 1 při strategii Dvojice.
+- V grouped-lock expansion se již nepřidává singleton 1.
+- Podmínka 1: ještě není vytvořen pár.
+- Podmínka 2: zbývají alespoň dva hody.
+- Odstraněno nežádoucí chování, kdy se hodnota 1 vracela zpět přes pozdější expansion fázi navzdory předchozí filtraci.
+- AI tak již v průběžných hodech (5/4/3/2) zbytečně nedrží samotnou jedničku při budování Dvojice.
 
 ### Validation
 
-- Ověřeno na nové hře.
-- AI hráč po převzetí tahu pokračuje automaticky bez nutnosti uživatelského kliknutí.
-- Chování odpovídá očekávanému průběhu AI tahu a nebyly pozorovány regresní projevy.
+- Obě opravy byly úspěšně otestovány během reálné hry proti AI.
+- AI pokračuje automaticky bez nutnosti uživatelského zásahu.
+- Lockování při strategii Dvojice odpovídá očekávanému chování.
+- TypeScript i lint kontrola prošly bez chyb.
+- Nebyly provedeny změny strategie AI.
+- Nebyly provedeny změny scoringu.
+- Nebyly provedeny změny Save-First Guard.
+- Nebyly provedeny změny herních pravidel.
+- Nebyly provedeny změny architektury Decision Engine.
+- Ověřeno při reálné hře.
+- Hero 36 přehrává nový zvuk.
+- Standardní fanfára maximálního skóre se při Hero 36 již nepřehrává.
+- Ostatní maximální skóre nadále používají původní zvuk.
