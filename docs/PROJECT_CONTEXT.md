@@ -2,7 +2,7 @@ PROJECT_CONTEXT
   
 **Projekt:** Hero Dice  
   
-**Verze projektu:** 3.1  
+**Verze projektu:** 3.7  
   
 **Typ dokumentu:** Projektový kontext  
   
@@ -250,6 +250,101 @@ Scope:
 Pravidlo prioritizace:
 
 - Do dokončení Online Resume lifecycle se nepřidávají žádné nové gameplay funkce.
+
+---
+
+# AI Stabilization (v3.7)
+
+Verze 3.7 představuje zásadní milník ve vývoji AI hráče.
+
+### Dosažené cíle
+
+- odstraněny kritické deadlocky AI
+- odstraněny chyby typu "No Combination"
+- sjednocena validace legálních tahů
+- stabilizováno zamykání a odemykání kostek
+- výrazně vylepšena strategie výběru kombinací
+- AI již nepůsobí deterministicky
+- hra Human vs Computer je dlouhodobě vyrovnaná (cca 50/50 podle průběhu hodů)
+
+---
+
+## Architektura AI
+
+AI je rozdělena do dvou hlavních vrstev:
+
+### 1. Controller
+
+Řídí průběh tahu.
+
+Zodpovídá za:
+
+- sequencing
+- guardy
+- save / roll / end turn
+- validaci legality
+- timeout orchestration
+
+### 2. Decision Engine
+
+Zodpovídá za:
+
+- hodnocení kombinací
+- strategické skórování
+- výběr cílové kategorie
+- návrh lock masky
+- risk profil
+
+Controller vždy provádí finální validaci návrhu Decision Engine.
+
+---
+
+## Debug filozofie
+
+Od verze 3.7 se AI neladí podle pozorování.
+
+Veškeré opravy vycházejí z auditních dat.
+
+Používají se dva audity:
+
+- heroDiceTempAiTurnAudit
+- heroDiceTempAiDecisionAudit
+
+Tyto logy představují primární diagnostický nástroj během vývoje.
+
+---
+
+## Pravidla dalšího vývoje AI
+
+Každý task:
+
+- řeší pouze jeden bug
+- upravuje pouze jednu vrstvu
+- musí být ověřitelný přes audit
+
+Hromadné refaktoringy AI nejsou během stabilizační fáze povoleny.
+
+---
+
+## Development režim
+
+Debug audity jsou aktivní pouze v development prostředí.
+
+Produkční build nesmí být jejich existencí ovlivněn.
+
+---
+
+## Stav projektu
+
+AI hráč je od verze 3.7 považován za funkční.
+
+Další práce se zaměřují na:
+
+- odstranění jednotlivých okrajových bugů,
+- jemné ladění heuristik,
+- stabilitu bez regresí.
+
+Neprobíhá již návrh nové architektury AI.
 
 ---
   
