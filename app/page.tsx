@@ -2214,45 +2214,41 @@ export default function Home() {
 
     pendingTurnScoreSnapshotRef.current = null;
 
-    if (
+    const shouldSyncOnlineHandoff =
       isOnlineGame &&
       onlineSessionId &&
       gameStarted &&
       hasStartedPlayMode &&
       screen === "game" &&
-      isCurrentPlayer
-    ) {
-      try {
-        await updateOnlineState(onlineSessionId, {
-          scores: scoresForTurnHandoff,
-          currentPlayPlayerIndex: nextPlayer,
-          playModeDice: nextPlayModeDice,
-          lockedDice: nextLockedDice,
-          confirmedLockedDice: nextConfirmedLockedDice,
-          remainingRolls: playModeRolls,
-          bonusUsed: false,
-          selectedGeneralValue: null,
-          hasRolledDice: false,
-          selectedPlayers,
-          playerCount,
-          playModeRolls,
-          playModeAllowRewrite,
-          playModeBonusMode,
-          playModeBonusRolls,
-          playerReadiness,
-          gameStarted,
-          hasStartedPlayMode,
-          turnVersion: handoffTurnVersion,
-          updatedByPlayerId: localOnlinePlayerId,
-          updatedAt: Date.now(),
-          runtimeRevision: handoffRuntimeRevision,
-        });
-      } catch (error) {
-        console.error("END TURN SYNC ERROR:", error);
-      }
-    }
+      isCurrentPlayer;
 
-    // CRITICAL FIX: Reset locks BEFORE changing player so AI sees clean state
+    const handoffPayload = {
+      scores: scoresForTurnHandoff,
+      currentPlayPlayerIndex: nextPlayer,
+      playModeDice: nextPlayModeDice,
+      lockedDice: nextLockedDice,
+      confirmedLockedDice: nextConfirmedLockedDice,
+      remainingRolls: playModeRolls,
+      bonusUsed: false,
+      selectedGeneralValue: null,
+      hasRolledDice: false,
+      selectedPlayers,
+      playerCount,
+      playModeRolls,
+      playModeAllowRewrite,
+      playModeBonusMode,
+      playModeBonusRolls,
+      playerReadiness,
+      gameStarted,
+      hasStartedPlayMode,
+      turnVersion: handoffTurnVersion,
+      updatedByPlayerId: localOnlinePlayerId,
+      updatedAt: Date.now(),
+      runtimeRevision: handoffRuntimeRevision,
+    };
+
+    // Apply local handoff state immediately; this prevents race conditions with passive sync
+    // that could re-publish the previous player's turn.
     setLockedDice(nextLockedDice);
 
     setConfirmedLockedDice(nextConfirmedLockedDice);
@@ -2277,6 +2273,14 @@ export default function Home() {
     } else {
       setPlayModeTurnSummary(null);
       setShowPlayModeResult(false);
+    }
+
+    if (shouldSyncOnlineHandoff) {
+      try {
+        await updateOnlineState(onlineSessionId, handoffPayload);
+      } catch (error) {
+        console.error("END TURN SYNC ERROR:", error);
+      }
     }
   };
 
