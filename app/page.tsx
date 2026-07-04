@@ -565,6 +565,20 @@ export default function Home() {
   const [playModeTurnSummary, setPlayModeTurnSummary] =
     useState<PlayModeTurnSummary | null>(null);
 
+  type PendingOnlineHandoff = {
+    nextPlayer: number;
+    nextPlayModeDice: number[];
+    nextLockedDice: boolean[];
+    nextConfirmedLockedDice: boolean[];
+    handoffTurnVersion: number;
+    handoffRuntimeRevision: number;
+    scoresSnapshot: ScoreMap;
+  };
+
+  const pendingOnlineHandoffRef = useRef<PendingOnlineHandoff | null>(null);
+
+  const latestSavedScoresSnapshotRef = useRef<ScoreMap | null>(null);
+
   const [currentPlayPlayerIndex, setCurrentPlayPlayerIndex] = useState(0);
 
   const [playModeDice, setPlayModeDice] = useState<number[]>([
@@ -2054,15 +2068,20 @@ export default function Home() {
 
     bumpLocalRuntimeRevision();
 
-    setScores((prev) => ({
-      ...prev,
+    setScores((prev) => {
+      const nextScores = {
+        ...prev,
+        [playerId]: {
+          ...prev[playerId],
+          [categoryId]: currentCombination.score,
+        },
+      };
 
-      [playerId]: {
-        ...prev[playerId],
+      // Keep a fresh score snapshot for deferred online handoff sync.
+      latestSavedScoresSnapshotRef.current = nextScores;
 
-        [categoryId]: currentCombination.score,
-      },
-    }));
+      return nextScores;
+    });
 
     return true;
   };
@@ -2101,6 +2120,41 @@ export default function Home() {
     const handoffTurnVersion = bumpLocalTurnVersion();
 
     const handoffRuntimeRevision = bumpLocalRuntimeRevision();
+
+    const normalizedTurnSummary = turnSummary ?? null;
+
+    const isDeferredOnlineHandoff =
+      normalizedTurnSummary !== null &&
+      isOnlineGame &&
+      onlineSessionId &&
+      gameStarted &&
+      hasStartedPlayMode &&
+      screen === "game" &&
+      isCurrentPlayer;
+
+    if (isDeferredOnlineHandoff) {
+      pendingOnlineHandoffRef.current = {
+        nextPlayer,
+        nextPlayModeDice,
+        nextLockedDice,
+        nextConfirmedLockedDice,
+        handoffTurnVersion,
+        handoffRuntimeRevision,
+        scoresSnapshot:
+          normalizedTurnSummary.savedScore && latestSavedScoresSnapshotRef.current
+            ? latestSavedScoresSnapshotRef.current
+            : scores,
+      };
+
+      setPlayModeTurnSummary({
+        ...normalizedTurnSummary,
+        nextPlayerId: selectedPlayers[nextPlayer] ?? "",
+      });
+      setShowPlayModeResult(true);
+      return;
+    }
+
+    pendingOnlineHandoffRef.current = null;
 
     if (
       isOnlineGame &&
@@ -2156,9 +2210,9 @@ export default function Home() {
     setSelectedGeneralValue(null);
     setBonusUsed(false);
 
-    if (turnSummary) {
+    if (normalizedTurnSummary) {
       setPlayModeTurnSummary({
-        ...turnSummary,
+        ...normalizedTurnSummary,
         nextPlayerId: selectedPlayers[nextPlayer] ?? "",
       });
       setShowPlayModeResult(true);
@@ -2166,6 +2220,63 @@ export default function Home() {
       setPlayModeTurnSummary(null);
       setShowPlayModeResult(false);
     }
+
+    latestSavedScoresSnapshotRef.current = null;
+  };
+
+  const handlePlayModeResultNextPlayer = async () => {
+    const pendingOnlineHandoff = pendingOnlineHandoffRef.current;
+
+    if (
+      isOnlineGame &&
+      onlineSessionId &&
+      pendingOnlineHandoff &&
+      isCurrentPlayer
+    ) {
+      try {
+        await updateOnlineState(onlineSessionId, {
+          scores: pendingOnlineHandoff.scoresSnapshot,
+          currentPlayPlayerIndex: pendingOnlineHandoff.nextPlayer,
+          playModeDice: pendingOnlineHandoff.nextPlayModeDice,
+          lockedDice: pendingOnlineHandoff.nextLockedDice,
+          confirmedLockedDice: pendingOnlineHandoff.nextConfirmedLockedDice,
+          remainingRolls: playModeRolls,
+          bonusUsed: false,
+          selectedGeneralValue: null,
+          hasRolledDice: false,
+          selectedPlayers,
+          playerCount,
+          playModeRolls,
+          playModeAllowRewrite,
+          playModeBonusMode,
+          playModeBonusRolls,
+          playerReadiness,
+          gameStarted,
+          hasStartedPlayMode,
+          turnVersion: pendingOnlineHandoff.handoffTurnVersion,
+          updatedByPlayerId: localOnlinePlayerId,
+          updatedAt: Date.now(),
+          runtimeRevision: pendingOnlineHandoff.handoffRuntimeRevision,
+        });
+      } catch (error) {
+        console.error("ONLINE HANDOFF CONFIRM SYNC ERROR:", error);
+      }
+
+      setLockedDice(pendingOnlineHandoff.nextLockedDice);
+      setConfirmedLockedDice(pendingOnlineHandoff.nextConfirmedLockedDice);
+      setPlayModeDice(pendingOnlineHandoff.nextPlayModeDice);
+      setCurrentPlayPlayerIndex(pendingOnlineHandoff.nextPlayer);
+      setRemainingRolls(playModeRolls);
+      setBonusUsed(false);
+      setHasRolledDice(false);
+      setSelectedGeneralValue(null);
+      setBonusUsed(false);
+    }
+
+    pendingOnlineHandoffRef.current = null;
+    latestSavedScoresSnapshotRef.current = null;
+    setShowPlayModeResult(false);
+    setPlayModeTurnSummary(null);
   };
 
   // BUGFIX #2: Reset AI execution marker when result is dismissed to allow fresh turn detection
@@ -2176,6 +2287,10 @@ export default function Home() {
     ) {
       // Result was dismissed, reset marker so AI turn detection runs fresh
       aiControllerExecutionMarkerRef.current = null;
+    }
+
+    if (!showPlayModeResult) {
+      pendingOnlineHandoffRef.current = null;
     }
   }, [showPlayModeResult]);
 
@@ -7963,24 +8078,10 @@ export default function Home() {
               Skóre: {currentCombination.score}
             </div>
 
-            <div className="mt-8 grid grid-cols-2 gap-4">
+            <div className="mt-8 grid grid-cols-1 gap-4">
               <button
-                onClick={() => {
-                  setShowPlayModeResult(false);
-                  setPlayModeTurnSummary(null);
-                  debugSetIsPlayModeActive(false);
-                }}
+                onClick={handlePlayModeResultNextPlayer}
                 disabled={!canControlOnlinePlayMode}
-                className="rounded-2xl bg-green-700 px-4 py-5 text-lg font-black text-white transition hover:bg-green-600"
-              >
-                Scoreboard
-              </button>
-
-              <button
-                onClick={() => {
-                  setShowPlayModeResult(false);
-                  setPlayModeTurnSummary(null);
-                }}
                 className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
               >
                 ▶ Další hráč
@@ -8367,24 +8468,10 @@ export default function Home() {
                     : "Hráč nezapsal skóre"}
                 </div>
 
-                <div className="mt-8 grid grid-cols-2 gap-4">
+                <div className="mt-8 grid grid-cols-1 gap-4">
                   <button
-                    onClick={() => {
-                      setShowPlayModeResult(false);
-                      setPlayModeTurnSummary(null);
-                      debugSetIsPlayModeActive(false);
-                    }}
+                    onClick={handlePlayModeResultNextPlayer}
                     disabled={!canControlOnlinePlayMode}
-                    className="rounded-2xl bg-green-700 px-4 py-5 text-lg font-black text-white transition hover:bg-green-600"
-                  >
-                    Scoreboard
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowPlayModeResult(false);
-                      setPlayModeTurnSummary(null);
-                    }}
                     className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
                   >
                     ▶ Další hráč
