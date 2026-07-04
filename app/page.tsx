@@ -5930,6 +5930,13 @@ export default function Home() {
 
   const inviteAuthorName = resolveOnlineInviteAuthorName();
 
+  const inviteActionBaseClass =
+    "w-full rounded-2xl border border-zinc-600 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] transition duration-200 hover:scale-[1.02] hover:brightness-110 md:text-base";
+
+  const inviteActionToneClass = isLeaguePlayMode
+    ? "bg-green-600 text-white hover:bg-green-500"
+    : "bg-purple-600 text-white hover:bg-purple-500";
+
   const openInviteViaSms = () => {
     if (!onlineInviteCode || !isInviteCode(onlineInviteCode)) {
       return;
@@ -5953,6 +5960,18 @@ export default function Home() {
     const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
     window.location.href = mailtoUrl;
+  };
+
+  const copyInviteCodeToClipboard = async () => {
+    if (!onlineInviteCode || !isInviteCode(onlineInviteCode)) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(onlineInviteCode);
+    } catch (clipboardError) {
+      console.error("INVITE CODE COPY BUTTON ERROR:", clipboardError);
+    }
   };
 
   const activePlayerId = selectedPlayers[currentPlayPlayerIndex] ?? null;
@@ -6949,13 +6968,13 @@ export default function Home() {
                   )}
                 </div>
 
-                <div className="mb-6 flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-start">
+                <div className="mb-6 grid w-full grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
                   <button
                     onClick={openInviteViaSms}
                     disabled={!onlineInviteCode || !isInviteCode(onlineInviteCode)}
-                    className={`rounded-2xl px-5 py-3 text-sm font-black uppercase tracking-[0.12em] transition md:text-base ${
+                    className={`${inviteActionBaseClass} ${
                       onlineInviteCode && isInviteCode(onlineInviteCode)
-                        ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                        ? inviteActionToneClass
                         : "cursor-not-allowed bg-zinc-700 text-zinc-400"
                     }`}
                   >
@@ -6965,13 +6984,25 @@ export default function Home() {
                   <button
                     onClick={openInviteViaEmail}
                     disabled={!onlineInviteCode || !isInviteCode(onlineInviteCode)}
-                    className={`rounded-2xl px-5 py-3 text-sm font-black uppercase tracking-[0.12em] transition md:text-base ${
+                    className={`${inviteActionBaseClass} ${
                       onlineInviteCode && isInviteCode(onlineInviteCode)
-                        ? "bg-blue-600 text-white hover:bg-blue-500"
+                        ? inviteActionToneClass
                         : "cursor-not-allowed bg-zinc-700 text-zinc-400"
                     }`}
                   >
                     Pozvat e-mailem
+                  </button>
+
+                  <button
+                    onClick={copyInviteCodeToClipboard}
+                    disabled={!onlineInviteCode || !isInviteCode(onlineInviteCode)}
+                    className={`${inviteActionBaseClass} ${
+                      onlineInviteCode && isInviteCode(onlineInviteCode)
+                        ? "bg-gradient-to-b from-zinc-800 via-zinc-900 to-black text-zinc-100 hover:text-white"
+                        : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                    }`}
+                  >
+                    Kopírovat do schránky
                   </button>
                 </div>
 
@@ -7176,6 +7207,13 @@ export default function Home() {
                         label: "Načíst hru",
                         onClick: () => {
                           loadSavedGames();
+                          setShowGameMenu(false);
+                        },
+                      },
+                      {
+                        label: "Admin",
+                        onClick: () => {
+                          setShowAdmin(true);
                           setShowGameMenu(false);
                         },
                       },
@@ -8423,7 +8461,7 @@ export default function Home() {
                       hasComputerPlayer
                         ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
                         : selectedGameMode === "online"
-                          ? "bg-green-600 text-white"
+                          ? "bg-blue-600 text-white"
                           : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
                     }`}
                   >
@@ -8536,7 +8574,9 @@ export default function Home() {
                     hasComputerPlayer
                       ? "bg-purple-600 hover:bg-purple-500"
                       : selectedGameMode === "online"
-                        ? "bg-green-600 hover:bg-green-500"
+                        ? isLeaguePlayMode
+                          ? "bg-green-600 hover:bg-green-500"
+                          : "bg-purple-600 hover:bg-purple-500"
                         : isLeaguePlayMode
                           ? "bg-green-600 hover:bg-green-500"
                           : "bg-purple-600 hover:bg-purple-500"
