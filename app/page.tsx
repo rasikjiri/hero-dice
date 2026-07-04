@@ -271,6 +271,8 @@ export default function Home() {
 
   const localTurnVersionRef = useRef(0);
 
+  const pendingTurnScoreSnapshotRef = useRef<ScoreMap | null>(null);
+
   const hasAutoOpenedOnlinePlayModeRef = useRef(false);
 
   const forceOnlineLobbyUntilHostStartRef = useRef(false);
@@ -678,6 +680,107 @@ export default function Home() {
   const isComputerPlayerId = (playerId: string) =>
     computerPlayers.some((computerPlayer) => computerPlayer.id === playerId);
 
+  const isUuidLike = (value: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    );
+
+  const isLegacyLeagueRoomCode = (value: string) => {
+    if (!value.startsWith("league-")) {
+      return false;
+    }
+
+    return isUuidLike(value.slice("league-".length));
+  };
+
+  const isTechnicalOnlinePlayerIdentifier = (value: string) => {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return false;
+    }
+
+    const knownSessionIds = [
+      onlineSessionId,
+      onlineSessionIdRef.current,
+      joinSessionId.trim(),
+    ].filter((candidate): candidate is string =>
+      typeof candidate === "string" && candidate.trim().length > 0,
+    );
+
+    if (knownSessionIds.includes(trimmed)) {
+      return true;
+    }
+
+    return isLegacyLeagueRoomCode(trimmed);
+  };
+
+  const resolvePersistedPlayerIdentity = (
+    sourcePlayerId: string,
+    position: number,
+  ) => {
+    const humanPlayer = playersState.find((player) => player.id === sourcePlayerId);
+
+    if (humanPlayer) {
+      return {
+        playerId: humanPlayer.id,
+        playerName: humanPlayer.name,
+      };
+    }
+
+    const computerPlayer = computerPlayers.find(
+      (player) => player.id === sourcePlayerId,
+    );
+
+    if (computerPlayer) {
+      return {
+        playerId: computerPlayer.id,
+        playerName: computerPlayer.name,
+      };
+    }
+
+    if (isTechnicalOnlinePlayerIdentifier(sourcePlayerId)) {
+      const fallbackSuffix = String(position + 1);
+
+      console.warn(
+        "ONLINE PLAYER ID FALLBACK: technical session identifier detected in player slot",
+        {
+          sourcePlayerId,
+          fallbackId: `online-player-${fallbackSuffix}`,
+          fallbackName: `Online hráč ${fallbackSuffix}`,
+        },
+      );
+
+      return {
+        playerId: `online-player-${fallbackSuffix}`,
+        playerName: `Online hráč ${fallbackSuffix}`,
+      };
+    }
+
+    if (sourcePlayerId.trim().length === 0) {
+      const fallbackSuffix = String(position + 1);
+
+      console.warn(
+        "ONLINE PLAYER NAME FALLBACK: empty player id encountered during persistence",
+        {
+          position,
+          fallbackId: `online-player-${fallbackSuffix}`,
+          fallbackName: `Online hráč ${fallbackSuffix}`,
+        },
+      );
+
+      return {
+        playerId: `online-player-${fallbackSuffix}`,
+        playerName: `Online hráč ${fallbackSuffix}`,
+      };
+    }
+
+    return {
+      playerId: sourcePlayerId,
+      playerName: sourcePlayerId,
+    };
+  };
+
   const getPlayerDisplayName = (playerId: string) => {
     const humanPlayer = playersState.find((player) => player.id === playerId);
 
@@ -687,7 +790,8 @@ export default function Home() {
 
     return (
       computerPlayers.find((computerPlayer) => computerPlayer.id === playerId)
-        ?.name ?? playerId
+        ?.name ??
+      (isTechnicalOnlinePlayerIdentifier(playerId) ? "Online hráč" : playerId)
     );
   };
 
@@ -2054,15 +2158,19 @@ export default function Home() {
 
     bumpLocalRuntimeRevision();
 
-    setScores((prev) => ({
-      ...prev,
+    const nextScores: ScoreMap = {
+      ...scores,
 
       [playerId]: {
-        ...prev[playerId],
+        ...scores[playerId],
 
         [categoryId]: currentCombination.score,
       },
-    }));
+    };
+
+    pendingTurnScoreSnapshotRef.current = nextScores;
+
+    setScores(nextScores);
 
     return true;
   };
@@ -2102,6 +2210,10 @@ export default function Home() {
 
     const handoffRuntimeRevision = bumpLocalRuntimeRevision();
 
+    const scoresForTurnHandoff = pendingTurnScoreSnapshotRef.current ?? scores;
+
+    pendingTurnScoreSnapshotRef.current = null;
+
     if (
       isOnlineGame &&
       onlineSessionId &&
@@ -2112,7 +2224,7 @@ export default function Home() {
     ) {
       try {
         await updateOnlineState(onlineSessionId, {
-          scores,
+          scores: scoresForTurnHandoff,
           currentPlayPlayerIndex: nextPlayer,
           playModeDice: nextPlayModeDice,
           lockedDice: nextLockedDice,
@@ -5810,10 +5922,10 @@ export default function Home() {
 
       if (!finishedPlayer) return;
 
-      let bestPlayer = "";
+      let bestPlayerIndex = -1;
       let bestScore = -1;
 
-      const gameResults = selectedPlayers.map((playerId) => {
+      const gameResults = selectedPlayers.map((playerId, index) => {
         const playerScores = scores[playerId] || {};
 
         const total = Object.values(playerScores).reduce(
@@ -5832,13 +5944,15 @@ export default function Home() {
         if (total > bestScore) {
           bestScore = total;
 
-          bestPlayer = playerId;
+          bestPlayerIndex = index;
         }
 
-        return {
-          playerId,
+        const persistedIdentity = resolvePersistedPlayerIdentity(playerId, index);
 
-          playerName: getPlayerDisplayName(playerId),
+        return {
+          playerId: persistedIdentity.playerId,
+
+          playerName: persistedIdentity.playerName,
 
           total,
 
@@ -5846,7 +5960,17 @@ export default function Home() {
         };
       });
 
-      const winnerName = getPlayerDisplayName(bestPlayer);
+      if (bestPlayerIndex < 0) {
+        return;
+      }
+
+      const winnerResult = gameResults[bestPlayerIndex];
+
+      if (!winnerResult) {
+        return;
+      }
+
+      const winnerName = winnerResult.playerName;
 
       setWinner(winnerName);
 
@@ -5854,9 +5978,9 @@ export default function Home() {
 
       if (!hasStartedPlayMode) {
         setPendingFinishedGame({
-          winner: bestPlayer,
+          winner: winnerResult.playerId,
           winnerScore: bestScore,
-          players: selectedPlayers,
+          players: gameResults.map((result) => result.playerId),
           scores: gameResults,
         });
 
@@ -5869,11 +5993,11 @@ export default function Home() {
         const saveSuccess = await saveFinishedGame({
           date: new Date().toISOString(),
 
-          winner: bestPlayer,
+          winner: winnerResult.playerId,
 
           winnerScore: bestScore,
 
-          players: selectedPlayers,
+          players: gameResults.map((result) => result.playerId),
 
           scores: gameResults,
 
@@ -5885,11 +6009,11 @@ export default function Home() {
         }
       } else {
         const saveSuccess = await saveFunGame({
-          winner: bestPlayer,
+          winner: winnerResult.playerId,
 
           winnerScore: bestScore,
 
-          players: selectedPlayers,
+          players: gameResults.map((result) => result.playerId),
 
           scores: gameResults,
         });
@@ -7963,19 +8087,7 @@ export default function Home() {
               Skóre: {currentCombination.score}
             </div>
 
-            <div className="mt-8 grid grid-cols-2 gap-4">
-              <button
-                onClick={() => {
-                  setShowPlayModeResult(false);
-                  setPlayModeTurnSummary(null);
-                  debugSetIsPlayModeActive(false);
-                }}
-                disabled={!canControlOnlinePlayMode}
-                className="rounded-2xl bg-green-700 px-4 py-5 text-lg font-black text-white transition hover:bg-green-600"
-              >
-                Scoreboard
-              </button>
-
+            <div className="mt-8 grid grid-cols-1 gap-4">
               <button
                 onClick={() => {
                   setShowPlayModeResult(false);
@@ -8367,19 +8479,7 @@ export default function Home() {
                     : "Hráč nezapsal skóre"}
                 </div>
 
-                <div className="mt-8 grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => {
-                      setShowPlayModeResult(false);
-                      setPlayModeTurnSummary(null);
-                      debugSetIsPlayModeActive(false);
-                    }}
-                    disabled={!canControlOnlinePlayMode}
-                    className="rounded-2xl bg-green-700 px-4 py-5 text-lg font-black text-white transition hover:bg-green-600"
-                  >
-                    Scoreboard
-                  </button>
-
+                <div className="mt-8 grid grid-cols-1 gap-4">
                   <button
                     onClick={() => {
                       setShowPlayModeResult(false);
