@@ -4900,6 +4900,114 @@ export default function Home() {
 
     setPlayModeBonusRolls(gameState.playModeBonusRolls ?? playModeBonusRolls);
 
+    if (gameState.gameFinished) {
+      const incomingWinnerId =
+        typeof gameState.winner === "string" ? gameState.winner : null;
+
+      const incomingWinnerScore =
+        typeof gameState.winnerScore === "number"
+          ? gameState.winnerScore
+          : 0;
+
+      const winnerDisplayName = incomingWinnerId
+        ? getPlayerDisplayName(incomingWinnerId)
+        : winner;
+
+      setWinner(winnerDisplayName);
+      setWinnerScore(incomingWinnerScore);
+      setGameFinished(true);
+      debugSetIsPlayModeActive(false);
+      setShowPlayModeResult(false);
+      localStorage.removeItem("heroDiceCurrentGame");
+
+      if (celebrationSoundEnabled) {
+        const randomSound =
+          winSounds[Math.floor(Math.random() * winSounds.length)];
+
+        cleanupCelebrationAudio();
+
+        const audio = new Audio(randomSound);
+
+        celebrationAudioRef.current = audio;
+
+        audio.play().catch(() => {});
+      }
+
+      setShowFinishedGame(true);
+
+      const celebrationType = Math.floor(Math.random() * 3);
+
+      if (celebrationType === 0) {
+        for (let i = 0; i < 18; i++) {
+          const timeoutId = window.setTimeout(() => {
+            confetti({
+              particleCount: 333,
+              spread: 100,
+              startVelocity: 35,
+              zIndex: 9999,
+              origin: {
+                x: Math.random(),
+                y: 0.6,
+              },
+            });
+          }, i * 500);
+
+          celebrationTimeoutsRef.current.push(timeoutId);
+        }
+      }
+
+      if (celebrationType === 1) {
+        for (let i = 0; i < 18; i++) {
+          const timeoutId = window.setTimeout(() => {
+            confetti({
+              particleCount: 333,
+              spread: 60,
+              startVelocity: 60,
+              zIndex: 9999,
+              origin: {
+                x: 0.5,
+                y: 0.6,
+              },
+            });
+          }, i * 500);
+
+          celebrationTimeoutsRef.current.push(timeoutId);
+        }
+      }
+
+      if (celebrationType === 2) {
+        for (let i = 0; i < 18; i++) {
+          const timeoutId = window.setTimeout(() => {
+            confetti({
+              particleCount: 333,
+              angle: 60,
+              spread: 55,
+              zIndex: 9999,
+              origin: {
+                x: 0,
+                y: 0.7,
+              },
+            });
+
+            confetti({
+              particleCount: 333,
+              angle: 120,
+              spread: 55,
+              zIndex: 9999,
+              origin: {
+                x: 1,
+                y: 0.7,
+              },
+            });
+          }, i * 500);
+
+          celebrationTimeoutsRef.current.push(timeoutId);
+        }
+      }
+
+      return;
+    }
+
     debugSetGameStarted(gameState.gameStarted ?? gameStarted);
 
     const hasResumeSnapshotState = Boolean(
@@ -6082,6 +6190,43 @@ export default function Home() {
       setWinner(winnerName);
 
       setWinnerScore(bestScore);
+
+      if (isOnlineGame && onlineSessionId) {
+        const finalTurnVersion = bumpLocalTurnVersion();
+        const finalRuntimeRevision = bumpLocalRuntimeRevision();
+
+        try {
+          await updateOnlineState(onlineSessionId, {
+            scores,
+            currentPlayPlayerIndex,
+            playModeDice,
+            lockedDice,
+            confirmedLockedDice,
+            remainingRolls,
+            bonusUsed,
+            selectedGeneralValue,
+            hasRolledDice,
+            selectedPlayers,
+            playerCount,
+            playModeRolls,
+            playModeAllowRewrite,
+            playModeBonusMode,
+            playModeBonusRolls,
+            playerReadiness,
+            gameStarted,
+            hasStartedPlayMode,
+            gameFinished: true,
+            winner: winnerResult.playerId,
+            winnerScore: bestScore,
+            turnVersion: finalTurnVersion,
+            updatedByPlayerId: localOnlinePlayerId,
+            updatedAt: Date.now(),
+            runtimeRevision: finalRuntimeRevision,
+          });
+        } catch (error) {
+          console.error("FINAL ONLINE GAME SYNC ERROR:", error);
+        }
+      }
 
       if (!hasStartedPlayMode) {
         setPendingFinishedGame({
