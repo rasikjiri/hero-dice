@@ -5721,7 +5721,10 @@ export default function Home() {
     !isOnlineGame ||
     (localOnlinePlayerId !== null && localOnlinePlayerId === activePlayerId);
 
-  const canControlOnlinePlayMode = !isOnlineGame || isCurrentPlayer;
+  const canControlOnlinePlayMode =
+    !isOnlineGame || (isCurrentPlayer && !showPlayModeResult);
+
+  const canConfirmOnlinePlayModeResult = !isOnlineGame || isCurrentPlayer;
 
   const canShowOnlineChat = isOnlineGame && Boolean(onlineSessionId);
 
@@ -5984,7 +5987,8 @@ export default function Home() {
       !hasStartedPlayMode ||
       isRolling ||
       screen !== "game" ||
-      !isCurrentPlayer
+      !isCurrentPlayer ||
+      showPlayModeResult
     ) {
       return;
     }
@@ -8193,7 +8197,7 @@ export default function Home() {
             <div className="mt-8 grid grid-cols-1 gap-4">
               <button
                 onClick={handlePlayModeResultNextPlayer}
-                disabled={!canControlOnlinePlayMode}
+                disabled={!canConfirmOnlinePlayModeResult}
                 className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
               >
                 ▶ Další hráč
@@ -8583,7 +8587,7 @@ export default function Home() {
                 <div className="mt-8 grid grid-cols-1 gap-4">
                   <button
                     onClick={handlePlayModeResultNextPlayer}
-                    disabled={!canControlOnlinePlayMode}
+                    disabled={!canConfirmOnlinePlayModeResult}
                     className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
                   >
                     ▶ Další hráč
