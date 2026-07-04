@@ -53,6 +53,7 @@ import { makeAIDecision } from "./lib/aiPlayer";
 
 import {
   createOnlineSession,
+  findSessionByInviteCode,
   joinOnlineSession,
   updateOnlineState,
   subscribeToSession,
@@ -228,6 +229,10 @@ export default function Home() {
   const [isOnlineGame, setIsOnlineGame] = useState(false);
 
   const [onlineSessionId, setOnlineSessionId] = useState<string | null>(null);
+
+  const [onlineInviteCode, setOnlineInviteCode] = useState<string | null>(
+    null,
+  );
 
   const onlineSessionIdRef = useRef<string | null>(null);
 
@@ -2284,6 +2289,7 @@ export default function Home() {
           playModeBonusMode,
           playModeBonusRolls,
           playerReadiness,
+          inviteCode: onlineInviteCode,
           gameStarted,
           hasStartedPlayMode,
           turnVersion: handoffTurnVersion,
@@ -2351,6 +2357,7 @@ export default function Home() {
           playModeBonusMode,
           playModeBonusRolls,
           playerReadiness,
+          inviteCode: onlineInviteCode,
           gameStarted,
           hasStartedPlayMode,
           turnVersion: pendingOnlineHandoff.handoffTurnVersion,
@@ -4245,6 +4252,11 @@ export default function Home() {
     );
   };
 
+  const isInviteCode = (value: string) => /^\d{6}$/.test(value);
+
+  const generateInviteCode = () =>
+    String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
+
   const checkSavedGamesColumnExists = async (column: string) => {
     const { error } = await supabase
       .from("saved_games")
@@ -4715,6 +4727,25 @@ export default function Home() {
         initialReadiness[playerId] = false;
       });
 
+      let resolvedInviteCode: string | null = null;
+
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const candidateInviteCode = generateInviteCode();
+
+        const existingSession = await findSessionByInviteCode(
+          candidateInviteCode,
+        );
+
+        if (!existingSession) {
+          resolvedInviteCode = candidateInviteCode;
+          break;
+        }
+      }
+
+      if (!resolvedInviteCode) {
+        throw new Error("ONLINE_INVITE_CODE_COLLISION");
+      }
+
       const initialOnlineState = {
         scores,
         selectedPlayers: sessionSelectedPlayers,
@@ -4735,6 +4766,7 @@ export default function Home() {
         gameStarted,
         isPlayModeActive,
         hasStartedPlayMode,
+        inviteCode: resolvedInviteCode,
         resume_started_at: null,
       };
 
@@ -4744,6 +4776,7 @@ export default function Home() {
       );
 
       setOnlineSessionId(session.id);
+      setOnlineInviteCode(resolvedInviteCode);
 
       setIsOnlineGame(true);
       setJoinSessionId("");
@@ -4766,7 +4799,11 @@ export default function Home() {
         }
       }
 
-      await navigator.clipboard.writeText(session.id);
+      try {
+        await navigator.clipboard.writeText(resolvedInviteCode);
+      } catch (clipboardError) {
+        console.error("INVITE CODE CLIPBOARD ERROR:", clipboardError);
+      }
 
       debugSetScreen("online-lobby");
     } catch (error) {
@@ -4778,6 +4815,13 @@ export default function Home() {
 
   const applyOnlineGameState = (gameState: any) => {
     lastStateChangeSourceRef.current = "remote-sync";
+
+    const incomingInviteCode =
+      typeof gameState.inviteCode === "string" && isInviteCode(gameState.inviteCode)
+        ? gameState.inviteCode
+        : null;
+
+    setOnlineInviteCode(incomingInviteCode);
 
     const remoteSelectedPlayers = Array.isArray(gameState.selectedPlayers)
       ? gameState.selectedPlayers.filter(
@@ -5101,6 +5145,7 @@ export default function Home() {
         playModeBonusRolls,
 
         playerReadiness,
+        inviteCode: onlineInviteCode,
 
         gameStarted,
 
@@ -5197,7 +5242,9 @@ export default function Home() {
   };
 
   const handleJoinOnlineSession = async () => {
-    if (!joinSessionId.trim()) {
+    const normalizedJoinCode = joinSessionId.trim();
+
+    if (!normalizedJoinCode) {
       alert("Zadej kód místnosti.");
 
       return false;
@@ -5207,7 +5254,15 @@ export default function Home() {
       localTurnVersionRef.current = 0;
       hasAutoOpenedOnlinePlayModeRef.current = false;
 
-      const session = await joinOnlineSession(joinSessionId.trim());
+      const session = isInviteCode(normalizedJoinCode)
+        ? await findSessionByInviteCode(normalizedJoinCode)
+        : await joinOnlineSession(normalizedJoinCode);
+
+      if (!session) {
+        alert("Místnost s tímto kódem nebyla nalezena.");
+
+        return false;
+      }
 
       const sessionSelectedPlayers: string[] = Array.isArray(
         session.game_state?.selectedPlayers,
@@ -5249,6 +5304,14 @@ export default function Home() {
       forceOnlineLobbyUntilHostStartRef.current = isResumeLobbyJoin;
 
       setOnlineSessionId(session.id);
+      setOnlineInviteCode(
+        typeof session.game_state?.inviteCode === "string" &&
+          isInviteCode(session.game_state.inviteCode)
+          ? session.game_state.inviteCode
+          : isInviteCode(normalizedJoinCode)
+            ? normalizedJoinCode
+            : null,
+      );
 
       setIsOnlineGame(true);
       setLocalOnlinePlayerId(null);
@@ -5363,6 +5426,16 @@ export default function Home() {
         latestSession.game_state?.turnVersion ?? 0,
       );
 
+      const remoteInviteCode =
+        typeof latestSession.game_state?.inviteCode === "string" &&
+        isInviteCode(latestSession.game_state.inviteCode)
+          ? latestSession.game_state.inviteCode
+          : null;
+
+      if (remoteInviteCode !== null) {
+        setOnlineInviteCode(remoteInviteCode);
+      }
+
       nextRuntimeRevision =
         Math.max(localRuntimeRevisionRef.current, remoteRuntimeRevision) + 1;
 
@@ -5395,6 +5468,7 @@ export default function Home() {
         bonusUsed,
         selectedGeneralValue,
         hasRolledDice,
+        inviteCode: onlineInviteCode,
         gameStarted: true,
         isPlayModeActive: true,
         hasStartedPlayMode: true,
@@ -5438,6 +5512,7 @@ export default function Home() {
       bonusUsed: false,
       selectedGeneralValue: null,
       hasRolledDice: false,
+      inviteCode: onlineInviteCode,
       gameStarted: true,
       isPlayModeActive: true,
       hasStartedPlayMode: true,
@@ -5479,6 +5554,7 @@ export default function Home() {
     }
 
     setOnlineSessionId(null);
+    setOnlineInviteCode(null);
     setIsOnlineGame(false);
     setGameMode("offline");
     setSelectedGameMode("offline");
@@ -5625,6 +5701,7 @@ export default function Home() {
         alert("Uložená online hra neobsahuje platné session ID.");
 
         setOnlineSessionId(null);
+        setOnlineInviteCode(null);
         setLocalOnlinePlayerId(null);
         setPlayerReadiness({});
         setIsOnlineGame(false);
@@ -5664,6 +5741,7 @@ export default function Home() {
           setSelectedPlayers([]);
           setPlayerCount("");
           setOnlineSessionId(null);
+          setOnlineInviteCode(null);
           setLocalOnlinePlayerId(null);
           setPlayerReadiness({});
           setIsOnlineGame(false);
@@ -5685,6 +5763,12 @@ export default function Home() {
         forceOnlineLobbyUntilHostStartRef.current = isResumeLobbyJoin;
 
         setOnlineSessionId(session.id);
+        setOnlineInviteCode(
+          typeof session.game_state?.inviteCode === "string" &&
+            isInviteCode(session.game_state.inviteCode)
+            ? session.game_state.inviteCode
+            : null,
+        );
         setIsOnlineGame(true);
         setLocalOnlinePlayerId(savedGame.localOnlinePlayerId ?? null);
 
@@ -5730,6 +5814,7 @@ export default function Home() {
         alert("Nepodařilo se obnovit online session.");
 
         setOnlineSessionId(null);
+        setOnlineInviteCode(null);
         setLocalOnlinePlayerId(null);
         setPlayerReadiness({});
         setIsOnlineGame(false);
@@ -5742,6 +5827,7 @@ export default function Home() {
     }
 
     setOnlineSessionId(null);
+    setOnlineInviteCode(null);
     setLocalOnlinePlayerId(savedGame.localOnlinePlayerId ?? null);
     setPlayerReadiness({});
     setIsOnlineGame(false);
@@ -5822,6 +5908,52 @@ export default function Home() {
     isOnlineGame && gameStarted && hasStartedPlayMode;
 
   const isOnlineHost = joinSessionId === "";
+
+  const lobbyInviteCode =
+    onlineInviteCode && isInviteCode(onlineInviteCode)
+      ? onlineInviteCode
+      : "------";
+
+  const resolveOnlineInviteAuthorName = () => {
+    if (localOnlinePlayerId) {
+      return getPlayerDisplayName(localOnlinePlayerId);
+    }
+
+    const hostPlayerId = selectedPlayers[0] ?? "";
+
+    if (hostPlayerId) {
+      return getPlayerDisplayName(hostPlayerId);
+    }
+
+    return "Hráč";
+  };
+
+  const inviteAuthorName = resolveOnlineInviteAuthorName();
+
+  const openInviteViaSms = () => {
+    if (!onlineInviteCode || !isInviteCode(onlineInviteCode)) {
+      return;
+    }
+
+    const smsText = `${inviteAuthorName} tě vyzývá v 🎲 Hero Dice 🎲 Připoj se, kód místnosti je ${onlineInviteCode}`;
+
+    const smsUrl = `sms:?&body=${encodeURIComponent(smsText)}`;
+
+    window.location.href = smsUrl;
+  };
+
+  const openInviteViaEmail = () => {
+    if (!onlineInviteCode || !isInviteCode(onlineInviteCode)) {
+      return;
+    }
+
+    const subject = "Vyzývám tě v 🎲 Hero Dice 🎲";
+    const body = `${inviteAuthorName} tě vyzývá v Hero Dice. Připoj se, kód místnosti je ${onlineInviteCode}`;
+
+    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    window.location.href = mailtoUrl;
+  };
 
   const activePlayerId = selectedPlayers[currentPlayPlayerIndex] ?? null;
 
@@ -6321,6 +6453,7 @@ export default function Home() {
             playModeBonusMode,
             playModeBonusRolls,
             playerReadiness,
+            inviteCode: onlineInviteCode,
             gameStarted,
             hasStartedPlayMode,
             gameFinished: true,
@@ -6806,7 +6939,7 @@ export default function Home() {
                   </div>
 
                   <div className="text-4xl font-black text-green-400 tracking-[0.14em] font-mono">
-                    {onlineSessionId}
+                    {lobbyInviteCode}
                   </div>
 
                   {isOnlineHost && (
@@ -6814,6 +6947,32 @@ export default function Home() {
                       (zkopírován do schránky)
                     </div>
                   )}
+                </div>
+
+                <div className="mb-6 flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-start">
+                  <button
+                    onClick={openInviteViaSms}
+                    disabled={!onlineInviteCode || !isInviteCode(onlineInviteCode)}
+                    className={`rounded-2xl px-5 py-3 text-sm font-black uppercase tracking-[0.12em] transition md:text-base ${
+                      onlineInviteCode && isInviteCode(onlineInviteCode)
+                        ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                        : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                    }`}
+                  >
+                    Pozvat přes SMS
+                  </button>
+
+                  <button
+                    onClick={openInviteViaEmail}
+                    disabled={!onlineInviteCode || !isInviteCode(onlineInviteCode)}
+                    className={`rounded-2xl px-5 py-3 text-sm font-black uppercase tracking-[0.12em] transition md:text-base ${
+                      onlineInviteCode && isInviteCode(onlineInviteCode)
+                        ? "bg-blue-600 text-white hover:bg-blue-500"
+                        : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                    }`}
+                  >
+                    Pozvat e-mailem
+                  </button>
                 </div>
 
                 <div className="text-lg font-bold text-zinc-400 mb-8">
@@ -7577,12 +7736,6 @@ export default function Home() {
                         )}`}
                       </div>
 
-                      {(game.game_mode ?? "offline") === "online" &&
-                        game.online_session_id && (
-                          <div className="mt-2 text-xs font-bold text-green-400">
-                            Session: {game.online_session_id}
-                          </div>
-                        )}
                     </div>
 
                     <div className="flex gap-3">
@@ -9496,7 +9649,7 @@ export default function Home() {
             </h2>
 
             <p className="mb-6 text-zinc-400">
-              Zadej kód místnosti a připoj se do online lobby.
+              Zadej šestimístný kód místnosti a připoj se do online lobby.
             </p>
 
             <input
@@ -9514,7 +9667,7 @@ export default function Home() {
                   setShowJoinSessionModal(false);
                 }
               }}
-              placeholder="Kód místnosti"
+              placeholder="123456"
               className="mb-6 w-full rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-lg font-bold tracking-[0.08em] text-white outline-none transition focus:border-cyan-400"
               autoFocus
             />

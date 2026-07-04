@@ -51,6 +51,26 @@ export const joinOnlineSession = async (
   return data;
 };
 
+export const findSessionByInviteCode = async (
+  inviteCode: string
+) => {
+  const { data, error } = await supabase
+    .from("online_sessions")
+    .select("*")
+    .eq("game_state->>inviteCode", inviteCode)
+    .order("created_at", {
+      ascending: false,
+    })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
 export const updateOnlineState = async (
   sessionId: string,
   gameState: OnlineGameState
