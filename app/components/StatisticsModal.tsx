@@ -363,7 +363,12 @@ const playersWithGames =
               .slice()
               .reverse()
               .map((game, index) => {
+                const winnerScoreEntry = Array.isArray(game.scores)
+                  ? game.scores.find((score: any) => score.playerId === game.winner)
+                  : undefined;
+
                 const winnerName =
+  winnerScoreEntry?.playerName ||
   (players || []).find(
     (p) =>
       p.id ===
@@ -409,6 +414,7 @@ const playersWithGames =
                             idx: number
                           ) => {
                             const playerName =
+  score.playerName ||
   (players || []).find(
     (p) =>
       p.id ===

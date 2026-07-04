@@ -19,6 +19,7 @@ type ManagedGame = {
   players?: string[];
   scores?: {
     playerId: string;
+    playerName?: string;
     total: number;
     perfectCategories: number;
   }[];
@@ -153,8 +154,12 @@ export default function AdminModal({
     return names;
   }, [players]);
 
-  const getWinnerName = (winnerId: string) => {
-    return playerNameById.get(winnerId) || winnerId;
+  const getWinnerName = (game: ManagedGame) => {
+    const winnerByScores = Array.isArray(game.scores)
+      ? game.scores.find((score) => score.playerId === game.winner)?.playerName
+      : undefined;
+
+    return winnerByScores || playerNameById.get(game.winner) || game.winner;
   };
 
   const getPlayedAt = (game: ManagedGame) => {
@@ -168,6 +173,15 @@ export default function AdminModal({
   };
 
   const getPlayerSummary = (game: ManagedGame) => {
+    if (Array.isArray(game.scores) && game.scores.length > 0) {
+      return game.scores
+        .map(
+          (score) =>
+            score.playerName || playerNameById.get(score.playerId) || score.playerId,
+        )
+        .join(" vs ");
+    }
+
     if (!Array.isArray(game.players) || game.players.length === 0) {
       return "Bez hráčů";
     }
@@ -380,7 +394,7 @@ export default function AdminModal({
                     id: game.id,
                     table: "fun_games",
                     tab: "fun-games",
-                    winner: getWinnerName(game.winner),
+                    winner: getWinnerName(game),
                   })
                 }
               />
@@ -401,7 +415,7 @@ export default function AdminModal({
                     id: game.id,
                     table: "games",
                     tab: "league-games",
-                    winner: getWinnerName(game.winner),
+                    winner: getWinnerName(game),
                   })
                 }
               />
@@ -490,7 +504,7 @@ function GamesPanel({
   games: ManagedGame[];
   emptyMessage: string;
   getPlayedAt: (game: ManagedGame) => string;
-  getWinnerName: (winnerId: string) => string;
+  getWinnerName: (game: ManagedGame) => string;
   getPlayerSummary: (game: ManagedGame) => string;
   onDelete: (game: ManagedGame) => void;
 }) {
@@ -529,7 +543,7 @@ function GamesPanel({
           >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <div className="text-2xl font-black text-white">{getWinnerName(game.winner)}</div>
+                <div className="text-2xl font-black text-white">{getWinnerName(game)}</div>
                 <div className="mt-1 text-sm text-zinc-400">{getPlayedAt(game)}</div>
 
                 <div className="mt-3 flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.16em]">
