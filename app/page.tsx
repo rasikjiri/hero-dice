@@ -8093,9 +8093,22 @@ export default function Home() {
 
             <div className="mt-8 grid grid-cols-1 gap-4">
               <button
-                onClick={() => {
-                  setShowPlayModeResult(false);
-                  setPlayModeTurnSummary(null);
+                onClick={async () => {
+                  if (!canControlOnlinePlayMode) {
+                    return;
+                  }
+
+                  const categoryId =
+                    playModeCategoryMap[currentCombination.combination] ?? null;
+
+                  await endTurn({
+                    playerId: selectedPlayers[currentPlayPlayerIndex] ?? "",
+                    savedScore: true,
+                    combination: currentCombination.combination,
+                    score: currentCombination.score,
+                    categoryId,
+                    reason: "human-save-modal-next-player",
+                  });
                 }}
                 className="rounded-2xl bg-yellow-500 px-4 py-5 text-lg font-black text-black transition hover:bg-yellow-400"
               >
@@ -8485,7 +8498,17 @@ export default function Home() {
 
                 <div className="mt-8 grid grid-cols-1 gap-4">
                   <button
-                    onClick={() => {
+                    onClick={async () => {
+                      const turnIsStillOnSummaryPlayer =
+                        playModeTurnSummary !== null &&
+                        (selectedPlayers[currentPlayPlayerIndex] ?? null) ===
+                          playModeTurnSummary.playerId;
+
+                      if (turnIsStillOnSummaryPlayer && canControlOnlinePlayMode) {
+                        await endTurn();
+                        return;
+                      }
+
                       setShowPlayModeResult(false);
                       setPlayModeTurnSummary(null);
                     }}
