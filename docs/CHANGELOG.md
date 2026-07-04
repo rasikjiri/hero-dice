@@ -651,3 +651,25 @@ Poznámky:
 
 - Ověřeno mazání Fun hry i Liga hry.
 - `npm run build` prošel úspěšně.
+
+---
+
+## 4.2.1
+
+### Changed
+- Upraveno ukončení tahu v Play Mode.
+- Odstraněn mezikrok s inline tlačítkem „Hází další hráč“.
+- Ukončení tahu nyní probíhá jednotně přes potvrzovací dialog.
+- Flow předání hráče je čistší v offline i online režimu.
+
+### Fixed
+- Opraveno chování v režimu Human vs Computer.
+- Po tahu Computer hráče zůstává výsledkový dialog otevřený.
+- Dialog ovládá Human hráč, který rozhoduje, kdy začne jeho další tah.
+- Online Play Mode předává tahy plynule bez regresí.
+
+### Verified
+- Offline Human vs Human otestováno.
+- Offline Human vs Computer otestováno.
+- Online Play Mode otestováno.
+- Bonus / Bonus Hero flow bez zjištěné regrese.

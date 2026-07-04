@@ -5834,12 +5834,120 @@ export default function Home() {
 
   const canConfirmOnlinePlayModeResult = !isOnlineGame || isCurrentPlayer;
 
+  const isActivePlayerComputer =
+    activePlayerId !== null && isComputerPlayerId(activePlayerId);
+
+  const humanCanStillUseTurnBonus =
+    !isActivePlayerComputer &&
+    !hasComputerPlayer &&
+    !bonusUsed &&
+    !generalBonusBlocked &&
+    canUseGeneralBonus;
+
+  const currentPlayerId = selectedPlayers[currentPlayPlayerIndex] ?? "";
+
+  const currentCombinationCategoryId = currentCombination
+    ? playModeCategoryMap[currentCombination.combination]
+    : null;
+
+  const isSaveBlockedByGeneralBonusRule =
+    !!currentCombination &&
+    bonusUsed &&
+    playModeBonusMode === "general-only" &&
+    currentCombination.combination !== "Generál";
+
+  const isSaveBlockedByRewriteRule =
+    !!currentCombination &&
+    !playModeAllowRewrite &&
+    currentCombinationCategoryId !== null &&
+    scores[currentPlayerId]?.[currentCombinationCategoryId] !== undefined;
+
+  const canSaveCurrentTurnNow =
+    !!currentCombination &&
+    hasRolledDice &&
+    canSavePlayModeScore &&
+    !isSaveBlockedByGeneralBonusRule &&
+    !isSaveBlockedByRewriteRule;
+
   const canShowOnlineChat = isOnlineGame && Boolean(onlineSessionId);
 
   const canSubmitOnlineChat =
     canShowOnlineChat &&
     Boolean(localOnlinePlayerId) &&
     onlineChatInput.trim().length > 0;
+
+  useEffect(() => {
+    if (
+      !isPlayModeActive ||
+      !gameStarted ||
+      !hasStartedPlayMode ||
+      gameFinished ||
+      showPlayModeResult ||
+      isRolling ||
+      remainingRolls > 0 ||
+      isActivePlayerComputer ||
+      humanCanStillUseTurnBonus ||
+      canSaveCurrentTurnNow ||
+      !canControlOnlinePlayMode
+    ) {
+      return;
+    }
+
+    endTurn({
+      playerId: currentPlayerId,
+      savedScore: false,
+      combination: null,
+      score: null,
+      categoryId: null,
+      reason: "human-no-score-end-turn",
+    });
+  }, [
+    isPlayModeActive,
+    gameStarted,
+    hasStartedPlayMode,
+    gameFinished,
+    showPlayModeResult,
+    isRolling,
+    remainingRolls,
+    isActivePlayerComputer,
+    humanCanStillUseTurnBonus,
+    canSaveCurrentTurnNow,
+    canControlOnlinePlayMode,
+    currentPlayerId,
+    endTurn,
+  ]);
+
+  useEffect(() => {
+    if (
+      !showPlayModeResult ||
+      !playModeTurnSummary ||
+      !isComputerPlayerId(playModeTurnSummary.playerId)
+    ) {
+      return;
+    }
+
+    const nextPlayerIsComputer = isComputerPlayerId(
+      playModeTurnSummary.nextPlayerId,
+    );
+
+    // Keep the dialog open for human review when handoff is Computer -> Human.
+    if (!nextPlayerIsComputer) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      handlePlayModeResultNextPlayer();
+    }, 220);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    showPlayModeResult,
+    playModeTurnSummary,
+    handlePlayModeResultNextPlayer,
+    isComputerPlayerId,
+  ]);
 
   const getSupabaseErrorMessage = (error: unknown) => {
     if (typeof error === "object" && error !== null) {
@@ -8578,47 +8686,26 @@ export default function Home() {
                     Zapsat skóre
                   </button>
 
-                  {remainingRolls <= 0 && (
-                    <button
-                      onClick={() =>
-                        endTurn({
-                          playerId:
-                            selectedPlayers[currentPlayPlayerIndex] ?? "",
-                          savedScore: false,
-                          combination: null,
-                          score: null,
-                          categoryId: null,
-                          reason: "human-no-score-end-turn",
-                        })
-                      }
-                      disabled={!canControlOnlinePlayMode}
-                      className="h-24 rounded-2xl bg-yellow-500 px-8 text-2xl font-black text-black transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 md:col-span-2"
-                    >
-                      ▶ Hází další hráč
-                    </button>
-                  )}
-                  {remainingRolls > 0 && (
-                    <button
-                      onClick={() => rollAllDice()}
-                      disabled={
-                        remainingRolls <= 0 ||
-                        !canControlOnlinePlayMode ||
-                        showPlayModeResult
-                      }
-                      className={`h-24 rounded-2xl px-8 text-2xl font-black text-white transition md:col-span-2 ${
-                        remainingRolls <= 0
-                          ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
-                          : playModeRolls === 4 &&
-                              !playModeAllowRewrite &&
-                              playModeBonusMode === "general-only" &&
-                              playModeBonusRolls === 6
-                            ? "bg-purple-600 hover:bg-purple-500"
-                            : "bg-purple-600 hover:bg-purple-500"
-                      }`}
-                    >
-                      Zbývá hodů: {remainingRolls}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => rollAllDice()}
+                    disabled={
+                      remainingRolls <= 0 ||
+                      !canControlOnlinePlayMode ||
+                      showPlayModeResult
+                    }
+                    className={`h-24 rounded-2xl px-8 text-2xl font-black text-white transition md:col-span-2 ${
+                      remainingRolls <= 0
+                        ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
+                        : playModeRolls === 4 &&
+                            !playModeAllowRewrite &&
+                            playModeBonusMode === "general-only" &&
+                            playModeBonusRolls === 6
+                          ? "bg-purple-600 hover:bg-purple-500"
+                          : "bg-purple-600 hover:bg-purple-500"
+                    }`}
+                  >
+                    Zbývá hodů: {remainingRolls}
+                  </button>
                 </div>
               </div>
             </div>
