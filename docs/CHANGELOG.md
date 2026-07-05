@@ -678,3 +678,20 @@ Poznámky:
 - Ověřeno správné zobrazení textů podle typu hry.
 - Ověřena funkčnost spuštění online hry bez změny herní logiky.
 - Manuální test úspěšný bez zjištěných regresí.
+
+---
+
+## 4.4.2
+
+### Fixed
+- Aktivováno mazání dokončených her v administraci doplněním chybějících RLS DELETE policy v Supabase.
+- Ligové hry lze nyní korektně mazat z tabulky `games`.
+- Fun hry lze nyní korektně mazat z tabulky `fun_games`.
+- Funkce „Smazat hru“ nyní úspěšně provádí skutečný DELETE v databázi.
+
+### Verified
+- Ověřeno mazání ligové hry.
+- Ověřeno mazání Fun hry.
+- Ověřeno odstranění záznamu přímo v Supabase databázi.
+- Ověřeno správné obnovení seznamu her po smazání.
+- Nebyly provedeny žádné změny aplikačního kódu – oprava spočívala výhradně v doplnění chybějících RLS DELETE policy v databázi.
