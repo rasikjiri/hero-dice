@@ -634,3 +634,27 @@ Poznámky:
 - Offline Human vs Computer otestováno.
 - Online Play Mode otestováno.
 - Bonus / Bonus Hero flow bez zjištěné regrese.
+
+---
+
+## 4.4.0
+
+### Changed
+- Do Play Mode byla doplněna možnost dobrovolně ukončit tah po posledním hodu se zapisovatelnou kombinací.
+- V přesně definovaném scénáři se prvek „Zbývá hodů: 0“ mění na tlačítko „Další hráč“.
+- Hráč se nyní může rozhodnout mezi:
+	- Zapsat skóre,
+	- Další hráč.
+- Zachována jednotná logika potvrzovacího dialogu při ukončení tahu.
+
+### Fixed
+- Zachován konstantní počet ovládacích prvků v Play Mode panelu.
+- Odstraněno nežádoucí zvětšování výšky panelu způsobené přidáním dalšího tlačítka.
+- Tlačítko „Další hráč“ využívá pozici původního prvku „Zbývá hodů: 0“, takže nedochází ke změně layoutu.
+
+### Verified
+- Ověřeno Offline Human vs Human.
+- Ověřeno Offline Human vs Computer.
+- Ověřeno Online Play Mode.
+- Ověřeno správné zobrazení tlačítka pouze v definovaném scénáři.
+- Potvrzeno zachování potvrzovacího dialogu i předávání tahu bez regresí.

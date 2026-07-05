@@ -6020,6 +6020,14 @@ export default function Home() {
     !isSaveBlockedByGeneralBonusRule &&
     !isSaveBlockedByRewriteRule;
 
+  const showOptionalNextPlayerButton =
+    remainingRolls <= 0 &&
+    canSaveCurrentTurnNow &&
+    !humanCanStillUseTurnBonus &&
+    !isActivePlayerComputer &&
+    canControlOnlinePlayMode &&
+    !showPlayModeResult;
+
   const canShowOnlineChat = isOnlineGame && Boolean(onlineSessionId);
 
   const canSubmitOnlineChat =
@@ -8880,24 +8888,43 @@ export default function Home() {
                   </button>
 
                   <button
-                    onClick={() => rollAllDice()}
+                    onClick={() => {
+                      if (showOptionalNextPlayerButton) {
+                        endTurn({
+                          playerId: currentPlayerId,
+                          savedScore: false,
+                          combination: null,
+                          score: null,
+                          categoryId: null,
+                          reason: "human-no-score-end-turn",
+                        });
+                        return;
+                      }
+
+                      rollAllDice();
+                    }}
                     disabled={
-                      remainingRolls <= 0 ||
-                      !canControlOnlinePlayMode ||
-                      showPlayModeResult
+                      !showOptionalNextPlayerButton &&
+                      (remainingRolls <= 0 ||
+                        !canControlOnlinePlayMode ||
+                        showPlayModeResult)
                     }
-                    className={`h-24 rounded-2xl px-8 text-2xl font-black text-white transition md:col-span-2 ${
-                      remainingRolls <= 0
-                        ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
-                        : playModeRolls === 4 &&
-                            !playModeAllowRewrite &&
-                            playModeBonusMode === "general-only" &&
-                            playModeBonusRolls === 6
-                          ? "bg-purple-600 hover:bg-purple-500"
-                          : "bg-purple-600 hover:bg-purple-500"
+                    className={`h-24 rounded-2xl px-8 text-2xl font-black transition md:col-span-2 ${
+                      showOptionalNextPlayerButton
+                        ? "bg-yellow-500 text-black hover:bg-yellow-400"
+                        : remainingRolls <= 0
+                          ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
+                          : playModeRolls === 4 &&
+                              !playModeAllowRewrite &&
+                              playModeBonusMode === "general-only" &&
+                              playModeBonusRolls === 6
+                            ? "bg-purple-600 text-white hover:bg-purple-500"
+                            : "bg-purple-600 text-white hover:bg-purple-500"
                     }`}
                   >
-                    Zbývá hodů: {remainingRolls}
+                    {showOptionalNextPlayerButton
+                      ? "▶ Další hráč"
+                      : `Zbývá hodů: ${remainingRolls}`}
                   </button>
                 </div>
               </div>
