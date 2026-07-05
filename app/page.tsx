@@ -6956,7 +6956,7 @@ export default function Home() {
 
                 <div className="text-2xl font-black text-white mb-6">
                   {isOnlineHost
-                    ? "Místnost vytvořena"
+                    ? "Místnost byla vytvořena"
                     : "Připojeno do místnosti"}
                 </div>
 
@@ -7100,17 +7100,17 @@ export default function Home() {
                       <div className="mt-4 text-2xl font-black text-white">
                         {allPlayersReady
                           ? "Všichni hráči jsou připraveni"
-                          : "Čeká se na připravenost hráčů"}
+                          : "Čeká se na připojení hráčů"}
                       </div>
 
                       <div className="mt-4 text-sm text-zinc-400">
-                        Každé zařízení si zvolí svého hráče. Host může hru
-                        spustit až ve chvíli, kdy jsou všichni připraveni.
+                        ⇠ Připoj se ke hře, potvrď kdo jsi. 
+                        Vyzyvatel začne hru, když budou všichni hráči připraveni.
                       </div>
 
                       {localOnlinePlayerId && (
                         <div className="mt-4 rounded-2xl border border-green-500/20 bg-zinc-950/70 px-4 py-3 text-sm font-bold text-green-400">
-                          Toto zařízení ovládá hráče:{" "}
+                          Na tomto zařízení hraje:{" "}
                           {getPlayerDisplayName(localOnlinePlayerId)}
                         </div>
                       )}
@@ -7121,28 +7121,23 @@ export default function Home() {
                             type="button"
                             onClick={handleStartOnlineGame}
                             disabled={!canStartOnlineGame}
-                            className={`mt-8 w-full rounded-2xl px-6 py-4 text-xl font-black text-black transition ${
+                            className={`mt-8 w-full rounded-2xl px-6 py-4 text-xl font-black transition ${
                               canStartOnlineGame
-                                ? "bg-yellow-500 hover:bg-yellow-400"
+                                ? inviteActionToneClass
                                 : "cursor-not-allowed bg-zinc-700 text-zinc-400"
                             }`}
                           >
                             {isOnlineResumeLobbyMode
                               ? "▶ Pokračovat v online hře"
-                              : "▶ Zahájit online hru"}
+                              : isLeaguePlayMode
+                                ? "▶ Zahájit ligovou online hru"
+                                : "▶ Zahájit fun online hru"}
                           </button>
 
-                          {!allPlayersReady && (
-                            <div className="mt-3 text-sm text-zinc-500">
-                              Host může spustit hru pouze, když jsou všichni
-                              připraveni.
-                            </div>
-                          )}
                         </>
                       ) : (
                         <div className="mt-8 rounded-2xl bg-zinc-900 px-4 py-4 text-sm font-bold text-zinc-400">
-                          Po výběru svého hráče zůstává klient v lobby a čeká na
-                          spuštění hry hostem.
+                          Probíhá připojování všech hráčů...
                         </div>
                       )}
                     </div>

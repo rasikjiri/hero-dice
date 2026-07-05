@@ -658,3 +658,23 @@ Poznámky:
 - Ověřeno Online Play Mode.
 - Ověřeno správné zobrazení tlačítka pouze v definovaném scénáři.
 - Potvrzeno zachování potvrzovacího dialogu i předávání tahu bez regresí.
+
+---
+
+## 4.4.1
+
+### Changed
+- Sjednocena barevná logika tlačítka „Zahájit online hru“ podle typu hry.
+- Fun online hra nyní používá fialovou variantu tlačítka.
+- Ligová online hra nyní používá zelenou variantu tlačítka.
+- Sjednocena textová logika hlavního tlačítka:
+	- Fun online hra → „Zahájit fun online hru"
+	- Ligová online hra → „Zahájit ligovou online hru"
+- Při pokračování již rozehrané online hry zůstává zachován text „Pokračovat v online hře“.
+
+### Verified
+- Ověřena správná barva tlačítka pro Fun online hru.
+- Ověřena správná barva tlačítka pro Ligovou online hru.
+- Ověřeno správné zobrazení textů podle typu hry.
+- Ověřena funkčnost spuštění online hry bez změny herní logiky.
+- Manuální test úspěšný bez zjištěných regresí.
