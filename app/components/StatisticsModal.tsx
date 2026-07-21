@@ -506,6 +506,9 @@ const playersWithGames =
             <tbody>
               {[...playersWithGames]
   .sort((a, b) => {
+    const aId = a.id || "";
+    const bId = b.id || "";
+
     const aGames =
       games.filter((game) =>
         Array.isArray(
@@ -514,7 +517,7 @@ const playersWithGames =
           ? game.scores.some(
                 (p: HistoryScore) =>
                 p.playerId ===
-                a.id
+                aId
             )
           : false
       ).length;
@@ -527,25 +530,25 @@ const playersWithGames =
           ? game.scores.some(
                 (p: HistoryScore) =>
                 p.playerId ===
-                b.id
+                bId
             )
           : false
       ).length;
 
     const values: SortValueMap = {
       name: [
-        a.name,
-        b.name,
+        a.name || "",
+        b.name || "",
       ],
 
       wins: [
-        getPlayerWins(a.id),
-        getPlayerWins(b.id),
+        getPlayerWins(aId),
+        getPlayerWins(bId),
       ],
 
       bestScore: [
-        getBestScore(a.id),
-        getBestScore(b.id),
+        getBestScore(aId),
+        getBestScore(bId),
       ],
 
       games: [
@@ -554,25 +557,25 @@ const playersWithGames =
       ],
 
       average: [
-        getAverageScore(a.id),
-        getAverageScore(b.id),
+        getAverageScore(aId),
+        getAverageScore(bId),
       ],
 
       perfects: [
         getPerfectCategories(
-          a.id
+          aId
         ),
         getPerfectCategories(
-          b.id
+          bId
         ),
       ],
 
       averagePerfects: [
         getAveragePerfects(
-          a.id
+          aId
         ),
         getAveragePerfects(
-          b.id
+          bId
         ),
       ],
     };
@@ -585,7 +588,9 @@ const playersWithGames =
 
     if (
       typeof aValue ===
-      "string"
+        "string" &&
+      typeof bValue ===
+        "string"
     ) {
       return sortDirection ===
         "asc"
@@ -597,13 +602,20 @@ const playersWithGames =
           );
     }
 
+    const numericA =
+      Number(aValue);
+    const numericB =
+      Number(bValue);
+
     return sortDirection ===
       "asc"
-      ? aValue - bValue
-      : bValue - aValue;
+      ? numericA - numericB
+      : numericB - numericA;
   })
   .map(
   (player) => {
+                const playerId =
+                  player.id || "";
                 const playerGames =
                   games.filter((game) =>
                     Array.isArray(
@@ -612,32 +624,32 @@ const playersWithGames =
                       ? game.scores.some(
                             (p: HistoryScore) =>
                             p.playerId ===
-                            player.id
+                            playerId
                         )
                       : false
                   ).length;
 
                 return (
                   <tr
-                    key={player.id}
+                    key={playerId}
                     className="border-t border-zinc-700"
                   >
                     <td className="p-4 text-xl font-bold">
   {(players || []).find(
     (p) =>
-      p.id === player.id
-  )?.name || player.id}
+      p.id === playerId
+  )?.name || playerId}
 </td>
 
                     <td className="p-4 text-center text-green-300">
                       {getPlayerWins(
-                        player.id
+                        playerId
                       )}
                     </td>
 
                     <td className="p-4 text-center text-green-300">
                       {getBestScore(
-                        player.id
+                        playerId
                       )}
                     </td>
 
@@ -647,19 +659,19 @@ const playersWithGames =
 
                     <td className="p-4 text-center text-green-300">
                       {getAverageScore(
-                        player.id
+                        playerId
                       )}
                     </td>
 
                     <td className="p-4 text-center text-green-300">
                       {getPerfectCategories(
-                        player.id
+                        playerId
                       )}
                     </td>
 
                     <td className="p-4 text-center text-green-300">
                       {getAveragePerfects(
-                        player.id
+                        playerId
                       )}
                     </td>
                   </tr>

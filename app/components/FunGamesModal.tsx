@@ -487,6 +487,10 @@ export default function FunGamesModal({
 
           game.scores.forEach(
             (score: HistoryScore) => {
+              if (!score.playerId) {
+                return;
+              }
+
               const current =
                 stats.get(
                   score.playerId
@@ -1031,7 +1035,9 @@ export default function FunGamesModal({
 
                   if (
                     typeof aValue ===
-                    "string"
+                      "string" &&
+                    typeof bValue ===
+                      "string"
                   ) {
                     return sortDirection ===
                       "asc"
@@ -1043,12 +1049,17 @@ export default function FunGamesModal({
                         );
                   }
 
+                  const numericA =
+                    Number(aValue);
+                  const numericB =
+                    Number(bValue);
+
                   return sortDirection ===
                     "asc"
-                    ? aValue -
-                        bValue
-                    : bValue -
-                        aValue;
+                    ? numericA -
+                        numericB
+                    : numericB -
+                        numericA;
                 })
                 .map((player) => {
                   const stats =
