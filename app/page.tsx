@@ -7512,8 +7512,8 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
       {authLoaded && !authSession && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black p-6">
-          <div className="w-full max-w-md rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center shadow-2xl">
+        <div className="fixed inset-0 z-[999] flex items-start justify-center overflow-y-auto bg-black p-4 sm:items-center sm:p-6">
+          <div className="my-4 w-full max-w-md rounded-3xl border border-yellow-500/20 bg-zinc-900 p-6 text-center shadow-2xl sm:my-0 sm:p-8">
             <h1 className="mb-3 text-5xl font-black text-yellow-400 tracking-[0.14em]">
               HERO DICE
             </h1>

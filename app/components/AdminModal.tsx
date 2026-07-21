@@ -72,6 +72,35 @@ type Props = {
   onLeagueGamesChanged: () => Promise<void>;
 };
 
+const resolveUnknownErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as {
+      message?: unknown;
+      details?: unknown;
+      hint?: unknown;
+      code?: unknown;
+      error?: unknown;
+    };
+
+    const parts = [candidate.message, candidate.details, candidate.hint, candidate.code, candidate.error]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+
+    if (parts.length > 0) {
+      return parts.join(" | ");
+    }
+  }
+
+  return fallback;
+};
+
 export default function AdminModal({
   isOpen,
   onClose,
@@ -193,7 +222,7 @@ export default function AdminModal({
       setAccessRequests(requests);
     } catch (error) {
       console.error("ADMIN ACCESS REQUESTS LOAD ERROR:", error);
-      setAccessRequestsError(error instanceof Error ? error.message : "Nepodařilo se načíst žádosti.");
+      setAccessRequestsError(resolveUnknownErrorMessage(error, "Nepodařilo se načíst žádosti."));
     } finally {
       setIsLoadingAccessRequests(false);
     }
@@ -217,7 +246,48 @@ export default function AdminModal({
     setProcessingAccessRequestId(requestId);
 
     try {
+      const request = accessRequests.find((item) => item.id === requestId);
+
       await processPlayerAccessRequest(adminSessionToken, requestId, action);
+
+      if (request) {
+        try {
+          const response = await fetch("/api/admin/access-requests/notify", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              adminSessionToken,
+              action,
+              request: {
+                requestType: request.requestType,
+                playerId: request.playerId,
+                playerName: request.playerName,
+                email: request.email,
+              },
+            }),
+          });
+
+          if (!response.ok) {
+            const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+            throw new Error(payload?.error || "Nepodařilo se odeslat notifikační e-mail.");
+          }
+        } catch (notifyError) {
+          console.error("ADMIN ACCESS REQUEST EMAIL ERROR:", notifyError);
+          alert(
+            `Žádost byla zpracována, ale e-mail se nepodařilo odeslat automaticky. ${resolveUnknownErrorMessage(
+              notifyError,
+              "",
+            )}`.trim(),
+          );
+          openAccessRequestEmail({
+            ...request,
+            status: action === "approve" ? "approved" : "rejected",
+          });
+        }
+      }
+
       await Promise.all([
         loadAccessRequests(),
         onPlayersReload(),
@@ -225,7 +295,7 @@ export default function AdminModal({
       ]);
     } catch (error) {
       console.error("ADMIN ACCESS REQUEST PROCESS ERROR:", error);
-      alert(error instanceof Error ? error.message : "Nepodařilo se zpracovat žádost.");
+      alert(resolveUnknownErrorMessage(error, "Nepodařilo se zpracovat žádost."));
     } finally {
       setProcessingAccessRequestId(null);
     }
@@ -316,6 +386,38 @@ export default function AdminModal({
     return game.players
       .map((playerId) => resolvePlayerDisplayName(playerId))
       .join(" vs ");
+  };
+
+  const openAccessRequestEmail = (request: PlayerAccessRequest) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const requestLabel = request.requestType === "registration" ? "registraci" : "reset hesla";
+    const statusLabel =
+      request.status === "approved"
+        ? "schválena"
+        : request.status === "rejected"
+          ? "zamítnuta"
+          : "přijata";
+
+    const subject = `Hero Dice: žádost o ${requestLabel}`;
+    const body = [
+      "Dobrý den,",
+      "",
+      `vaše žádost o ${requestLabel} pro ID hráče ${request.playerId} byla ${statusLabel}.`,
+      request.status === "approved"
+        ? "Můžete se přihlásit do aplikace s nově nastavenými údaji."
+        : request.status === "rejected"
+          ? "Pokud potřebujete pomoc, odpovězte prosím na tento e-mail."
+          : "Admin ji brzy zpracuje. O výsledku vás budeme informovat.",
+      "",
+      "S pozdravem",
+      "Hero Dice Admin",
+    ].join("\n");
+
+    const mailtoUrl = `mailto:${request.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoUrl;
   };
 
   const getSortedScores = (game: ManagedGame) => {
@@ -445,7 +547,6 @@ export default function AdminModal({
 
                             setPlayers(updatedPlayers);
                           }}
-                          className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-2xl font-black text-white outline-none transition focus:border-yellow-400"
                         />
 
                         <div className="mt-1 text-sm text-zinc-500">ID: {player.id}</div>
@@ -839,6 +940,15 @@ export default function AdminModal({
                                 Zpracováno: {new Date(request.reviewedAt).toLocaleString("cs-CZ")}
                               </div>
                             )}
+
+                            <div className="mt-3">
+                              <button
+                                onClick={() => openAccessRequestEmail(request)}
+                                className="rounded-xl border border-zinc-600 bg-zinc-800 px-3 py-2 text-xs font-bold text-zinc-100 transition hover:scale-[1.02] hover:bg-zinc-700"
+                              >
+                                Odeslat e-mail žadateli
+                              </button>
+                            </div>
                           </div>
 
                           {isPending && (

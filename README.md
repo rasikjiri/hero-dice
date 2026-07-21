@@ -218,6 +218,17 @@ Highlights:
 - Online Lobby
 - Online PlayMode synchronization
 - Online game metadata
+
+---
+
+# Serverové proměnné pro notifikace žádostí
+
+Pro automatické e-maily po schválení nebo zamítnutí žádosti nastav v prostředí serveru:
+
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+
+Bez těchto proměnných zůstane funkční ruční fallback (mailto) v admin rozhraní.
   
 Projekt je aktivně vyvíjen.  
 
