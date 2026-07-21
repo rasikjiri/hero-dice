@@ -813,12 +813,12 @@ export default function FunGamesModal({
           : undefined;
 
         const winnerName =
-          winnerScoreEntry?.playerName ||
           (players || []).find(
             (p) =>
               p.id ===
               game.winner
           )?.name ||
+          winnerScoreEntry?.playerId ||
           game.winner;
 
         return (
@@ -883,7 +883,6 @@ export default function FunGamesModal({
                     idx: number
                   ) => {
                     const playerName =
-                      score.playerName ||
                       (players || []).find(
                         (p) =>
                           p.id ===

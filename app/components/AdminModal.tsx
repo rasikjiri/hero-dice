@@ -182,11 +182,7 @@ export default function AdminModal({
   }, [players]);
 
   const getWinnerName = (game: ManagedGame) => {
-    const winnerByScores = Array.isArray(game.scores)
-      ? game.scores.find((score) => score.playerId === game.winner)?.playerName
-      : undefined;
-
-    return winnerByScores || playerNameById.get(game.winner) || game.winner;
+    return playerNameById.get(game.winner) || game.winner;
   };
 
   const getPlayedAt = (game: ManagedGame) => {
@@ -203,8 +199,7 @@ export default function AdminModal({
     if (Array.isArray(game.scores) && game.scores.length > 0) {
       return game.scores
         .map(
-          (score) =>
-            score.playerName || playerNameById.get(score.playerId) || score.playerId,
+          (score) => playerNameById.get(score.playerId) || score.playerId,
         )
         .join(" vs ");
     }
