@@ -101,6 +101,38 @@ type ScoreMap = {
   };
 };
 
+type CategoryScores = {
+  general: number | null;
+  pyramida: number | null;
+  hrozen: number | null;
+  postupka: number | null;
+  ctyri_dva: number | null;
+  dvojce: number | null;
+  trojce: number | null;
+};
+
+type FinishedGameScore = {
+  playerId: string;
+  playerName: string;
+  total: number;
+  perfectCategories: number;
+  completedCategories: number;
+  maxedCategoryIds: string[];
+  categoryScores: CategoryScores;
+};
+
+type FinishedGamePayload = {
+  winner: string;
+  winnerScore: number;
+  players: string[];
+  scores: FinishedGameScore[];
+  rollCount: number;
+  rewriteEnabled: boolean;
+  bonusMode: "general-only" | "all";
+  bonusRolls: number;
+  scoreSchemaVersion: number;
+};
+
 export default function Home() {
   // 04. GLOBAL STATE
   const [screen, setScreen] = useState<"home" | "game" | "online-lobby">(
@@ -526,7 +558,8 @@ export default function Home() {
 
   const [showFinishGameConfirm, setShowFinishGameConfirm] = useState(false);
 
-  const [pendingFinishedGame, setPendingFinishedGame] = useState<any>(null);
+  const [pendingFinishedGame, setPendingFinishedGame] =
+    useState<FinishedGamePayload | null>(null);
 
   const [deleteSavedGameId, setDeleteSavedGameId] = useState<string | null>(
     null,
@@ -4553,12 +4586,12 @@ export default function Home() {
     winnerScore,
     players,
     scores,
-  }: {
-    winner: string;
-    winnerScore: number;
-    players: string[];
-    scores: any;
-  }): Promise<boolean> => {
+    rollCount,
+    rewriteEnabled,
+    bonusMode,
+    bonusRolls,
+    scoreSchemaVersion,
+  }: FinishedGamePayload): Promise<boolean> => {
     const resolvedGameId = resolveGameId(gameId);
 
     if (resolvedGameId !== gameId) {
@@ -4587,13 +4620,19 @@ export default function Home() {
 
         scores,
 
-        roll_count: playModeRolls,
+        roll_count: rollCount,
 
-        rewrite_enabled: playModeAllowRewrite,
+        rewrite_enabled: rewriteEnabled,
 
-        bonus_mode: playModeBonusMode,
+        bonus_mode: bonusMode,
 
-        bonus_rolls: playModeBonusRolls,
+        bonus_rolls: bonusRolls,
+
+        game_mode: "fun",
+
+        score_schema_version: scoreSchemaVersion,
+
+        has_category_breakdown: scores.some((score) => Boolean(score.categoryScores)),
 
         game_id: resolvedGameId,
       },
@@ -6938,7 +6977,7 @@ export default function Home() {
       let bestPlayerIndex = -1;
       let bestScore = -1;
 
-      const gameResults = selectedPlayers.map((playerId, index) => {
+      const gameResults: FinishedGameScore[] = selectedPlayers.map((playerId, index) => {
         const playerScores = scores[playerId] || {};
 
         const total = Object.values(playerScores).reduce(
@@ -6948,9 +6987,39 @@ export default function Home() {
 
         let perfectCategories = 0;
 
+        const categoryScores = gameCategories.reduce(
+          (accumulator, category) => {
+            const rawValue = playerScores[category.id];
+
+            accumulator[category.id as keyof CategoryScores] =
+              typeof rawValue === "number" ? rawValue : null;
+
+            return accumulator;
+          },
+          {
+            general: null,
+            pyramida: null,
+            hrozen: null,
+            postupka: null,
+            ctyri_dva: null,
+            dvojce: null,
+            trojce: null,
+          } as CategoryScores,
+        );
+
+        const maxedCategoryIds: string[] = [];
+        let completedCategories = 0;
+
         gameCategories.forEach((category) => {
+          const categoryScore = playerScores[category.id];
+
+          if (typeof categoryScore === "number") {
+            completedCategories++;
+          }
+
           if (playerScores[category.id] === category.max) {
             perfectCategories++;
+            maxedCategoryIds.push(category.id);
           }
         });
 
@@ -6970,6 +7039,12 @@ export default function Home() {
           total,
 
           perfectCategories,
+
+          completedCategories,
+
+          maxedCategoryIds,
+
+          categoryScores,
         };
       });
 
@@ -7034,6 +7109,11 @@ export default function Home() {
           winnerScore: bestScore,
           players: gameResults.map((result) => result.playerId),
           scores: gameResults,
+          rollCount: playModeRolls,
+          rewriteEnabled: playModeAllowRewrite,
+          bonusMode: playModeBonusMode,
+          bonusRolls: playModeBonusRolls,
+          scoreSchemaVersion: 2,
         });
 
         setShowFinishGameConfirm(true);
@@ -7053,6 +7133,18 @@ export default function Home() {
 
           scores: gameResults,
 
+          rollCount: playModeRolls,
+
+          rewriteEnabled: playModeAllowRewrite,
+
+          bonusMode: playModeBonusMode,
+
+          bonusRolls: playModeBonusRolls,
+
+          gameMode: "league",
+
+          scoreSchemaVersion: 2,
+
           gameId,
         });
 
@@ -7068,6 +7160,16 @@ export default function Home() {
           players: gameResults.map((result) => result.playerId),
 
           scores: gameResults,
+
+          rollCount: playModeRolls,
+
+          rewriteEnabled: playModeAllowRewrite,
+
+          bonusMode: playModeBonusMode,
+
+          bonusRolls: playModeBonusRolls,
+
+          scoreSchemaVersion: 2,
         });
 
         if (!saveSuccess) {
@@ -8573,6 +8675,18 @@ export default function Home() {
 
                     scores: pendingFinishedGame.scores,
 
+                    rollCount: pendingFinishedGame.rollCount,
+
+                    rewriteEnabled: pendingFinishedGame.rewriteEnabled,
+
+                    bonusMode: pendingFinishedGame.bonusMode,
+
+                    bonusRolls: pendingFinishedGame.bonusRolls,
+
+                    gameMode: "league",
+
+                    scoreSchemaVersion: pendingFinishedGame.scoreSchemaVersion,
+
                     gameId,
                   });
 
@@ -8707,6 +8821,16 @@ export default function Home() {
                     players: pendingFinishedGame.players,
 
                     scores: pendingFinishedGame.scores,
+
+                    rollCount: pendingFinishedGame.rollCount,
+
+                    rewriteEnabled: pendingFinishedGame.rewriteEnabled,
+
+                    bonusMode: pendingFinishedGame.bonusMode,
+
+                    bonusRolls: pendingFinishedGame.bonusRolls,
+
+                    scoreSchemaVersion: pendingFinishedGame.scoreSchemaVersion,
                   });
 
                   if (!saveSuccess) {

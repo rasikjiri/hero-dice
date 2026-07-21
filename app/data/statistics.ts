@@ -9,6 +9,18 @@ export type FinishedGame = {
 
   winnerScore: number;
 
+  rollCount: number;
+
+  rewriteEnabled: boolean;
+
+  bonusMode: "general-only" | "all";
+
+  bonusRolls: number;
+
+  gameMode?: "league" | "fun";
+
+  scoreSchemaVersion?: number;
+
   players: string[];
 
   scores: {
@@ -16,6 +28,17 @@ export type FinishedGame = {
   playerName: string;
   total: number;
   perfectCategories: number;
+  completedCategories?: number;
+  maxedCategoryIds?: string[];
+  categoryScores?: {
+    general: number | null;
+    pyramida: number | null;
+    hrozen: number | null;
+    postupka: number | null;
+    ctyri_dva: number | null;
+    dvojce: number | null;
+    trojce: number | null;
+  };
 }[];
 
   gameId?: string;
@@ -79,11 +102,19 @@ export const saveFinishedGame =
         .from("games")
         .insert([
           {
+            date: game.date,
             winner: game.winner,
             winner_score:
               game.winnerScore,
             players: game.players,
             scores: game.scores,
+            roll_count: game.rollCount,
+            rewrite_enabled: game.rewriteEnabled,
+            bonus_mode: game.bonusMode,
+            bonus_rolls: game.bonusRolls,
+            game_mode: game.gameMode ?? "league",
+            score_schema_version: game.scoreSchemaVersion ?? 2,
+            has_category_breakdown: game.scores.some((score) => Boolean(score.categoryScores)),
             game_id: resolvedGameId,
           },
         ]);
@@ -605,6 +636,7 @@ export const syncGamesFromSupabase =
     const formattedGames =
       data.map((game) => ({
         date:
+          game.date ||
           game.created_at ||
           new Date().toISOString(),
 
@@ -612,6 +644,28 @@ export const syncGamesFromSupabase =
 
         winnerScore:
           game.winner_score,
+
+        rollCount:
+          typeof game.roll_count === "number" ? game.roll_count : 4,
+
+        rewriteEnabled:
+          typeof game.rewrite_enabled === "boolean"
+            ? game.rewrite_enabled
+            : false,
+
+        bonusMode:
+          game.bonus_mode === "all" ? "all" : "general-only",
+
+        bonusRolls:
+          typeof game.bonus_rolls === "number" ? game.bonus_rolls : 2,
+
+        gameMode:
+          game.game_mode === "fun" ? "fun" : "league",
+
+        scoreSchemaVersion:
+          typeof game.score_schema_version === "number"
+            ? game.score_schema_version
+            : 1,
 
         players:
           game.players || [],

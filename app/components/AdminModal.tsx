@@ -15,14 +15,14 @@ type ManagedGame = {
   id: string;
   created_at?: string;
   date?: string;
-  winner: string;
-  winner_score: number;
+  winner?: string;
+  winner_score?: number;
   players?: string[];
   scores?: {
     playerId: string;
     playerName?: string;
-    total: number;
-    perfectCategories: number;
+    total?: number;
+    perfectCategories?: number;
   }[];
   roll_count?: number;
   rewrite_enabled?: boolean;
@@ -181,8 +181,27 @@ export default function AdminModal({
     return names;
   }, [players]);
 
+  const resolvePlayerDisplayName = (
+    playerId?: string,
+    fallbackName?: string,
+  ) => {
+    if (playerId && playerNameById.has(playerId)) {
+      return playerNameById.get(playerId) || playerId;
+    }
+
+    if (fallbackName && fallbackName.trim().length > 0) {
+      return fallbackName;
+    }
+
+    return playerId || fallbackName || "Bez jména";
+  };
+
   const getWinnerName = (game: ManagedGame) => {
-    return playerNameById.get(game.winner) || game.winner;
+    const winnerScoreEntry = Array.isArray(game.scores)
+      ? game.scores.find((score) => score.playerId === game.winner)
+      : undefined;
+
+    return resolvePlayerDisplayName(game.winner, winnerScoreEntry?.playerName);
   };
 
   const getPlayedAt = (game: ManagedGame) => {
@@ -192,14 +211,21 @@ export default function AdminModal({
       return "Bez data";
     }
 
-    return new Date(rawDate).toLocaleString("cs-CZ");
+    const parsedDate = new Date(rawDate);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Bez data";
+    }
+
+    return parsedDate.toLocaleString("cs-CZ");
   };
 
   const getPlayerSummary = (game: ManagedGame) => {
     if (Array.isArray(game.scores) && game.scores.length > 0) {
       return game.scores
         .map(
-          (score) => playerNameById.get(score.playerId) || score.playerId,
+          (score) =>
+            resolvePlayerDisplayName(score.playerId, score.playerName),
         )
         .join(" vs ");
     }
@@ -209,8 +235,34 @@ export default function AdminModal({
     }
 
     return game.players
-      .map((playerId) => playerNameById.get(playerId) || playerId)
+      .map((playerId) => resolvePlayerDisplayName(playerId))
       .join(" vs ");
+  };
+
+  const getSortedScores = (game: ManagedGame) => {
+    if (!Array.isArray(game.scores)) {
+      return [];
+    }
+
+    return game.scores
+      .filter((score) => Boolean(score && score.playerId))
+      .map((score, index) => ({
+        ...score,
+        total: Number(score.total) || 0,
+        perfectCategories: Number(score.perfectCategories) || 0,
+        originalIndex: index,
+      }))
+      .sort((a, b) => {
+        if (b.total !== a.total) {
+          return b.total - a.total;
+        }
+
+        if (b.perfectCategories !== a.perfectCategories) {
+          return b.perfectCategories - a.perfectCategories;
+        }
+
+        return a.originalIndex - b.originalIndex;
+      });
   };
 
   const requestDeleteGame = (target: DeleteTarget) => {
@@ -593,6 +645,9 @@ export default function AdminModal({
                 getPlayedAt={getPlayedAt}
                 getWinnerName={getWinnerName}
                 getPlayerSummary={getPlayerSummary}
+                getSortedScores={getSortedScores}
+                resolvePlayerDisplayName={resolvePlayerDisplayName}
+                showFunSettings
                 onDelete={(game) =>
                   requestDeleteGame({
                     id: game.id,
@@ -614,6 +669,8 @@ export default function AdminModal({
                 getPlayedAt={getPlayedAt}
                 getWinnerName={getWinnerName}
                 getPlayerSummary={getPlayerSummary}
+                getSortedScores={getSortedScores}
+                resolvePlayerDisplayName={resolvePlayerDisplayName}
                 onDelete={(game) =>
                   requestDeleteGame({
                     id: game.id,
@@ -700,6 +757,9 @@ function GamesPanel({
   getPlayedAt,
   getWinnerName,
   getPlayerSummary,
+  getSortedScores,
+  resolvePlayerDisplayName,
+  showFunSettings,
   onDelete,
 }: {
   title: string;
@@ -710,8 +770,24 @@ function GamesPanel({
   getPlayedAt: (game: ManagedGame) => string;
   getWinnerName: (game: ManagedGame) => string;
   getPlayerSummary: (game: ManagedGame) => string;
+  getSortedScores: (game: ManagedGame) => {
+    playerId: string;
+    playerName?: string;
+    total: number;
+    perfectCategories: number;
+  }[];
+  resolvePlayerDisplayName: (
+    playerId?: string,
+    fallbackName?: string,
+  ) => string;
+  showFunSettings?: boolean;
   onDelete: (game: ManagedGame) => void;
 }) {
+  const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
+  const visibleExpandedGameId = games.some((game) => game.id === expandedGameId)
+    ? expandedGameId
+    : null;
+
   if (loading) {
     return (
       <div className="rounded-2xl border border-zinc-700 bg-black/40 p-6 text-zinc-300">
@@ -752,7 +828,7 @@ function GamesPanel({
 
                 <div className="mt-3 flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.16em]">
                   <span className="rounded-full bg-yellow-500/20 px-3 py-1 text-yellow-300">
-                    Skóre {game.winner_score}
+                    Skóre {game.winner_score ?? 0}
                   </span>
 
                   {typeof game.roll_count === "number" && (
@@ -781,13 +857,134 @@ function GamesPanel({
                 )}
               </div>
 
-              <button
-                onClick={() => onDelete(game)}
-                className="rounded-xl bg-red-600 px-5 py-3 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
-              >
-                Smazat
-              </button>
+              <div className="flex flex-wrap gap-3 lg:justify-end">
+                <button
+                  onClick={() =>
+                    setExpandedGameId((current) =>
+                      current === game.id ? null : game.id,
+                    )
+                  }
+                  className="rounded-xl border border-zinc-600 bg-zinc-800 px-5 py-3 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+                >
+                  {visibleExpandedGameId === game.id ? "Sbalit" : "Rozbalit"}
+                </button>
+
+                <button
+                  onClick={() => onDelete(game)}
+                  className="rounded-xl bg-red-600 px-5 py-3 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
+                >
+                  Smazat
+                </button>
+              </div>
             </div>
+
+            {visibleExpandedGameId === game.id && (
+              <div className="mt-5 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+                {showFunSettings && (
+                  <div className="mb-5 rounded-xl border border-zinc-700 bg-black/30 p-4">
+                    <div className="mb-3 text-sm font-black uppercase tracking-[0.16em] text-zinc-400">
+                      Nastavení hry
+                    </div>
+
+                    <div className="grid gap-2 text-sm text-zinc-200 md:grid-cols-2 lg:grid-cols-4">
+                      <div>Počet hodů: {game.roll_count ?? "Neuvedeno"}</div>
+
+                      <div>
+                        Přepis výsledku:{" "}
+                        {typeof game.rewrite_enabled === "boolean"
+                          ? game.rewrite_enabled
+                            ? "zapnutý"
+                            : "vypnutý"
+                          : "Neuvedeno"}
+                      </div>
+
+                      <div>
+                        Bonusový režim:{" "}
+                        {game.bonus_mode === "all"
+                          ? "Všechny kombinace"
+                          : game.bonus_mode === "general-only"
+                            ? "Pouze Hero"
+                            : "Neuvedeno"}
+                      </div>
+
+                      <div>Bonusové hody: {game.bonus_rolls ?? "Neuvedeno"}</div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mb-3 text-sm font-black uppercase tracking-[0.16em] text-zinc-400">
+                  Výsledky hráčů
+                </div>
+
+                <div className="space-y-3">
+                  {(() => {
+                    const sortedScores = getSortedScores(game);
+
+                    if (sortedScores.length === 0) {
+                      return (
+                        <div className="rounded-xl border border-zinc-700 bg-black/30 p-4 text-sm text-zinc-400">
+                          Chybí výsledky hráčů.
+                        </div>
+                      );
+                    }
+
+                    return sortedScores.map((score, index) => {
+                      const winnerId = game.winner;
+                      const topScore = sortedScores[0]?.total ?? 0;
+                      const topScoreCount = sortedScores.filter(
+                        (entry) => entry.total === topScore,
+                      ).length;
+                      const isWinner = Boolean(winnerId && score.playerId === winnerId);
+                      const isTopScore = score.total === topScore;
+                      const isDraw = !winnerId && isTopScore && topScoreCount > 1;
+
+                      return (
+                        <div
+                          key={`${game.id}-${score.playerId}-${index}`}
+                          className={`rounded-xl border p-4 ${
+                            isWinner || isTopScore
+                              ? "border-yellow-400/50 bg-yellow-500/10"
+                              : "border-zinc-700 bg-black/30"
+                          }`}
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="text-lg font-black text-white">
+                                  #{index + 1} {resolvePlayerDisplayName(score.playerId, score.playerName)}
+                                </div>
+
+                                {isWinner && (
+                                  <span className="rounded-full bg-yellow-500 px-3 py-1 text-xs font-black text-black">
+                                    Vítěz
+                                  </span>
+                                )}
+
+                                {!isWinner && isDraw && (
+                                  <span className="rounded-full bg-zinc-600 px-3 py-1 text-xs font-black text-white">
+                                    Remíza
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="mt-1 text-sm text-zinc-400">
+                                ID: {score.playerId}
+                              </div>
+                            </div>
+
+                            <div className="text-sm text-zinc-300 md:text-right">
+                              <div>Celkové skóre: {score.total}</div>
+
+                              <div>Perfektní kategorie: {score.perfectCategories}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
         ))
       )}
