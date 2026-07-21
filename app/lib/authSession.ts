@@ -10,6 +10,22 @@ export type AuthSession = {
   deviceId: string;
 };
 
+export type PlayerAccessRequestType = "registration" | "password_reset";
+
+export type PlayerAccessRequestStatus = "pending" | "approved" | "rejected";
+
+export type PlayerAccessRequest = {
+  id: string;
+  requestType: PlayerAccessRequestType;
+  playerId: string;
+  playerName: string | null;
+  email: string;
+  status: PlayerAccessRequestStatus;
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewedByPlayerId: string | null;
+};
+
 type VerifyLoginRow = {
   session_token: string;
   player_id: string;
@@ -28,6 +44,18 @@ type PlayerActivityRow = {
   is_online: boolean;
   last_seen_at: string | null;
   active_sessions: number;
+};
+
+type PlayerAccessRequestRow = {
+  id: string;
+  request_type: PlayerAccessRequestType;
+  player_id: string;
+  player_name: string | null;
+  email: string;
+  status: PlayerAccessRequestStatus;
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by_player_id: string | null;
 };
 
 export const AUTH_SESSION_STORAGE_KEY = "heroDiceAuthSession";
@@ -155,4 +183,78 @@ export const fetchPlayerActivity = async (ttlSeconds: number) => {
     lastSeenAt: row.last_seen_at,
     activeSessions: Number(row.active_sessions ?? 0),
   }));
+};
+
+export const submitPlayerAccessRequest = async (input: {
+  requestType: PlayerAccessRequestType;
+  playerId: string;
+  playerName?: string;
+  email: string;
+  password: string;
+}) => {
+  const { data, error } = await supabase.rpc("submit_player_access_request", {
+    p_request_type: input.requestType,
+    p_player_id: input.playerId,
+    p_player_name: input.playerName ?? "",
+    p_email: input.email,
+    p_password: input.password,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return String(data);
+};
+
+export const listPlayerAccessRequests = async (adminSessionToken: string) => {
+  const { data, error } = await supabase.rpc("list_player_access_requests", {
+    p_admin_session_token: adminSessionToken,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data as PlayerAccessRequestRow[] | null) ?? []).map((row) => ({
+    id: row.id,
+    requestType: row.request_type,
+    playerId: row.player_id,
+    playerName: row.player_name,
+    email: row.email,
+    status: row.status,
+    createdAt: row.created_at,
+    reviewedAt: row.reviewed_at,
+    reviewedByPlayerId: row.reviewed_by_player_id,
+  } satisfies PlayerAccessRequest));
+};
+
+export const countPendingPlayerAccessRequests = async (adminSessionToken: string) => {
+  const { data, error } = await supabase.rpc("count_pending_player_access_requests", {
+    p_admin_session_token: adminSessionToken,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return Number(data ?? 0);
+};
+
+export const processPlayerAccessRequest = async (
+  adminSessionToken: string,
+  requestId: string,
+  action: "approve" | "reject",
+) => {
+  const { data, error } = await supabase.rpc("process_player_access_request", {
+    p_admin_session_token: adminSessionToken,
+    p_request_id: requestId,
+    p_action: action,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return Boolean(data);
 };

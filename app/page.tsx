@@ -55,15 +55,21 @@ import {
   AUTH_SESSION_STORAGE_KEY,
   HEARTBEAT_INTERVAL_MS,
   SESSION_TTL_SECONDS,
+  countPendingPlayerAccessRequests,
   fetchPlayerActivity,
   getOrCreateDeviceId,
   heartbeatSession,
+  listPlayerAccessRequests,
   logoutSession,
+  processPlayerAccessRequest,
   revokePlayerSessions,
   setPlayerPassword,
+  submitPlayerAccessRequest,
   verifyLogin,
   type AppRole,
   type AuthSession,
+  type PlayerAccessRequest,
+  type PlayerAccessRequestType,
 } from "./lib/authSession";
 
 import {
