@@ -67,6 +67,20 @@ Každá změna probíhá v tomto pořadí:
 ```  
   
 ---  
+
+# Workflow s externími AI nástroji
+
+Při spolupráci s externími AI nástroji se používá následující rozdělení odpovědností:
+
+1. Hero Dice Architect vytváří analýzu a TASK BRIEF.
+2. Externí AI Agent provádí implementaci podle schváleného zadání.
+3. Product Owner implementaci testuje.
+4. Hero Dice Architect provádí architektonickou kontrolu.
+5. Dokumentace a CHANGELOG se aktualizují až po schválení.
+
+Tento postup je závazný pro všechny změny realizované přes Externího AI Agenta.
+
+---  
   
 # 1. Analýza  
   
@@ -182,7 +196,7 @@ Používá se jednotný formát:
   
 AI je pomocník při vývoji.  
   
-AI:  
+Externí AI Agent:  
   
 - analyzuje,  
 - navrhuje,  

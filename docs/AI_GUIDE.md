@@ -15,16 +15,8 @@ AI_GUIDE
 Tento dokument definuje způsob práce všech AI nástrojů zapojených do vývoje projektu Hero Dice.  
   
 Platí pro všechny AI asistenty bez ohledu na poskytovatele nebo vývojové prostředí.  
-  
-Například:  
-  
-- ChatGPT  
-- OpenAI Codex  
-- Claude Code  
-- GitHub Copilot  
-- Cursor  
-- Gemini  
-- další AI nástroje  
+
+V projektové dokumentaci se pro implementační roli používá obecný pojem Externí AI Agent.  
   
 Cílem dokumentu je zajistit jednotný způsob práce všech AI agentů nad projektem Hero Dice.  
   
@@ -75,6 +67,21 @@ Každý požadavek řeší AI podle následujícího postupu.
 7. Zápis do CHANGELOG.md  
   
 Žádný krok nesmí být přeskočen.  
+
+---
+
+# Pravidla pro Externího AI Agenta
+
+Externí AI Agent je povinen dodržet následující pravidla:
+
+- nepřepisovat herní logiku Hero Dice,
+- nevymýšlet nová pravidla hry,
+- neměnit architekturu bez explicitního zadání,
+- první etapa představuje pouze vytvoření Online Platform Foundation,
+- testovací mock herní relace slouží pouze jako technické ověření,
+- skutečná integrace Hero Dice bude řešena až v další etapě.
+
+---  
   
 ---  
   

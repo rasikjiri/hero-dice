@@ -284,6 +284,23 @@ saved_games slouží pouze jako vstupní bod pro obnovu onlineSessionId.
 Aktivní online hra nikdy nesmí být řízena pouze daty ze saved_games.
   
 ---  
+
+# Budoucí architektura platformy
+
+Další etapa vývoje zavádí samostatnou architektonickou vrstvu Online Platform Foundation.
+
+Tato vrstva je navržena jako oddělená platforma pro online a mobilní provoz.
+
+Platí následující zásady:
+
+- online platforma je samostatná architektonická vrstva,
+- stávající herní logika Hero Dice zůstává oddělená,
+- integrace probíhá výhradně přes jasně definovaná rozhraní,
+- žádná část Hero Dice nesmí být přepisována bez architektonického schválení.
+
+Cílem je rozšířit systém bez narušení stabilního herního jádra.
+
+---  
   
 # Rozšiřitelnost  
   

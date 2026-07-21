@@ -52,9 +52,26 @@ import {
 import { makeAIDecision } from "./lib/aiPlayer";
 
 import {
+  AUTH_SESSION_STORAGE_KEY,
+  HEARTBEAT_INTERVAL_MS,
+  SESSION_TTL_SECONDS,
+  fetchPlayerActivity,
+  getOrCreateDeviceId,
+  heartbeatSession,
+  logoutSession,
+  revokePlayerSessions,
+  setPlayerPassword,
+  verifyLogin,
+  type AppRole,
+  type AuthSession,
+} from "./lib/authSession";
+
+import {
+  connectOnlinePlayerAndSetReady,
   createOnlineSession,
   findSessionByInviteCode,
   joinOnlineSession,
+  setOnlinePlayerReadiness,
   updateOnlineState,
   subscribeToSession,
   leaveOnlineSession,
@@ -92,11 +109,26 @@ export default function Home() {
 
   const [mounted, setMounted] = useState(false);
 
-  const [isUnlocked, setIsUnlocked] = useState(false);
-
   const [authLoaded, setAuthLoaded] = useState(false);
 
-  const [accessCode, setAccessCode] = useState("");
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+
+  const [loginPlayerId, setLoginPlayerId] = useState("");
+
+  const [loginPassword, setLoginPassword] = useState("");
+
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const [isAuthConnectionHealthy, setIsAuthConnectionHealthy] =
+    useState(false);
+
+  const [playerSessionActivityById, setPlayerSessionActivityById] = useState<
+    Record<string, boolean>
+  >({});
+
+  const canAccessAdmin = authSession?.role === "admin";
 
   const [showStatistics, setShowStatistics] = useState(false);
 
@@ -109,6 +141,10 @@ export default function Home() {
   const [newPlayerId, setNewPlayerId] = useState("");
 
   const [newPlayerName, setNewPlayerName] = useState("");
+
+  const [newPlayerPassword, setNewPlayerPassword] = useState("");
+
+  const [newPlayerPasswordConfirm, setNewPlayerPasswordConfirm] = useState("");
 
   const [, forceUpdate] = useState(0);
 
@@ -245,6 +281,10 @@ export default function Home() {
   const [playerReadiness, setPlayerReadiness] = useState<{
     [playerId: string]: boolean;
   }>({});
+
+  const [connectedDeviceByPlayerId, setConnectedDeviceByPlayerId] = useState<
+    Record<string, string>
+  >({});
 
   const [localOnlinePlayerId, setLocalOnlinePlayerId] = useState<string | null>(
     null,
@@ -676,10 +716,11 @@ export default function Home() {
     id: string;
     name: string;
     active: boolean;
+    role: AppRole;
   };
 
   // EDIT COMPUTER PLAYERS HERE
-  const ComputerPlayerNames = ["Computer Peppa"];
+  const ComputerPlayerNames = ["ROBO AI"];
 
   const computerPlayers = ComputerPlayerNames.map((name, index) => ({
     id: `computer_${index + 1}`,
@@ -882,6 +923,12 @@ export default function Home() {
   }, [playersState]);
 
   const handleDeletePlayer = (playerId: string) => {
+    if (!canAccessAdmin) {
+      alert("Tato akce je dostupná pouze pro admin účet.");
+
+      return;
+    }
+
     const updatedPlayers = playersState.filter(
       (player) => player.id !== playerId,
     );
@@ -891,10 +938,18 @@ export default function Home() {
     localStorage.setItem("heroDicePlayers", JSON.stringify(updatedPlayers));
   };
 
-  const handleAddPlayer = () => {
+  const handleAddPlayer = async () => {
+    if (!canAccessAdmin) {
+      alert("Tato akce je dostupná pouze pro admin účet.");
+
+      return;
+    }
+
     const trimmedId = newPlayerId.trim();
 
     const trimmedName = newPlayerName.trim();
+    const trimmedPassword = newPlayerPassword.trim();
+    const trimmedPasswordConfirm = newPlayerPasswordConfirm.trim();
 
     if (!trimmedId || !trimmedName) {
       alert("Vyplň ID i jméno hráče.");
@@ -912,27 +967,157 @@ export default function Home() {
       return;
     }
 
+    if (trimmedPassword || trimmedPasswordConfirm) {
+      if (!trimmedPassword || !trimmedPasswordConfirm) {
+        alert("Vyplň heslo i potvrzení hesla pro nového hráče.");
+
+        return;
+      }
+
+      if (trimmedPassword.length < minimumPasswordLength) {
+        alert(`Heslo musí mít alespoň ${minimumPasswordLength} znaků.`);
+
+        return;
+      }
+
+      if (trimmedPassword !== trimmedPasswordConfirm) {
+        alert("Heslo a potvrzení hesla se neshodují.");
+
+        return;
+      }
+    }
+
     const newPlayer = {
       id: trimmedId,
       name: trimmedName,
       active: true,
+      role: "player" as AppRole,
     };
 
     const updatedPlayers = [...playersState, newPlayer];
 
     setPlayersState(updatedPlayers);
 
-    addPlayerToSupabase(newPlayer);
+    await addPlayerToSupabase(newPlayer);
+
+    if (trimmedPassword) {
+      await setPlayerPasswordFromAdmin(
+        newPlayer.id,
+        trimmedPassword,
+        trimmedPasswordConfirm,
+      );
+    }
 
     localStorage.setItem("heroDicePlayers", JSON.stringify(updatedPlayers));
 
     setNewPlayerId("");
     setNewPlayerName("");
+    setNewPlayerPassword("");
+    setNewPlayerPasswordConfirm("");
   };
 
   useEffect(() => {
     loadPlayersFromSupabase();
   }, []);
+
+  useEffect(() => {
+    try {
+      const rawSession = localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+
+      if (!rawSession) {
+        setAuthLoaded(true);
+
+        return;
+      }
+
+      const parsedSession = JSON.parse(rawSession) as AuthSession;
+
+      if (
+        !parsedSession?.playerId ||
+        !parsedSession?.sessionToken ||
+        !parsedSession?.role
+      ) {
+        localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+        setAuthLoaded(true);
+
+        return;
+      }
+
+      setAuthSession(parsedSession);
+      setIsAuthConnectionHealthy(true);
+      setLoginPlayerId(parsedSession.playerId);
+    } catch (error) {
+      console.error("AUTH SESSION LOAD ERROR:", error);
+      localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+    } finally {
+      setAuthLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authSession?.sessionToken) {
+      return;
+    }
+
+    let isActive = true;
+
+    const runHeartbeat = async () => {
+      try {
+        const status = await heartbeatSession(authSession.sessionToken);
+
+        if (!isActive) {
+          return;
+        }
+
+        if (status.status === "active") {
+          setIsAuthConnectionHealthy(true);
+
+          if (canAccessAdmin) {
+            await loadPlayerSessionActivity();
+          }
+
+          return;
+        }
+
+        if (status.status === "revoked") {
+          alert("Session byla ukončena administrátorem.");
+        }
+
+        saveAuthSession(null);
+        setLoginPassword("");
+        setPlayerSessionActivityById({});
+        setIsAuthConnectionHealthy(false);
+      } catch (error) {
+        console.error("HEARTBEAT ERROR:", error);
+        setIsAuthConnectionHealthy(false);
+      }
+    };
+
+    void runHeartbeat();
+
+    const heartbeatInterval = window.setInterval(() => {
+      void runHeartbeat();
+    }, HEARTBEAT_INTERVAL_MS);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(heartbeatInterval);
+    };
+  }, [authSession?.sessionToken, canAccessAdmin]);
+
+  useEffect(() => {
+    if (!showAdmin || !canAccessAdmin) {
+      return;
+    }
+
+    void loadPlayerSessionActivity();
+  }, [showAdmin, canAccessAdmin]);
+
+  useEffect(() => {
+    if (showAdmin && !canAccessAdmin) {
+      setShowAdmin(false);
+    }
+  }, [showAdmin, canAccessAdmin]);
 
   const handlePlayerCountChange = (count: number | "") => {
     setPlayerCount(count);
@@ -1116,23 +1301,226 @@ export default function Home() {
     });
   };
 
-  const submitAccessCode = () => {
-    const enteredCode = accessCode.trim();
+  const saveAuthSession = (nextSession: AuthSession | null) => {
+    setAuthSession(nextSession);
 
-    const expectedCode = (process.env.NEXT_PUBLIC_APP_CODE ?? "").trim();
-
-    if (!expectedCode) {
-      alert("Chybí konfigurace NEXT_PUBLIC_APP_CODE.");
+    if (!nextSession) {
+      localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+      setShowAdmin(false);
 
       return;
     }
 
-    if (enteredCode === expectedCode) {
-      localStorage.setItem("heroDiceUnlocked", "true");
+    localStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+  };
 
-      setIsUnlocked(true);
-    } else {
-      alert("Neplatný kód.");
+  const minimumPasswordLength = 6;
+
+  async function loadPlayerSessionActivity() {
+    try {
+      const rows = await fetchPlayerActivity(SESSION_TTL_SECONDS);
+
+      const next: Record<string, boolean> = {};
+
+      rows.forEach((row) => {
+        next[row.playerId] = row.isOnline;
+      });
+
+      setPlayerSessionActivityById(next);
+    } catch (error) {
+      console.error("PLAYER SESSION ACTIVITY LOAD ERROR:", error);
+    }
+  }
+
+  const submitLogin = async () => {
+    const playerId = loginPlayerId.trim();
+    const password = loginPassword.trim();
+
+    if (!playerId || !password) {
+      setLoginError("Vyplň ID i heslo.");
+
+      return;
+    }
+
+    try {
+      setIsAuthenticating(true);
+      setLoginError(null);
+
+      const nextSession = await verifyLogin(
+        playerId,
+        password,
+        getOrCreateDeviceId(),
+      );
+
+      if (!nextSession) {
+        setLoginError("Neplatné přihlašovací údaje.");
+        setIsAuthenticating(false);
+
+        return;
+      }
+
+      saveAuthSession(nextSession);
+      setIsAuthConnectionHealthy(true);
+      setLoginPassword("");
+      await loadPlayerSessionActivity();
+    } catch (error) {
+      console.error("LOGIN ERROR:", error);
+      setLoginError("Přihlášení se nezdařilo.");
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const performLogout = async () => {
+    try {
+      if (authSession?.sessionToken) {
+        await logoutSession(authSession.sessionToken);
+      }
+    } catch (error) {
+      console.error("LOGOUT ERROR:", error);
+    } finally {
+      saveAuthSession(null);
+      setLoginPassword("");
+      setLoginError(null);
+      setPlayerSessionActivityById({});
+      setLocalOnlinePlayerId(null);
+      setConnectedDeviceByPlayerId({});
+      setIsAuthConnectionHealthy(false);
+    }
+  };
+
+  const openAdminModal = async () => {
+    if (!canAccessAdmin) {
+      alert("Admin sekce je dostupná pouze pro admin účet.");
+
+      return;
+    }
+
+    await loadPlayerSessionActivity();
+    setShowAdmin(true);
+  };
+
+  const revokeSessionsForPlayer = async (playerId: string) => {
+    if (!canAccessAdmin) {
+      alert("Tato akce je dostupná pouze pro admin účet.");
+
+      return;
+    }
+
+    await revokePlayerSessions(playerId);
+    await loadPlayerSessionActivity();
+  };
+
+  const resolveErrorMessage = (
+    error: unknown,
+    fallback = "Operace se nezdařila.",
+  ) => {
+    if (typeof error === "string" && error.trim().length > 0) {
+      return error;
+    }
+
+    if (error instanceof Error && error.message.trim().length > 0) {
+      return error.message;
+    }
+
+    if (error && typeof error === "object") {
+      const errorRecord = error as Record<string, unknown>;
+      const message = errorRecord.message;
+      const details = errorRecord.details;
+      const hint = errorRecord.hint;
+
+      if (typeof message === "string" && message.trim().length > 0) {
+        if (typeof details === "string" && details.trim().length > 0) {
+          return `${message} (${details})`;
+        }
+
+        if (typeof hint === "string" && hint.trim().length > 0) {
+          return `${message} (${hint})`;
+        }
+
+        return message;
+      }
+    }
+
+    return fallback;
+  };
+
+  const setPlayerPasswordFromAdmin = async (
+    playerId: string,
+    password: string,
+    passwordConfirm: string,
+  ) => {
+    if (!canAccessAdmin || !authSession?.sessionToken) {
+      alert("Tato akce je dostupná pouze pro admin účet.");
+
+      return;
+    }
+
+    const trimmedPassword = password.trim();
+    const trimmedPasswordConfirm = passwordConfirm.trim();
+
+    if (!trimmedPassword || !trimmedPasswordConfirm) {
+      alert("Vyplň nové heslo i potvrzení hesla.");
+
+      return;
+    }
+
+    if (trimmedPassword.length < minimumPasswordLength) {
+      alert(`Heslo musí mít alespoň ${minimumPasswordLength} znaků.`);
+
+      return;
+    }
+
+    if (trimmedPassword !== trimmedPasswordConfirm) {
+      alert("Heslo a potvrzení hesla se neshodují.");
+
+      return;
+    }
+
+    try {
+      const saved = await setPlayerPassword(
+        authSession.sessionToken,
+        playerId,
+        trimmedPassword,
+      );
+
+      if (!saved) {
+        alert("Uložení hesla se nezdařilo.");
+
+        return;
+      }
+
+      alert("Heslo bylo úspěšně uloženo.");
+    } catch (error) {
+      const errorMessage = resolveErrorMessage(
+        error,
+        "Uložení hesla se nezdařilo.",
+      );
+
+      console.error("SET PLAYER PASSWORD ERROR:", {
+        error,
+        errorMessage,
+      });
+
+      if (errorMessage.includes("Neplatná nebo neaktivní admin session")) {
+        alert("Admin session vypršela. Přihlas se prosím znovu.");
+
+        return;
+      }
+
+      if (
+        errorMessage
+          .toLowerCase()
+          .includes("could not find the function public.set_player_password")
+      ) {
+        alert(
+          "RPC set_player_password neni v cache nebo ma nekompatibilni podpis. Spust prosim migraci 20260721_set_player_password_rpc_cache_compat.sql v Supabase SQL Editoru.",
+        );
+
+        return;
+      }
+
+      alert(`Uložení hesla se nezdařilo: ${errorMessage}`);
     }
   };
 
@@ -4605,7 +4993,7 @@ export default function Home() {
     try {
       const { data, error } = await supabase
         .from("players")
-        .select("*")
+        .select("id,name,active,role,created_at")
         .order("created_at", {
           ascending: true,
         });
@@ -4617,9 +5005,16 @@ export default function Home() {
       }
 
       if (data && data.length > 0) {
-        setPlayersState(data);
+        const normalizedPlayers: Player[] = data.map((player) => ({
+          id: player.id,
+          name: player.name,
+          active: Boolean(player.active),
+          role: player.role === "admin" ? "admin" : "player",
+        }));
 
-        localStorage.setItem("heroDicePlayers", JSON.stringify(data));
+        setPlayersState(normalizedPlayers);
+
+        localStorage.setItem("heroDicePlayers", JSON.stringify(normalizedPlayers));
       }
     } catch (error) {
       console.error(error);
@@ -4630,6 +5025,7 @@ export default function Home() {
     id: string;
     name: string;
     active: boolean;
+    role: AppRole;
   }) => {
     try {
       const { error } = await supabase.from("players").insert([
@@ -4637,6 +5033,7 @@ export default function Home() {
           id: player.id,
           name: player.name,
           active: player.active,
+          role: player.role,
         },
       ]);
 
@@ -4653,8 +5050,15 @@ export default function Home() {
     updates: {
       name?: string;
       active?: boolean;
+      role?: AppRole;
     },
   ) => {
+    if (!canAccessAdmin) {
+      alert("Tato akce je dostupná pouze pro admin účet.");
+
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("players")
@@ -4670,6 +5074,12 @@ export default function Home() {
   };
 
   const deletePlayerFromSupabase = async (playerId: string) => {
+    if (!canAccessAdmin) {
+      alert("Tato akce je dostupná pouze pro admin účet.");
+
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("players")
@@ -4701,12 +5111,45 @@ export default function Home() {
     return next;
   };
 
+  const buildConnectedDeviceMap = (
+    playerIds: string[],
+    connectedDevices?: unknown,
+  ) => {
+    const next: Record<string, string> = {};
+
+    if (
+      typeof connectedDevices !== "object" ||
+      connectedDevices === null ||
+      Array.isArray(connectedDevices)
+    ) {
+      return next;
+    }
+
+    playerIds.forEach((playerId) => {
+      const value = (connectedDevices as Record<string, unknown>)[playerId];
+
+      if (typeof value === "string" && value.trim().length > 0) {
+        next[playerId] = value;
+      }
+    });
+
+    return next;
+  };
+
   // 11. ONLINE
-  const handleCreateOnlineSession = async () => {
+  const handleCreateOnlineSession = async (): Promise<boolean> => {
     if (!isValidSelectedPlayersForCount(selectedPlayers, playerCount)) {
       alert("Vyber platný seznam hráčů před vytvořením online hry.");
 
-      return;
+      return false;
+    }
+
+    if (selectedPlayers[0] !== authSession?.playerId) {
+      alert(
+        "Online lobby může vytvořit pouze přihlášený hráč č. 1. Zvol správného hráče na první pozici.",
+      );
+
+      return false;
     }
 
     try {
@@ -4751,6 +5194,7 @@ export default function Home() {
         selectedPlayers: sessionSelectedPlayers,
         playerCount: sessionPlayerCount,
         playerReadiness: initialReadiness,
+        connectedPlayers: {},
         playModeRolls,
         playModeAllowRewrite,
         playModeBonusMode,
@@ -4781,6 +5225,7 @@ export default function Home() {
       setIsOnlineGame(true);
       setJoinSessionId("");
       setLocalOnlinePlayerId(null);
+      setConnectedDeviceByPlayerId({});
 
       setPlayerReadiness(initialReadiness);
 
@@ -4806,10 +5251,14 @@ export default function Home() {
       }
 
       debugSetScreen("online-lobby");
+
+      return true;
     } catch (error) {
       console.error(error);
 
       alert("Nepodařilo se vytvořit online hru.");
+
+      return false;
     }
   };
 
@@ -4839,6 +5288,8 @@ export default function Home() {
       setSelectedPlayers([]);
       setPlayerCount("");
       setPlayerReadiness({});
+      setConnectedDeviceByPlayerId({});
+      setLocalOnlinePlayerId(null);
 
       return;
     }
@@ -4866,10 +5317,13 @@ export default function Home() {
 
     const incomingRuntimeRevision = Number(gameState.runtimeRevision ?? 0);
 
+    const shouldEnforceRuntimeRevision =
+      Boolean(gameState.gameStarted) || gameStarted;
+
     const isStaleRuntimeRevision =
       incomingRuntimeRevision < localRuntimeRevisionRef.current;
 
-    if (isStaleRuntimeRevision) {
+    if (shouldEnforceRuntimeRevision && isStaleRuntimeRevision) {
       return;
     }
 
@@ -4932,7 +5386,28 @@ export default function Home() {
       gameState.playerReadiness ?? null,
     );
 
+    const nextConnectedPlayers = buildConnectedDeviceMap(
+      nextSelectedPlayers,
+      gameState.connectedPlayers,
+    );
+
     setPlayerReadiness(nextLobbyReadiness);
+    setConnectedDeviceByPlayerId(nextConnectedPlayers);
+
+    if (authSession?.playerId && authSession.deviceId) {
+      const authenticatedPlayerDevice = nextConnectedPlayers[authSession.playerId];
+
+      if (
+        authenticatedPlayerDevice &&
+        authenticatedPlayerDevice === authSession.deviceId
+      ) {
+        setLocalOnlinePlayerId(authSession.playerId);
+      } else if (localOnlinePlayerId === authSession.playerId) {
+        setLocalOnlinePlayerId(null);
+      }
+    } else if (localOnlinePlayerId !== null) {
+      setLocalOnlinePlayerId(null);
+    }
 
     setPlayModeRolls(gameState.playModeRolls ?? playModeRolls);
 
@@ -5145,6 +5620,7 @@ export default function Home() {
         playModeBonusRolls,
 
         playerReadiness,
+        connectedPlayers: connectedDeviceByPlayerId,
         inviteCode: onlineInviteCode,
 
         gameStarted,
@@ -5164,79 +5640,88 @@ export default function Home() {
     }
   };
 
-  const claimOnlinePlayer = async (playerId: string) => {
-    if (isOnlineGame && onlineSessionId) {
-      try {
-        const session = await joinOnlineSession(onlineSessionId);
+  const ensureActiveLobbySessionIdentity = async () => {
+    if (!authSession?.sessionToken || !authSession.playerId) {
+      alert("Nejdřív se přihlas svým hráčským účtem.");
 
-        const currentState = session.game_state ?? {};
+      return null;
+    }
 
-        const remoteSelectedPlayers = Array.isArray(
-          currentState.selectedPlayers,
-        )
-          ? currentState.selectedPlayers.filter(
-              (candidate: unknown): candidate is string =>
-                typeof candidate === "string",
-            )
-          : [];
+    const heartbeat = await heartbeatSession(authSession.sessionToken);
 
-        const remotePlayerCount =
-          typeof currentState.playerCount === "number"
-            ? currentState.playerCount
-            : "";
+    if (heartbeat.status !== "active" || heartbeat.playerId !== authSession.playerId) {
+      if (heartbeat.status === "revoked") {
+        alert("Session byla ukončena administrátorem.");
+      } else {
+        alert("Session už není platná. Přihlas se znovu.");
+      }
 
-        if (
-          !isValidSelectedPlayersForCount(
-            remoteSelectedPlayers,
-            remotePlayerCount,
-          )
-        ) {
-          setSelectedPlayers([]);
-          setPlayerCount("");
-          setPlayerReadiness({});
+      await performLogout();
 
-          alert("Online session neobsahuje platný výběr hráčů.");
+      return null;
+    }
 
-          return;
-        }
+    return authSession.playerId;
+  };
 
-        const nextReadiness = buildLobbyReadinessMap(
-          remoteSelectedPlayers,
-          currentState.playerReadiness,
+  const toggleAuthenticatedLobbyPresence = async () => {
+    if (!isOnlineGame || !onlineSessionId) {
+      return;
+    }
+
+    try {
+      const authenticatedPlayerId = await ensureActiveLobbySessionIdentity();
+
+      if (!authenticatedPlayerId) {
+        return;
+      }
+
+      const currentDeviceId = getOrCreateDeviceId();
+
+      const connectedDevice =
+        connectedDeviceByPlayerId[authenticatedPlayerId] ?? null;
+
+      const isConnectedOnThisDevice =
+        connectedDevice !== null && connectedDevice === currentDeviceId;
+
+      setLocalOnlinePlayerId(authenticatedPlayerId);
+
+      if (!isConnectedOnThisDevice) {
+        const readyState = await connectOnlinePlayerAndSetReady(
+          onlineSessionId,
+          authenticatedPlayerId,
+          currentDeviceId,
         );
 
-        if (
-          localOnlinePlayerId &&
-          localOnlinePlayerId !== playerId &&
-          localOnlinePlayerId in nextReadiness
-        ) {
-          nextReadiness[localOnlinePlayerId] = false;
+        if (readyState) {
+          applyOnlineGameState(readyState);
         }
 
-        if (!(playerId in nextReadiness)) {
-          nextReadiness[playerId] = false;
-        }
+        return;
+      }
 
-        nextReadiness[playerId] = true;
+      const desiredReady = !Boolean(lobbyReadiness[authenticatedPlayerId]);
 
-        setLocalOnlinePlayerId(playerId);
-        setPlayerReadiness(nextReadiness);
+      const nextState = await setOnlinePlayerReadiness(
+        onlineSessionId,
+        authenticatedPlayerId,
+        currentDeviceId,
+        desiredReady,
+      );
 
-        const claimTurnVersion =
-          Math.max(
-            Number(currentState.turnVersion ?? 0),
-            localTurnVersionRef.current,
-          ) + 1;
+      if (nextState) {
+        applyOnlineGameState(nextState);
+      }
+    } catch (error) {
+      console.error("CLAIM AUTHENTICATED PLAYER SYNC ERROR:", error);
 
-        await updateOnlineState(onlineSessionId, {
-          ...currentState,
-          playerReadiness: nextReadiness,
-          updatedByPlayerId: playerId,
-          updatedAt: Date.now(),
-          turnVersion: claimTurnVersion,
-        });
-      } catch (error) {
-        console.error("CLAIM PLAYER SYNC ERROR:", error);
+      const message =
+        error && typeof error === "object" && "message" in error
+          ? String((error as { message?: unknown }).message ?? "")
+          : "";
+
+      if (message) {
+        alert(message);
       }
     }
   };
@@ -5287,6 +5772,8 @@ export default function Home() {
         setSelectedPlayers([]);
         setPlayerCount("");
         setPlayerReadiness({});
+        setConnectedDeviceByPlayerId({});
+        setConnectedDeviceByPlayerId({});
 
         alert("Online session neobsahuje platný výběr hráčů.");
 
@@ -5325,7 +5812,13 @@ export default function Home() {
         session.game_state?.playerReadiness,
       );
 
+      const nextConnectedPlayers = buildConnectedDeviceMap(
+        sessionSelectedPlayers,
+        session.game_state?.connectedPlayers,
+      );
+
       setPlayerReadiness(nextReadiness);
+      setConnectedDeviceByPlayerId(nextConnectedPlayers);
 
       const channel = subscribeToSession(session.id, (gameState) => {
         applyOnlineGameState(gameState);
@@ -5366,6 +5859,12 @@ export default function Home() {
 
   const handleStartOnlineGame = async () => {
     if (!isOnlineGame || !onlineSessionId || !canStartOnlineGame) {
+      return;
+    }
+
+    if (selectedPlayers[0] !== authSession?.playerId) {
+      alert("Online hru může spustit pouze přihlášený hráč č. 1.");
+
       return;
     }
 
@@ -5460,6 +5959,7 @@ export default function Home() {
         playModeBonusMode,
         playModeBonusRolls,
         playerReadiness,
+        connectedPlayers: connectedDeviceByPlayerId,
         currentPlayPlayerIndex,
         playModeDice,
         lockedDice,
@@ -5504,6 +6004,7 @@ export default function Home() {
       playModeBonusMode,
       playModeBonusRolls,
       playerReadiness,
+      connectedPlayers: connectedDeviceByPlayerId,
       currentPlayPlayerIndex: 0,
       playModeDice: [1, 1, 1, 1, 1, 1],
       lockedDice: [false, false, false, false, false, false],
@@ -5561,6 +6062,7 @@ export default function Home() {
     setLocalOnlinePlayerId(null);
     setJoinSessionId("");
     setPlayerReadiness({});
+    setConnectedDeviceByPlayerId({});
 
     debugSetScreen("home");
   };
@@ -5704,6 +6206,7 @@ export default function Home() {
         setOnlineInviteCode(null);
         setLocalOnlinePlayerId(null);
         setPlayerReadiness({});
+        setConnectedDeviceByPlayerId({});
         setIsOnlineGame(false);
         setGameMode("offline");
         setSelectedGameMode("offline");
@@ -5744,6 +6247,7 @@ export default function Home() {
           setOnlineInviteCode(null);
           setLocalOnlinePlayerId(null);
           setPlayerReadiness({});
+          setConnectedDeviceByPlayerId({});
           setIsOnlineGame(false);
           setGameMode("offline");
           setSelectedGameMode("offline");
@@ -5817,6 +6321,7 @@ export default function Home() {
         setOnlineInviteCode(null);
         setLocalOnlinePlayerId(null);
         setPlayerReadiness({});
+        setConnectedDeviceByPlayerId({});
         setIsOnlineGame(false);
         setGameMode("offline");
         setSelectedGameMode("offline");
@@ -5830,6 +6335,7 @@ export default function Home() {
     setOnlineInviteCode(null);
     setLocalOnlinePlayerId(savedGame.localOnlinePlayerId ?? null);
     setPlayerReadiness({});
+    setConnectedDeviceByPlayerId({});
     setIsOnlineGame(false);
     debugSetScreen("game");
   };
@@ -5902,7 +6408,15 @@ export default function Home() {
 
   const canStartOnlineGame =
     isValidSelectedPlayersForCount(selectedPlayers, playerCount) &&
-    selectedPlayers.every((playerId) => playerReadiness[playerId] === true);
+    selectedPlayers.every((playerId) => lobbyReadiness[playerId] === true);
+
+  const isAuthenticatedFirstLobbyPlayer =
+    authSession?.playerId !== undefined &&
+    authSession?.playerId !== null &&
+    selectedPlayers[0] === authSession.playerId;
+
+  const canStartOnlineGameAsCurrentAuth =
+    canStartOnlineGame && isAuthenticatedFirstLobbyPlayer;
 
   const isOnlineResumeLobbyMode =
     isOnlineGame && gameStarted && hasStartedPlayMode;
@@ -5929,6 +6443,14 @@ export default function Home() {
   };
 
   const inviteAuthorName = resolveOnlineInviteAuthorName();
+
+  const currentAuthPlayerName = authSession?.playerName ?? "";
+
+  const currentAuthStatusText = isAuthConnectionHealthy ? "Online" : "Offline";
+
+  const currentAuthStatusClassName = isAuthConnectionHealthy
+    ? "text-green-300"
+    : "text-zinc-400";
 
   const inviteActionBaseClass =
     "w-full rounded-2xl border border-zinc-600 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] transition duration-200 hover:scale-[1.02] hover:brightness-110 md:text-base";
@@ -6033,7 +6555,16 @@ export default function Home() {
   const canSubmitOnlineChat =
     canShowOnlineChat &&
     Boolean(localOnlinePlayerId) &&
+    localOnlinePlayerId === authSession?.playerId &&
     onlineChatInput.trim().length > 0;
+
+  const authenticatedLobbyPlayerId = authSession?.playerId ?? null;
+
+  const authenticatedLobbyDeviceId = authSession?.deviceId ?? null;
+
+  const isAuthenticatedPlayerPartOfLobby =
+    authenticatedLobbyPlayerId !== null &&
+    selectedPlayers.includes(authenticatedLobbyPlayerId);
 
   useEffect(() => {
     if (
@@ -6480,6 +7011,7 @@ export default function Home() {
             playModeBonusMode,
             playModeBonusRolls,
             playerReadiness,
+            connectedPlayers: connectedDeviceByPlayerId,
             inviteCode: onlineInviteCode,
             gameStarted,
             hasStartedPlayMode,
@@ -6711,7 +7243,7 @@ export default function Home() {
           }}
           maxLength={500}
           placeholder={
-            localOnlinePlayerId ? "Napiš zprávu..." : "Vyber hráče v lobby"
+            localOnlinePlayerId ? "Napiš zprávu..." : "Připoj svou identitu v lobby"
           }
           className="h-12 flex-1 rounded-2xl border border-zinc-700 bg-black/60 px-4 text-sm font-bold text-white outline-none transition focus:border-blue-400"
         />
@@ -6734,35 +7266,53 @@ export default function Home() {
   // 18. JSX
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
-      {!isUnlocked && (
+      {authLoaded && !authSession && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black p-6">
           <div className="w-full max-w-md rounded-3xl border border-yellow-500/20 bg-zinc-900 p-8 text-center shadow-2xl">
             <h1 className="mb-3 text-5xl font-black text-yellow-400 tracking-[0.14em]">
               HERO DICE
             </h1>
 
-            <p className="mb-8 text-zinc-400">Zadej přístupový kód</p>
+            <p className="mb-4 text-zinc-400">Přihlášení hráče nebo admina</p>
 
             <input
-              type="password"
-              value={accessCode}
-              onChange={(e) => setAccessCode(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  submitAccessCode();
-                }
-              }}
-              className="mb-5 w-full rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-center text-2xl font-bold text-white outline-none transition focus:border-yellow-400"
+              type="text"
+              value={loginPlayerId}
+              onChange={(e) => setLoginPlayerId(e.target.value)}
+              placeholder="ID hráče"
+              className="mb-3 w-full rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-center text-xl font-bold text-white outline-none transition focus:border-yellow-400"
               autoFocus
             />
 
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              placeholder="Heslo"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void submitLogin();
+                }
+              }}
+              className="mb-5 w-full rounded-2xl border border-zinc-700 bg-black px-5 py-4 text-center text-2xl font-bold text-white outline-none transition focus:border-yellow-400"
+            />
+
+            {loginError && (
+              <p className="mb-4 text-sm font-bold text-red-400">{loginError}</p>
+            )}
+
             <button
-              onClick={submitAccessCode}
-              className="w-full rounded-2xl bg-yellow-500 px-6 py-4 text-xl font-black text-black transition hover:bg-yellow-400"
+              onClick={() => void submitLogin()}
+              disabled={isAuthenticating}
+              className="w-full rounded-2xl bg-yellow-500 px-6 py-4 text-xl font-black text-black transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Vstoupit
+              {isAuthenticating ? "Přihlašuji..." : "Přihlásit"}
             </button>
+
+            <p className="mt-4 text-xs text-zinc-500">
+              Přístup je řízen účtem hráče. Admin účet odemyká správu hráčů.
+            </p>
           </div>
         </div>
       )}
@@ -6783,40 +7333,59 @@ export default function Home() {
               </button>
             </div>
 
-            <AppMenu
-              isOpen={showHomeMenu}
-              onToggle={() => setShowHomeMenu((prev) => !prev)}
-              items={[
-                {
-                  label: "Načíst hru",
-                  onClick: () => {
-                    loadSavedGames();
-                    setShowHomeMenu(false);
+            <div className="flex items-center gap-4">
+              {authSession && (
+                <div className={`text-sm font-bold ${currentAuthStatusClassName}`}>
+                  {currentAuthPlayerName} · {currentAuthStatusText}
+                </div>
+              )}
+
+              <AppMenu
+                isOpen={showHomeMenu}
+                onToggle={() => setShowHomeMenu((prev) => !prev)}
+                items={[
+                  {
+                    label: "Načíst hru",
+                    onClick: () => {
+                      loadSavedGames();
+                      setShowHomeMenu(false);
+                    },
                   },
-                },
-                {
-                  label: "Připojit se",
-                  onClick: () => {
-                    setShowJoinSessionModal(true);
-                    setShowHomeMenu(false);
+                  {
+                    label: "Připojit se",
+                    onClick: () => {
+                      setShowJoinSessionModal(true);
+                      setShowHomeMenu(false);
+                    },
                   },
-                },
-                {
-                  label: "Admin",
-                  onClick: () => {
-                    setShowAdmin(true);
-                    setShowHomeMenu(false);
+                  ...(canAccessAdmin
+                    ? [
+                        {
+                          label: "Admin",
+                          onClick: () => {
+                            void openAdminModal();
+                            setShowHomeMenu(false);
+                          },
+                        },
+                      ]
+                    : []),
+                  {
+                    label: "Statistiky",
+                    onClick: () => {
+                      setShowStatistics(true);
+                      setShowHomeMenu(false);
+                    },
                   },
-                },
-                {
-                  label: "Statistiky",
-                  onClick: () => {
-                    setShowStatistics(true);
-                    setShowHomeMenu(false);
+                  {
+                    label: "Odhlásit",
+                    onClick: () => {
+                      void performLogout();
+                      setShowHomeMenu(false);
+                    },
                   },
-                },
-              ]}
-            />
+                ]}
+              />
+            </div>
           </div>
 
           <div className="mt-8 md:mt-10">
@@ -7018,6 +7587,13 @@ export default function Home() {
                   ⏳ Lobby čeká na identifikaci a připravenost všech hráčů.
                 </div>
 
+                {!isAuthenticatedPlayerPartOfLobby && (
+                  <div className="mb-8 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-left text-sm font-bold text-red-300">
+                    Přihlášený hráč není součástí této hry. Nemůžeš převzít
+                    identitu žádného hráče v lobby.
+                  </div>
+                )}
+
                 <div className="mx-auto mb-10 max-w-4xl rounded-3xl bg-zinc-950/60 p-8 text-left">
                   <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
@@ -7043,8 +7619,26 @@ export default function Home() {
                             (entry) => entry.id === playerId,
                           );
                           const ready = Boolean(lobbyReadiness[playerId]);
-                          const isLocalPlayer =
-                            localOnlinePlayerId === playerId;
+                          const connectedDevice = connectedDeviceByPlayerId[playerId] ?? null;
+                          const isConnected = Boolean(connectedDevice);
+                          const isAuthenticatedCard =
+                            authenticatedLobbyPlayerId === playerId;
+                          const isConnectedOnThisDevice =
+                            isAuthenticatedCard &&
+                            authenticatedLobbyDeviceId !== null &&
+                            connectedDevice === authenticatedLobbyDeviceId;
+
+                          const statusLabel = ready
+                            ? "Připraven"
+                            : isConnected
+                              ? "Připojen"
+                              : "Čeká na připojení";
+
+                          const statusClassName = ready
+                            ? "bg-green-500 text-black"
+                            : isConnected
+                              ? "bg-blue-500 text-white"
+                              : "bg-zinc-800 text-zinc-400";
 
                           return (
                             <div
@@ -7062,29 +7656,34 @@ export default function Home() {
 
                               <div className="flex flex-col gap-3 md:items-end">
                                 <div
-                                  className={`rounded-full px-3 py-1 text-center text-sm font-bold ${
-                                    ready
-                                      ? "bg-green-500 text-black"
-                                      : "bg-zinc-800 text-zinc-400"
-                                  }`}
+                                  className={`rounded-full px-3 py-1 text-center text-sm font-bold ${statusClassName}`}
                                 >
-                                  {ready ? "Připraven" : "Čeká"}
+                                  {statusLabel}
                                 </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => claimOnlinePlayer(playerId)}
-                                  disabled={isLocalPlayer && ready}
-                                  className={`rounded-2xl px-4 py-3 text-sm font-black transition ${
-                                    isLocalPlayer
-                                      ? "cursor-default bg-green-600 text-white"
-                                      : "bg-blue-600 text-white hover:bg-blue-500"
-                                  }`}
-                                >
-                                  {isLocalPlayer
-                                    ? "Připraven"
-                                    : "Jsem tento hráč"}
-                                </button>
+                                {isAuthenticatedCard && isAuthenticatedPlayerPartOfLobby && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        void toggleAuthenticatedLobbyPresence();
+                                      }}
+                                      className={`rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:brightness-110 ${
+                                        !isConnectedOnThisDevice
+                                          ? "bg-orange-600"
+                                          : ready
+                                            ? "bg-green-600"
+                                            : "bg-orange-600"
+                                      }`}
+                                    >
+                                      {!isConnectedOnThisDevice
+                                        ? "Nejsem připraven"
+                                        : ready
+                                          ? "Jsem připraven"
+                                          : "Nejsem připraven"}
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </div>
                           );
@@ -7104,7 +7703,7 @@ export default function Home() {
                       </div>
 
                       <div className="mt-4 text-sm text-zinc-400">
-                        ⇠ Připoj se ke hře, potvrď kdo jsi. 
+                        ⇠ Připojení identity je svázané s přihlášeným účtem.
                         Vyzyvatel začne hru, když budou všichni hráči připraveni.
                       </div>
 
@@ -7120,9 +7719,9 @@ export default function Home() {
                           <button
                             type="button"
                             onClick={handleStartOnlineGame}
-                            disabled={!canStartOnlineGame}
+                            disabled={!canStartOnlineGameAsCurrentAuth}
                             className={`mt-8 w-full rounded-2xl px-6 py-4 text-xl font-black transition ${
-                              canStartOnlineGame
+                              canStartOnlineGameAsCurrentAuth
                                 ? inviteActionToneClass
                                 : "cursor-not-allowed bg-zinc-700 text-zinc-400"
                             }`}
@@ -7170,6 +7769,12 @@ export default function Home() {
             </div>
 
             <div className="flex flex-wrap gap-3">
+              {authSession && (
+                <div className={`px-1 py-3 text-sm font-bold ${currentAuthStatusClassName}`}>
+                  {currentAuthPlayerName} · {currentAuthStatusText}
+                </div>
+              )}
+
               {gameStarted ? (
                 <>
                   <button
@@ -7216,7 +7821,7 @@ export default function Home() {
                       {
                         label: "Admin",
                         onClick: () => {
-                          setShowAdmin(true);
+                          void openAdminModal();
                           setShowGameMenu(false);
                         },
                       },
@@ -7241,6 +7846,13 @@ export default function Home() {
                           setShowGameMenu(false);
                         },
                       },
+                      {
+                        label: "Odhlásit",
+                        onClick: () => {
+                          void performLogout();
+                          setShowGameMenu(false);
+                        },
+                      },
                     ]}
                   />
                 </>
@@ -7257,16 +7869,34 @@ export default function Home() {
                       },
                     },
                     {
-                      label: "Admin",
+                      label: "Připojit se",
                       onClick: () => {
-                        setShowAdmin(true);
+                        setShowJoinSessionModal(true);
                         setShowSetupMenu(false);
                       },
                     },
+                    ...(canAccessAdmin
+                      ? [
+                          {
+                            label: "Admin",
+                            onClick: () => {
+                              void openAdminModal();
+                              setShowSetupMenu(false);
+                            },
+                          },
+                        ]
+                      : []),
                     {
                       label: "Statistiky",
                       onClick: () => {
                         setShowStatistics(true);
+                        setShowSetupMenu(false);
+                      },
+                    },
+                    {
+                      label: "Odhlásit",
+                      onClick: () => {
+                        void performLogout();
                         setShowSetupMenu(false);
                       },
                     },
@@ -8529,11 +9159,14 @@ export default function Home() {
                     }
 
                     if (selectedGameMode === "online" && !hasComputerPlayer) {
-                      setShowPlayModeSetup(false);
                       setGameMode("online");
 
                       try {
-                        await handleCreateOnlineSession();
+                        const created = await handleCreateOnlineSession();
+
+                        if (created) {
+                          setShowPlayModeSetup(false);
+                        }
                       } catch (err) {
                         console.error(
                           "PLAY MODE SETUP -> create online session error:",
@@ -9836,14 +10469,31 @@ export default function Home() {
         isOpen={showAdmin}
         onClose={() => setShowAdmin(false)}
         players={playersState}
+        playerSessionActivityById={playerSessionActivityById}
         setPlayers={setPlayersState}
         newPlayerId={newPlayerId}
         setNewPlayerId={setNewPlayerId}
         newPlayerName={newPlayerName}
         setNewPlayerName={setNewPlayerName}
-        onAddPlayer={handleAddPlayer}
+        newPlayerPassword={newPlayerPassword}
+        setNewPlayerPassword={setNewPlayerPassword}
+        newPlayerPasswordConfirm={newPlayerPasswordConfirm}
+        setNewPlayerPasswordConfirm={setNewPlayerPasswordConfirm}
+        onAddPlayer={() => {
+          void handleAddPlayer();
+        }}
         onSavePlayer={updatePlayerInSupabase}
-        onRequestDeletePlayer={setDeletePlayerId}
+        onSetPlayerPassword={setPlayerPasswordFromAdmin}
+        onRequestDeletePlayer={(playerId) => {
+          if (!canAccessAdmin) {
+            alert("Tato akce je dostupná pouze pro admin účet.");
+
+            return;
+          }
+
+          setDeletePlayerId(playerId);
+        }}
+        onRevokePlayerSessions={revokeSessionsForPlayer}
         onLeagueGamesChanged={() => refreshLeagueStatistics(playersState)}
       />
 

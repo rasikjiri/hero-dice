@@ -87,6 +87,65 @@ export const updateOnlineState = async (
   }
 };
 
+export const claimOnlinePlayerIdentity = async (
+  sessionId: string,
+  playerId: string,
+  deviceId: string,
+) => {
+  const { data, error } = await supabase.rpc("claim_online_player_identity", {
+    p_session_id: sessionId,
+    p_player_id: playerId,
+    p_device_id: deviceId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? null) as Record<string, unknown> | null;
+};
+
+export const setOnlinePlayerReadiness = async (
+  sessionId: string,
+  playerId: string,
+  deviceId: string,
+  ready: boolean,
+) => {
+  const { data, error } = await supabase.rpc("set_online_player_readiness", {
+    p_session_id: sessionId,
+    p_player_id: playerId,
+    p_device_id: deviceId,
+    p_ready: ready,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? null) as Record<string, unknown> | null;
+};
+
+export const connectOnlinePlayerAndSetReady = async (
+  sessionId: string,
+  playerId: string,
+  deviceId: string,
+) => {
+  const { data, error } = await supabase.rpc(
+    "connect_online_player_and_set_ready",
+    {
+      p_session_id: sessionId,
+      p_player_id: playerId,
+      p_device_id: deviceId,
+    },
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? null) as Record<string, unknown> | null;
+};
+
 export const subscribeToSession = (
   sessionId: string,
   onStateChange: (gameState: unknown) => void

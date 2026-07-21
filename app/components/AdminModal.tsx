@@ -8,6 +8,7 @@ type Player = {
   id: string;
   name: string;
   active: boolean;
+  role: "admin" | "player";
 };
 
 type ManagedGame = {
@@ -43,14 +44,21 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
   players: Player[];
+  playerSessionActivityById: Record<string, boolean>;
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   newPlayerId: string;
   setNewPlayerId: React.Dispatch<React.SetStateAction<string>>;
   newPlayerName: string;
   setNewPlayerName: React.Dispatch<React.SetStateAction<string>>;
+  newPlayerPassword: string;
+  setNewPlayerPassword: React.Dispatch<React.SetStateAction<string>>;
+  newPlayerPasswordConfirm: string;
+  setNewPlayerPasswordConfirm: React.Dispatch<React.SetStateAction<string>>;
   onAddPlayer: () => void;
-  onSavePlayer: (playerId: string, updates: { name?: string; active?: boolean }) => void;
+  onSavePlayer: (playerId: string, updates: { name?: string; active?: boolean; role?: "admin" | "player" }) => Promise<void> | void;
+  onSetPlayerPassword: (playerId: string, password: string, passwordConfirm: string) => Promise<void>;
   onRequestDeletePlayer: (playerId: string) => void;
+  onRevokePlayerSessions: (playerId: string) => Promise<void>;
   onLeagueGamesChanged: () => Promise<void>;
 };
 
@@ -64,14 +72,21 @@ export default function AdminModal({
   isOpen,
   onClose,
   players,
+  playerSessionActivityById,
   setPlayers,
   newPlayerId,
   setNewPlayerId,
   newPlayerName,
   setNewPlayerName,
+  newPlayerPassword,
+  setNewPlayerPassword,
+  newPlayerPasswordConfirm,
+  setNewPlayerPasswordConfirm,
   onAddPlayer,
   onSavePlayer,
+  onSetPlayerPassword,
   onRequestDeletePlayer,
+  onRevokePlayerSessions,
   onLeagueGamesChanged,
 }: Props) {
   const [activeTab, setActiveTab] = useState<AdminTab>("players");
@@ -84,6 +99,18 @@ export default function AdminModal({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [revokePlayerId, setRevokePlayerId] = useState<string | null>(null);
+  const [passwordDraftByPlayerId, setPasswordDraftByPlayerId] = useState<
+    Record<string, string>
+  >({});
+  const [passwordConfirmDraftByPlayerId, setPasswordConfirmDraftByPlayerId] =
+    useState<Record<string, string>>({});
+  const [roleDraftByPlayerId, setRoleDraftByPlayerId] = useState<
+    Record<string, Player["role"]>
+  >({});
+  const [savingPasswordForPlayerId, setSavingPasswordForPlayerId] = useState<
+    string | null
+  >(null);
 
   async function loadFunGames() {
     setIsLoadingFunGames(true);
@@ -273,77 +300,243 @@ export default function AdminModal({
                 {players.map((player) => (
                   <div
                     key={player.id}
-                    className="flex items-center justify-between rounded-2xl border border-zinc-700 bg-black/40 p-5"
+                    className="rounded-2xl border border-zinc-700 bg-black/40 p-5"
                   >
-                    <div>
-                      <input
-                        type="text"
-                        value={player.name}
-                        onChange={(e) => {
-                          const updatedPlayers = players.map((currentPlayer) =>
-                            currentPlayer.id === player.id
-                              ? {
-                                  ...currentPlayer,
-                                  name: e.target.value,
-                                }
-                              : currentPlayer,
-                          );
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <input
+                          type="text"
+                          value={player.name}
+                          onChange={(e) => {
+                            const updatedPlayers = players.map((currentPlayer) =>
+                              currentPlayer.id === player.id
+                                ? {
+                                    ...currentPlayer,
+                                    name: e.target.value,
+                                  }
+                                : currentPlayer,
+                            );
 
-                          setPlayers(updatedPlayers);
-                        }}
-                        className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-2xl font-black text-white outline-none transition focus:border-yellow-400"
-                      />
+                            setPlayers(updatedPlayers);
+                          }}
+                          className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-2xl font-black text-white outline-none transition focus:border-yellow-400"
+                        />
 
-                      <div className="mt-1 text-sm text-zinc-500">ID: {player.id}</div>
+                        <div className="mt-1 text-sm text-zinc-500">ID: {player.id}</div>
+
+                        <div className="mt-1 text-sm text-zinc-400">
+                          Session: {playerSessionActivityById[player.id] ? "Aktivní" : "Neaktivní"}
+                        </div>
+
+                        <div className="mt-1 text-sm text-zinc-400">
+                          Role: {(roleDraftByPlayerId[player.id] || player.role) === "admin" ? "Admin" : "Player"}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 lg:justify-end">
+                        <button
+                          onClick={() => {
+                            onSavePlayer(player.id, {
+                              name: player.name,
+                            });
+                          }}
+                          className="min-w-[118px] rounded-xl border border-zinc-600 bg-green-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+                        >
+                          Uložit
+                        </button>
+
+                        <button
+                          onClick={() => onRequestDeletePlayer(player.id)}
+                          className="min-w-[118px] rounded-xl border border-zinc-600 bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+                        >
+                          Smazat
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            if (!playerSessionActivityById[player.id]) {
+                              return;
+                            }
+
+                            setRevokePlayerId(player.id);
+
+                            try {
+                              await onRevokePlayerSessions(player.id);
+                            } finally {
+                              setRevokePlayerId(null);
+                            }
+                          }}
+                          disabled={
+                            !playerSessionActivityById[player.id] ||
+                            revokePlayerId === player.id
+                          }
+                          className="min-w-[118px] rounded-xl border border-zinc-600 bg-amber-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+                        >
+                          {revokePlayerId === player.id
+                            ? "Odhlašuji..."
+                            : "Odhlásit"}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            const updatedPlayers = players.map((currentPlayer) =>
+                              currentPlayer.id === player.id
+                                ? {
+                                    ...currentPlayer,
+                                    active: !currentPlayer.active,
+                                  }
+                                : currentPlayer,
+                            );
+
+                            setPlayers(updatedPlayers);
+
+                            onSavePlayer(player.id, {
+                              active: !player.active,
+                            });
+
+                            localStorage.setItem(
+                              "heroDicePlayers",
+                              JSON.stringify(updatedPlayers),
+                            );
+                          }}
+                          className={`min-w-[118px] rounded-xl border border-zinc-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110 ${
+                            player.active
+                              ? "bg-green-600"
+                              : "bg-red-600"
+                          }`}
+                        >
+                          {player.active ? "Aktivní" : "Neaktivní"}
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          onSavePlayer(player.id, {
-                            name: player.name,
-                          });
+                    <div className="mt-4 grid gap-2 lg:grid-cols-[1fr_1fr_180px_auto]">
+                      <input
+                        type="password"
+                        value={passwordDraftByPlayerId[player.id] || ""}
+                        onChange={(event) => {
+                          const nextPassword = event.target.value;
+
+                          setPasswordDraftByPlayerId((prev) => ({
+                            ...prev,
+                            [player.id]: nextPassword,
+                          }));
                         }}
-                        className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-                      >
-                        Uložit
-                      </button>
+                        placeholder="Nové heslo"
+                        className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
+                      />
 
-                      <button
-                        onClick={() => onRequestDeletePlayer(player.id)}
-                        className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
-                      >
-                        Smazat
-                      </button>
+                      <input
+                        type="password"
+                        value={passwordConfirmDraftByPlayerId[player.id] || ""}
+                        onChange={(event) => {
+                          const nextPasswordConfirm = event.target.value;
 
-                      <button
-                        onClick={() => {
-                          const updatedPlayers = players.map((currentPlayer) =>
-                            currentPlayer.id === player.id
-                              ? {
-                                  ...currentPlayer,
-                                  active: !currentPlayer.active,
-                                }
-                              : currentPlayer,
-                          );
-
-                          setPlayers(updatedPlayers);
-
-                          onSavePlayer(player.id, {
-                            active: !player.active,
-                          });
-
-                          localStorage.setItem(
-                            "heroDicePlayers",
-                            JSON.stringify(updatedPlayers),
-                          );
+                          setPasswordConfirmDraftByPlayerId((prev) => ({
+                            ...prev,
+                            [player.id]: nextPasswordConfirm,
+                          }));
                         }}
-                        className={`rounded-xl px-4 py-2 font-bold transition hover:scale-[1.02] hover:brightness-110 ${
-                          player.active ? "bg-green-600" : "bg-red-600"
-                        }`}
+                        placeholder="Potvrzení hesla"
+                        className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
+                      />
+
+                      <select
+                        value={roleDraftByPlayerId[player.id] || player.role}
+                        onChange={(event) => {
+                          const nextRole: Player["role"] =
+                            event.target.value === "admin" ? "admin" : "player";
+
+                          setRoleDraftByPlayerId((prev) => ({
+                            ...prev,
+                            [player.id]: nextRole,
+                          }));
+                        }}
+                        className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
                       >
-                        {player.active ? "Aktivní" : "Neaktivní"}
+                        <option value="player">Player</option>
+                        <option value="admin">Admin</option>
+                      </select>
+
+                      <button
+                        onClick={async () => {
+                          const password = passwordDraftByPlayerId[player.id] || "";
+                          const passwordConfirm =
+                            passwordConfirmDraftByPlayerId[player.id] || "";
+                          const nextRole = roleDraftByPlayerId[player.id] || player.role;
+                          const roleChanged = nextRole !== player.role;
+                          const hasPasswordChange = Boolean(password || passwordConfirm);
+
+                          if (!hasPasswordChange && !roleChanged) {
+                            alert("Nejsou žádné změny k uložení.");
+
+                            return;
+                          }
+
+                          setSavingPasswordForPlayerId(player.id);
+
+                          try {
+                            if (roleChanged) {
+                              await onSavePlayer(player.id, {
+                                role: nextRole,
+                              });
+
+                              setPlayers((prev) =>
+                                prev.map((currentPlayer) =>
+                                  currentPlayer.id === player.id
+                                    ? {
+                                        ...currentPlayer,
+                                        role: nextRole,
+                                      }
+                                    : currentPlayer,
+                                ),
+                              );
+
+                              setRoleDraftByPlayerId((prev) => {
+                                const next = { ...prev };
+
+                                delete next[player.id];
+
+                                return next;
+                              });
+                            }
+
+                            if (hasPasswordChange) {
+                              await onSetPlayerPassword(
+                                player.id,
+                                password,
+                                passwordConfirm,
+                              );
+
+                              setPasswordDraftByPlayerId((prev) => ({
+                                ...prev,
+                                [player.id]: "",
+                              }));
+
+                              setPasswordConfirmDraftByPlayerId((prev) => ({
+                                ...prev,
+                                [player.id]: "",
+                              }));
+                            }
+
+                            if (roleChanged && !hasPasswordChange) {
+                              alert("Role byla uložena.");
+                            }
+                          } finally {
+                            setSavingPasswordForPlayerId(null);
+                          }
+                        }}
+                        disabled={savingPasswordForPlayerId === player.id}
+                        className="min-w-[118px] rounded-xl border border-zinc-600 bg-purple-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+                      >
+                        {savingPasswordForPlayerId === player.id
+                          ? "Ukládám..."
+                          : "Uložit heslo/roli"}
                       </button>
+                    </div>
+
+                    <div className="mt-2 text-xs text-zinc-500">
+                      Nech prázdné, pokud nechceš heslo měnit.
                     </div>
                   </div>
                 ))}
@@ -357,6 +550,22 @@ export default function AdminModal({
                       placeholder="Player ID"
                       value={newPlayerId}
                       onChange={(e) => setNewPlayerId(e.target.value)}
+                      className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
+                    />
+
+                    <input
+                      type="password"
+                      placeholder="Heslo hráče"
+                      value={newPlayerPassword}
+                      onChange={(e) => setNewPlayerPassword(e.target.value)}
+                      className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
+                    />
+
+                    <input
+                      type="password"
+                      placeholder="Potvrzení hesla"
+                      value={newPlayerPasswordConfirm}
+                      onChange={(e) => setNewPlayerPasswordConfirm(e.target.value)}
                       className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
                     />
 

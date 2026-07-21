@@ -51,6 +51,20 @@ Page.tsx Code Cleanup – Phase 1
 ```  
   
 ---  
+
+## Typ úlohy
+
+Volitelné pole pro rychlé zařazení zadání.
+
+Doporučené typy:
+
+- Implementační úloha
+- Oprava chyby
+- Architektonická analýza
+- Dokumentační úloha
+- Online Platform Foundation
+
+---  
   
 ## Goal  
   
@@ -230,7 +244,7 @@ Task Brief
   
 ↓  
   
-Agent  
+Externí AI Agent  
   
 ↓  
   

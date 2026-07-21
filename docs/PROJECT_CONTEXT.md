@@ -154,6 +154,29 @@ Ne všechny funkce musí být implementovány okamžitě.
 Každá nová verze projektu by však měla přibližovat aplikaci této vizi.  
   
 ---  
+
+# Strategická poznámka (Hero Dice 4.5)
+
+Současně s vývojem Hero Dice 4.5 probíhá návrh nové architektonicky samostatné platformy Hero Dice Online Platform Foundation.
+
+Tato platforma představuje dlouhodobý směr vývoje projektu a je určena pro budoucí mobilní verzi Hero Dice.
+
+Plánovaný postup:
+
+- první cílová platforma je iOS,
+- následně Android,
+- následně online multiplayer,
+- následně integrace stávající herní logiky Hero Dice.
+
+Vývoj Hero Dice 4.5 pokračuje nezávisle.
+
+Online přihlášení implementované ve verzi 4.5 není určeno jako technický základ nové mobilní platformy.
+
+Obě větve se vyvíjejí paralelně.
+
+Případné převzetí jednotlivých částí bude posouzeno až po jejich dokončení, otestování a architektonickém schválení.
+
+---  
   
 # Rozsah projektu  
   

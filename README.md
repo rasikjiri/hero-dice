@@ -220,6 +220,13 @@ Highlights:
 - Online game metadata
   
 Projekt je aktivně vyvíjen.  
+
+Stručná roadmapa další etapy:
+
+- probíhá příprava Online Platform Foundation,
+- vývoj mobilního základu začíná na iOS,
+- Android bude následovat v další fázi,
+- mobilní platforma je vyvíjena odděleně od současného Hero Dice.
   
 Důraz je kladen na:  
   
