@@ -890,6 +890,12 @@ export default function Home() {
     .filter((player) => player.active)
     .sort((a, b) => a.name.localeCompare(b.name, "cs"));
 
+  const activePlayerNames = selectablePlayers.map((player) => player.name);
+
+  const onlinePlayerNames = selectablePlayers
+    .filter((player) => playerSessionActivityById[player.id])
+    .map((player) => player.name);
+
   const maxPlayers = selectablePlayers.length + computerPlayers.length;
 
   const hasComputerPlayer = selectedPlayers.some((playerId) =>
@@ -8017,6 +8023,56 @@ export default function Home() {
 
           {!gameStarted && (
             <div className="mx-auto mb-12 mt-6 w-full max-w-5xl rounded-3xl bg-zinc-900/40 p-6 backdrop-blur-sm md:p-8">
+              <div className="mb-8 rounded-2xl border border-zinc-800 bg-black/30 p-5">
+                <div className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-yellow-400">
+                  Aktuálně:
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4">
+                    <div className="mb-2 text-xs font-black uppercase tracking-wide text-zinc-400">
+                      Aktivní hráči ({activePlayerNames.length})
+                    </div>
+
+                    {activePlayerNames.length === 0 ? (
+                      <div className="text-sm text-zinc-500">Žádní aktivní hráči.</div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {activePlayerNames.map((name) => (
+                          <span
+                            key={name}
+                            className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm font-bold text-zinc-200"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4">
+                    <div className="mb-2 text-xs font-black uppercase tracking-wide text-zinc-400">
+                      Online hráči ({onlinePlayerNames.length})
+                    </div>
+
+                    {onlinePlayerNames.length === 0 ? (
+                      <div className="text-sm text-zinc-500">Aktuálně nikdo online.</div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {onlinePlayerNames.map((name) => (
+                          <span
+                            key={name}
+                            className="rounded-full border border-green-600/40 bg-green-600/15 px-3 py-1 text-sm font-bold text-green-300"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="text-sm font-bold uppercase tracking-[0.2em] text-yellow-400">
@@ -8032,15 +8088,6 @@ export default function Home() {
                   <label className="text-sm font-bold uppercase tracking-wide text-zinc-400">
                     Počet hráčů
                   </label>
-
-                  <div className="text-sm text-zinc-500 tracking-[0.08em]">
-                    Aktuálně: {maxPlayers} aktivní
-                    {maxPlayers === 1
-                      ? " hráč"
-                      : maxPlayers >= 2 && maxPlayers <= 4
-                        ? " hráči"
-                        : " hráčů"}
-                  </div>
 
                   <select
                     value={playerCount}
