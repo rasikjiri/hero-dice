@@ -129,6 +129,29 @@ button:disabled {
     );
 }
 
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.secret-input {
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+}
+
+.secret-input:-webkit-autofill,
+.secret-input:-webkit-autofill:hover,
+.secret-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff;
+  box-shadow: 0 0 0 1000px #09090b inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 /* HERO UI */
 
 .hero-card {

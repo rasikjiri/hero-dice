@@ -203,6 +203,8 @@ export default function Home() {
 
   const [newPlayerName, setNewPlayerName] = useState("");
 
+  const [newPlayerEmail, setNewPlayerEmail] = useState("");
+
   const [newPlayerPassword, setNewPlayerPassword] = useState("");
 
   const [newPlayerPasswordConfirm, setNewPlayerPasswordConfirm] = useState("");
@@ -779,6 +781,8 @@ export default function Home() {
     name: string;
     active: boolean;
     role: AppRole;
+    email?: string | null;
+    passwordPlain?: string | null;
   };
 
   // EDIT COMPUTER PLAYERS HERE
@@ -1008,21 +1012,26 @@ export default function Home() {
 
   const handleAddPlayer = async () => {
     if (!canAccessAdmin) {
-      alert("Tato akce je dostupná pouze pro admin účet.");
-
-      return;
+      throw new Error("Tato akce je dostupná pouze pro admin účet.");
     }
 
     const trimmedId = newPlayerId.trim();
 
     const trimmedName = newPlayerName.trim();
+    const trimmedEmail = newPlayerEmail.trim().toLowerCase();
     const trimmedPassword = newPlayerPassword.trim();
     const trimmedPasswordConfirm = newPlayerPasswordConfirm.trim();
 
     if (!trimmedId || !trimmedName) {
-      alert("Vyplň ID i jméno hráče.");
+      throw new Error("Vyplň ID i jméno hráče.");
+    }
 
-      return;
+    if (!trimmedEmail) {
+      throw new Error("Vyplň e-mail hráče.");
+    }
+
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmedEmail)) {
+      throw new Error("Zadej platný e-mail hráče.");
     }
 
     const exists = playersState.some(
@@ -1030,28 +1039,20 @@ export default function Home() {
     );
 
     if (exists) {
-      alert("Player ID už existuje.");
-
-      return;
+      throw new Error("Player ID už existuje.");
     }
 
     if (trimmedPassword || trimmedPasswordConfirm) {
       if (!trimmedPassword || !trimmedPasswordConfirm) {
-        alert("Vyplň heslo i potvrzení hesla pro nového hráče.");
-
-        return;
+        throw new Error("Vyplň heslo i potvrzení hesla pro nového hráče.");
       }
 
       if (trimmedPassword.length < minimumPasswordLength) {
-        alert(`Heslo musí mít alespoň ${minimumPasswordLength} znaků.`);
-
-        return;
+        throw new Error(`Heslo musí mít alespoň ${minimumPasswordLength} znaků.`);
       }
 
       if (trimmedPassword !== trimmedPasswordConfirm) {
-        alert("Heslo a potvrzení hesla se neshodují.");
-
-        return;
+        throw new Error("Heslo a potvrzení hesla se neshodují.");
       }
     }
 
@@ -1060,6 +1061,7 @@ export default function Home() {
       name: trimmedName,
       active: true,
       role: "player" as AppRole,
+      email: trimmedEmail,
     };
 
     const updatedPlayers = [...playersState, newPlayer];
@@ -1080,6 +1082,7 @@ export default function Home() {
 
     setNewPlayerId("");
     setNewPlayerName("");
+    setNewPlayerEmail("");
     setNewPlayerPassword("");
     setNewPlayerPasswordConfirm("");
   };
@@ -1578,9 +1581,7 @@ export default function Home() {
 
   const revokeSessionsForPlayer = async (playerId: string) => {
     if (!canAccessAdmin) {
-      alert("Tato akce je dostupná pouze pro admin účet.");
-
-      return;
+      throw new Error("Tato akce je dostupná pouze pro admin účet.");
     }
 
     await revokePlayerSessions(playerId);
@@ -1627,30 +1628,22 @@ export default function Home() {
     passwordConfirm: string,
   ) => {
     if (!canAccessAdmin || !authSession?.sessionToken) {
-      alert("Tato akce je dostupná pouze pro admin účet.");
-
-      return;
+      throw new Error("Tato akce je dostupná pouze pro admin účet.");
     }
 
     const trimmedPassword = password.trim();
     const trimmedPasswordConfirm = passwordConfirm.trim();
 
     if (!trimmedPassword || !trimmedPasswordConfirm) {
-      alert("Vyplň nové heslo i potvrzení hesla.");
-
-      return;
+      throw new Error("Vyplň nové heslo i potvrzení hesla.");
     }
 
     if (trimmedPassword.length < minimumPasswordLength) {
-      alert(`Heslo musí mít alespoň ${minimumPasswordLength} znaků.`);
-
-      return;
+      throw new Error(`Heslo musí mít alespoň ${minimumPasswordLength} znaků.`);
     }
 
     if (trimmedPassword !== trimmedPasswordConfirm) {
-      alert("Heslo a potvrzení hesla se neshodují.");
-
-      return;
+      throw new Error("Heslo a potvrzení hesla se neshodují.");
     }
 
     try {
@@ -1661,12 +1654,8 @@ export default function Home() {
       );
 
       if (!saved) {
-        alert("Uložení hesla se nezdařilo.");
-
-        return;
+        throw new Error("Uložení hesla se nezdařilo.");
       }
-
-      alert("Heslo bylo úspěšně uloženo.");
     } catch (error) {
       const errorMessage = resolveErrorMessage(
         error,
@@ -1679,9 +1668,7 @@ export default function Home() {
       });
 
       if (errorMessage.includes("Neplatná nebo neaktivní admin session")) {
-        alert("Admin session vypršela. Přihlas se prosím znovu.");
-
-        return;
+        throw new Error("Admin session vypršela. Přihlas se prosím znovu.");
       }
 
       if (
@@ -1689,14 +1676,12 @@ export default function Home() {
           .toLowerCase()
           .includes("could not find the function public.set_player_password")
       ) {
-        alert(
+        throw new Error(
           "RPC set_player_password neni v cache nebo ma nekompatibilni podpis. Spust prosim migraci 20260721_set_player_password_rpc_cache_compat.sql v Supabase SQL Editoru.",
         );
-
-        return;
       }
 
-      alert(`Uložení hesla se nezdařilo: ${errorMessage}`);
+      throw new Error(`Uložení hesla se nezdařilo: ${errorMessage}`);
     }
   };
 
@@ -5175,7 +5160,7 @@ export default function Home() {
     try {
       const { data, error } = await supabase
         .from("players")
-        .select("id,name,active,role,created_at")
+        .select("id,name,active,role,email,password_plain,created_at")
         .order("created_at", {
           ascending: true,
         });
@@ -5192,6 +5177,8 @@ export default function Home() {
           name: player.name,
           active: Boolean(player.active),
           role: player.role === "admin" ? "admin" : "player",
+          email: player.email,
+          passwordPlain: player.password_plain,
         }));
 
         setPlayersState(normalizedPlayers);
@@ -5208,6 +5195,7 @@ export default function Home() {
     name: string;
     active: boolean;
     role: AppRole;
+    email?: string | null;
   }) => {
     try {
       const { error } = await supabase.from("players").insert([
@@ -5216,14 +5204,18 @@ export default function Home() {
           name: player.name,
           active: player.active,
           role: player.role,
+          email: player.email ?? null,
+          password_plain: player.id,
         },
       ]);
 
       if (error && error.code !== "23505") {
         console.error("ADD PLAYER ERROR:", error);
+        throw new Error(resolveErrorMessage(error, "Uložení hráče se nezdařilo."));
       }
     } catch (error) {
       console.error(error);
+      throw new Error(resolveErrorMessage(error, "Uložení hráče se nezdařilo."));
     }
   };
 
@@ -5233,15 +5225,28 @@ export default function Home() {
       name?: string;
       active?: boolean;
       role?: AppRole;
+      email?: string | null;
     },
   ) => {
     if (!canAccessAdmin) {
-      alert("Tato akce je dostupná pouze pro admin účet.");
-
-      return;
+      throw new Error("Tato akce je dostupná pouze pro admin účet.");
     }
 
     try {
+      if (typeof updates.email === "string") {
+        const normalizedEmail = updates.email.trim().toLowerCase();
+
+        if (normalizedEmail.length === 0) {
+          throw new Error("E-mail hráče nesmí být prázdný.");
+        }
+
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail)) {
+          throw new Error("Zadej platný e-mail hráče.");
+        }
+
+        updates.email = normalizedEmail;
+      }
+
       const { error } = await supabase
         .from("players")
         .update(updates)
@@ -5249,9 +5254,11 @@ export default function Home() {
 
       if (error) {
         console.error("UPDATE PLAYER ERROR:", error);
+        throw new Error(resolveErrorMessage(error, "Uložení hráče se nezdařilo."));
       }
     } catch (error) {
       console.error(error);
+      throw new Error(resolveErrorMessage(error, "Uložení hráče se nezdařilo."));
     }
   };
 
@@ -7512,8 +7519,8 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#111] px-4 py-5 text-white md:px-6 md:py-6">
       {authLoaded && !authSession && (
-        <div className="fixed inset-0 z-[999] flex items-start justify-center overflow-y-auto bg-black p-4 sm:items-center sm:p-6">
-          <div className="my-4 w-full max-w-md rounded-3xl border border-yellow-500/20 bg-zinc-900 p-6 text-center shadow-2xl sm:my-0 sm:p-8">
+        <div className="fixed inset-0 z-[999] flex items-start justify-center overflow-y-auto bg-black px-4 pb-8 pt-4 scrollbar-none sm:px-6 sm:pb-10 sm:pt-6">
+          <div className="my-1 w-full max-w-md rounded-3xl border border-yellow-500/20 bg-zinc-900 p-6 text-center shadow-2xl sm:my-2 sm:p-8">
             <h1 className="mb-3 text-5xl font-black text-yellow-400 tracking-[0.14em]">
               HERO DICE
             </h1>
@@ -10910,6 +10917,8 @@ export default function Home() {
         setNewPlayerId={setNewPlayerId}
         newPlayerName={newPlayerName}
         setNewPlayerName={setNewPlayerName}
+        newPlayerEmail={newPlayerEmail}
+        setNewPlayerEmail={setNewPlayerEmail}
         newPlayerPassword={newPlayerPassword}
         setNewPlayerPassword={setNewPlayerPassword}
         newPlayerPasswordConfirm={newPlayerPasswordConfirm}
@@ -10921,9 +10930,7 @@ export default function Home() {
         onSetPlayerPassword={setPlayerPasswordFromAdmin}
         onRequestDeletePlayer={(playerId) => {
           if (!canAccessAdmin) {
-            alert("Tato akce je dostupná pouze pro admin účet.");
-
-            return;
+            throw new Error("Tato akce je dostupná pouze pro admin účet.");
           }
 
           setDeletePlayerId(playerId);

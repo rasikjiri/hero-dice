@@ -15,6 +15,7 @@ type Player = {
   active: boolean;
   role: "admin" | "player";
   email?: string | null;
+  passwordPlain?: string | null;
 };
 
 type ManagedGame = {
@@ -46,6 +47,12 @@ type DeleteTarget = {
   winner: string;
 };
 
+type PendingPlayerSaveTarget = {
+  playerId: string;
+  playerName: string;
+  playerEmail: string;
+};
+
 type Props = {
   isOpen: boolean;
   onClose: () => void;
@@ -58,12 +65,14 @@ type Props = {
   setNewPlayerId: React.Dispatch<React.SetStateAction<string>>;
   newPlayerName: string;
   setNewPlayerName: React.Dispatch<React.SetStateAction<string>>;
+  newPlayerEmail: string;
+  setNewPlayerEmail: React.Dispatch<React.SetStateAction<string>>;
   newPlayerPassword: string;
   setNewPlayerPassword: React.Dispatch<React.SetStateAction<string>>;
   newPlayerPasswordConfirm: string;
   setNewPlayerPasswordConfirm: React.Dispatch<React.SetStateAction<string>>;
-  onAddPlayer: () => void;
-  onSavePlayer: (playerId: string, updates: { name?: string; active?: boolean; role?: "admin" | "player" }) => Promise<void> | void;
+  onAddPlayer: () => Promise<void> | void;
+  onSavePlayer: (playerId: string, updates: { name?: string; active?: boolean; role?: "admin" | "player"; email?: string | null }) => Promise<void> | void;
   onSetPlayerPassword: (playerId: string, password: string, passwordConfirm: string) => Promise<void>;
   onRequestDeletePlayer: (playerId: string) => void;
   onRevokePlayerSessions: (playerId: string) => Promise<void>;
@@ -113,6 +122,8 @@ export default function AdminModal({
   setNewPlayerId,
   newPlayerName,
   setNewPlayerName,
+  newPlayerEmail,
+  setNewPlayerEmail,
   newPlayerPassword,
   setNewPlayerPassword,
   newPlayerPasswordConfirm,
@@ -166,6 +177,9 @@ export default function AdminModal({
     string | null
   >(null);
   const [visibleSecretByKey, setVisibleSecretByKey] = useState<Record<string, boolean>>({});
+  const [infoDialogMessage, setInfoDialogMessage] = useState<string | null>(null);
+  const [pendingPlayerSave, setPendingPlayerSave] = useState<PendingPlayerSaveTarget | null>(null);
+  const [isSavingPlayerProfile, setIsSavingPlayerProfile] = useState(false);
 
   async function loadFunGames() {
     setIsLoadingFunGames(true);
@@ -222,7 +236,18 @@ export default function AdminModal({
       setAccessRequests(requests);
     } catch (error) {
       console.error("ADMIN ACCESS REQUESTS LOAD ERROR:", error);
-      setAccessRequestsError(resolveUnknownErrorMessage(error, "Nepodařilo se načíst žádosti."));
+      const errorMessage = resolveUnknownErrorMessage(error, "Nepodařilo se načíst žádosti.");
+
+      if (
+        errorMessage.includes("PGRST202") ||
+        errorMessage.includes("list_player_access_requests")
+      ) {
+        setAccessRequestsError(
+          "V DB chybí RPC pro žádosti nebo není obnovena schema cache. Spusť migraci 20260721_player_access_requests_email_hardening.sql a pak obnov schema cache (notify pgrst, 'reload schema').",
+        );
+      } else {
+        setAccessRequestsError(errorMessage);
+      }
     } finally {
       setIsLoadingAccessRequests(false);
     }
@@ -275,11 +300,15 @@ export default function AdminModal({
           }
         } catch (notifyError) {
           console.error("ADMIN ACCESS REQUEST EMAIL ERROR:", notifyError);
-          alert(
-            `Žádost byla zpracována, ale e-mail se nepodařilo odeslat automaticky. ${resolveUnknownErrorMessage(
-              notifyError,
-              "",
-            )}`.trim(),
+          const notifyErrorMessage = resolveUnknownErrorMessage(notifyError, "");
+          const isMissingEmailConfig =
+            notifyErrorMessage.includes("RESEND_API_KEY") ||
+            notifyErrorMessage.includes("RESEND_FROM_EMAIL");
+
+          setInfoDialogMessage(
+            isMissingEmailConfig
+              ? "Žádost byla zpracována. Automatické e-maily nejsou zatím nakonfigurované, proto se otevře ruční e-mailový formulář."
+              : `Žádost byla zpracována, ale e-mail se nepodařilo odeslat automaticky. ${notifyErrorMessage}`.trim(),
           );
           openAccessRequestEmail({
             ...request,
@@ -295,9 +324,31 @@ export default function AdminModal({
       ]);
     } catch (error) {
       console.error("ADMIN ACCESS REQUEST PROCESS ERROR:", error);
-      alert(resolveUnknownErrorMessage(error, "Nepodařilo se zpracovat žádost."));
+      setInfoDialogMessage(resolveUnknownErrorMessage(error, "Nepodařilo se zpracovat žádost."));
     } finally {
       setProcessingAccessRequestId(null);
+    }
+  };
+
+  const confirmPlayerProfileSave = async () => {
+    if (!pendingPlayerSave) {
+      return;
+    }
+
+    setIsSavingPlayerProfile(true);
+
+    try {
+      await onSavePlayer(pendingPlayerSave.playerId, {
+        name: pendingPlayerSave.playerName,
+        email: pendingPlayerSave.playerEmail,
+      });
+
+      setPendingPlayerSave(null);
+      setInfoDialogMessage("Změny hráče byly uloženy.");
+    } catch (error) {
+      setInfoDialogMessage(resolveUnknownErrorMessage(error, "Uložení hráče se nezdařilo."));
+    } finally {
+      setIsSavingPlayerProfile(false);
     }
   };
 
@@ -549,6 +600,25 @@ export default function AdminModal({
                           }}
                         />
 
+                        <input
+                          type="email"
+                          value={player.email || ""}
+                          onChange={(e) => {
+                            const updatedPlayers = players.map((currentPlayer) =>
+                              currentPlayer.id === player.id
+                                ? {
+                                    ...currentPlayer,
+                                    email: e.target.value,
+                                  }
+                                : currentPlayer,
+                            );
+
+                            setPlayers(updatedPlayers);
+                          }}
+                          placeholder="E-mail hráče"
+                          className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
+                        />
+
                         <div className="mt-1 text-sm text-zinc-500">ID: {player.id}</div>
 
                         <div className="mt-1 text-sm text-zinc-400">
@@ -563,8 +633,10 @@ export default function AdminModal({
                       <div className="flex flex-wrap gap-2 lg:justify-end">
                         <button
                           onClick={() => {
-                            onSavePlayer(player.id, {
-                              name: player.name,
+                            setPendingPlayerSave({
+                              playerId: player.id,
+                              playerName: player.name,
+                              playerEmail: player.email || "",
                             });
                           }}
                           className="min-w-[118px] rounded-xl border border-zinc-600 bg-green-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
@@ -573,7 +645,15 @@ export default function AdminModal({
                         </button>
 
                         <button
-                          onClick={() => onRequestDeletePlayer(player.id)}
+                          onClick={() => {
+                            try {
+                              onRequestDeletePlayer(player.id);
+                            } catch (error) {
+                              setInfoDialogMessage(
+                                resolveUnknownErrorMessage(error, "Smazání hráče se nezdařilo."),
+                              );
+                            }
+                          }}
                           className="min-w-[118px] rounded-xl border border-zinc-600 bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
                         >
                           Smazat
@@ -589,6 +669,11 @@ export default function AdminModal({
 
                             try {
                               await onRevokePlayerSessions(player.id);
+                              setInfoDialogMessage("Session hráče byla ukončena.");
+                            } catch (error) {
+                              setInfoDialogMessage(
+                                resolveUnknownErrorMessage(error, "Odhlášení hráče se nezdařilo."),
+                              );
                             } finally {
                               setRevokePlayerId(null);
                             }
@@ -605,7 +690,7 @@ export default function AdminModal({
                         </button>
 
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             const updatedPlayers = players.map((currentPlayer) =>
                               currentPlayer.id === player.id
                                 ? {
@@ -617,14 +702,20 @@ export default function AdminModal({
 
                             setPlayers(updatedPlayers);
 
-                            onSavePlayer(player.id, {
-                              active: !player.active,
-                            });
+                            try {
+                              await onSavePlayer(player.id, {
+                                active: !player.active,
+                              });
 
-                            localStorage.setItem(
-                              "heroDicePlayers",
-                              JSON.stringify(updatedPlayers),
-                            );
+                              localStorage.setItem(
+                                "heroDicePlayers",
+                                JSON.stringify(updatedPlayers),
+                              );
+                            } catch (error) {
+                              setInfoDialogMessage(
+                                resolveUnknownErrorMessage(error, "Uložení stavu hráče se nezdařilo."),
+                              );
+                            }
                           }}
                           className={`min-w-[118px] rounded-xl border border-zinc-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110 ${
                             player.active
@@ -637,58 +728,83 @@ export default function AdminModal({
                       </div>
                     </div>
 
-                    <div className="mt-4 grid gap-2 lg:grid-cols-[1fr_1fr_180px_auto]">
-                      <div className="relative">
-                        <input
-                          type={visibleSecretByKey[`password-${player.id}`] ? "text" : "password"}
-                          value={passwordDraftByPlayerId[player.id] || ""}
-                          onChange={(event) => {
-                            const nextPassword = event.target.value;
+                    <div className="mt-4 space-y-2">
+                      <div className="grid gap-2 lg:grid-cols-3">
+                        <div className="relative">
+                          <input
+                            type={visibleSecretByKey[`current-password-${player.id}`] ? "text" : "password"}
+                            value={player.passwordPlain || ""}
+                            readOnly
+                            placeholder="Aktuální heslo"
+                            className="secret-input w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 pr-12 text-sm font-bold text-white outline-none"
+                          />
 
-                            setPasswordDraftByPlayerId((prev) => ({
-                              ...prev,
-                              [player.id]: nextPassword,
-                            }));
-                          }}
-                          placeholder="Nové heslo"
-                          className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 pr-12 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
-                        />
+                          <button
+                            type="button"
+                            onClick={() => toggleSecretVisibility(`current-password-${player.id}`)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-black text-zinc-400 transition hover:text-white"
+                          >
+                            👁
+                          </button>
+                        </div>
 
-                        <button
-                          type="button"
-                          onClick={() => toggleSecretVisibility(`password-${player.id}`)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-black text-zinc-400 transition hover:text-white"
-                        >
-                          👁
-                        </button>
+                        <div className="relative">
+                          <input
+                            type={visibleSecretByKey[`password-${player.id}`] ? "text" : "password"}
+                            value={passwordDraftByPlayerId[player.id] || ""}
+                            onChange={(event) => {
+                              const nextPassword = event.target.value;
+
+                              setPasswordDraftByPlayerId((prev) => ({
+                                ...prev,
+                                [player.id]: nextPassword,
+                              }));
+                            }}
+                            autoComplete="new-password"
+                            spellCheck={false}
+                            placeholder="Nové heslo pro změnu"
+                            className="secret-input w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 pr-12 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => toggleSecretVisibility(`password-${player.id}`)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-black text-zinc-400 transition hover:text-white"
+                          >
+                            👁
+                          </button>
+                        </div>
+
+                        <div className="relative">
+                          <input
+                            type={visibleSecretByKey[`password-confirm-${player.id}`] ? "text" : "password"}
+                            value={passwordConfirmDraftByPlayerId[player.id] || ""}
+                            onChange={(event) => {
+                              const nextPasswordConfirm = event.target.value;
+
+                              setPasswordConfirmDraftByPlayerId((prev) => ({
+                                ...prev,
+                                [player.id]: nextPasswordConfirm,
+                              }));
+                            }}
+                            autoComplete="new-password"
+                            spellCheck={false}
+                            placeholder="Potvrzení hesla"
+                            className="secret-input w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 pr-12 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => toggleSecretVisibility(`password-confirm-${player.id}`)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-black text-zinc-400 transition hover:text-white"
+                          >
+                            👁
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="relative">
-                        <input
-                          type={visibleSecretByKey[`password-confirm-${player.id}`] ? "text" : "password"}
-                          value={passwordConfirmDraftByPlayerId[player.id] || ""}
-                          onChange={(event) => {
-                            const nextPasswordConfirm = event.target.value;
-
-                            setPasswordConfirmDraftByPlayerId((prev) => ({
-                              ...prev,
-                              [player.id]: nextPasswordConfirm,
-                            }));
-                          }}
-                          placeholder="Potvrzení hesla"
-                          className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 pr-12 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => toggleSecretVisibility(`password-confirm-${player.id}`)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-black text-zinc-400 transition hover:text-white"
-                        >
-                          👁
-                        </button>
-                      </div>
-
-                      <select
+                      <div className="grid gap-2 lg:grid-cols-[180px_auto]">
+                        <select
                         value={roleDraftByPlayerId[player.id] || player.role}
                         onChange={(event) => {
                           const nextRole: Player["role"] =
@@ -700,90 +816,97 @@ export default function AdminModal({
                           }));
                         }}
                         className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
-                      >
-                        <option value="player">Player</option>
-                        <option value="admin">Admin</option>
-                      </select>
+                        >
+                          <option value="player">Player</option>
+                          <option value="admin">Admin</option>
+                        </select>
 
-                      <button
-                        onClick={async () => {
-                          const password = passwordDraftByPlayerId[player.id] || "";
-                          const passwordConfirm =
-                            passwordConfirmDraftByPlayerId[player.id] || "";
-                          const nextRole = roleDraftByPlayerId[player.id] || player.role;
-                          const roleChanged = nextRole !== player.role;
-                          const hasPasswordChange = Boolean(password || passwordConfirm);
+                        <button
+                          onClick={async () => {
+                            const password = passwordDraftByPlayerId[player.id] || "";
+                            const passwordConfirm =
+                              passwordConfirmDraftByPlayerId[player.id] || "";
+                            const nextRole = roleDraftByPlayerId[player.id] || player.role;
+                            const roleChanged = nextRole !== player.role;
+                            const hasPasswordChange = Boolean(password || passwordConfirm);
 
-                          if (!hasPasswordChange && !roleChanged) {
-                            alert("Nejsou žádné změny k uložení.");
+                            if (!hasPasswordChange && !roleChanged) {
+                              setInfoDialogMessage("Nejsou žádné změny k uložení.");
 
-                            return;
-                          }
+                              return;
+                            }
 
-                          setSavingPasswordForPlayerId(player.id);
+                            setSavingPasswordForPlayerId(player.id);
 
-                          try {
-                            if (roleChanged) {
-                              await onSavePlayer(player.id, {
-                                role: nextRole,
-                              });
+                            try {
+                              if (roleChanged) {
+                                await onSavePlayer(player.id, {
+                                  role: nextRole,
+                                });
 
-                              setPlayers((prev) =>
-                                prev.map((currentPlayer) =>
-                                  currentPlayer.id === player.id
-                                    ? {
-                                        ...currentPlayer,
-                                        role: nextRole,
-                                      }
-                                    : currentPlayer,
-                                ),
+                                setPlayers((prev) =>
+                                  prev.map((currentPlayer) =>
+                                    currentPlayer.id === player.id
+                                      ? {
+                                          ...currentPlayer,
+                                          role: nextRole,
+                                        }
+                                      : currentPlayer,
+                                  ),
+                                );
+
+                                setRoleDraftByPlayerId((prev) => {
+                                  const next = { ...prev };
+
+                                  delete next[player.id];
+
+                                  return next;
+                                });
+                              }
+
+                              if (hasPasswordChange) {
+                                await onSetPlayerPassword(
+                                  player.id,
+                                  password,
+                                  passwordConfirm,
+                                );
+
+                                setPasswordDraftByPlayerId((prev) => ({
+                                  ...prev,
+                                  [player.id]: "",
+                                }));
+
+                                setPasswordConfirmDraftByPlayerId((prev) => ({
+                                  ...prev,
+                                  [player.id]: "",
+                                }));
+
+                                setInfoDialogMessage("Heslo bylo úspěšně uloženo.");
+                              }
+
+                              if (roleChanged && !hasPasswordChange) {
+                                setInfoDialogMessage("Role byla uložena.");
+                              }
+                            } catch (error) {
+                              setInfoDialogMessage(
+                                resolveUnknownErrorMessage(error, "Uložení změn hráče se nezdařilo."),
                               );
-
-                              setRoleDraftByPlayerId((prev) => {
-                                const next = { ...prev };
-
-                                delete next[player.id];
-
-                                return next;
-                              });
+                            } finally {
+                              setSavingPasswordForPlayerId(null);
                             }
-
-                            if (hasPasswordChange) {
-                              await onSetPlayerPassword(
-                                player.id,
-                                password,
-                                passwordConfirm,
-                              );
-
-                              setPasswordDraftByPlayerId((prev) => ({
-                                ...prev,
-                                [player.id]: "",
-                              }));
-
-                              setPasswordConfirmDraftByPlayerId((prev) => ({
-                                ...prev,
-                                [player.id]: "",
-                              }));
-                            }
-
-                            if (roleChanged && !hasPasswordChange) {
-                              alert("Role byla uložena.");
-                            }
-                          } finally {
-                            setSavingPasswordForPlayerId(null);
-                          }
-                        }}
-                        disabled={savingPasswordForPlayerId === player.id}
-                        className="min-w-[118px] rounded-xl border border-zinc-600 bg-purple-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
-                      >
-                        {savingPasswordForPlayerId === player.id
-                          ? "Ukládám..."
-                          : "Uložit heslo/roli"}
-                      </button>
+                          }}
+                          disabled={savingPasswordForPlayerId === player.id}
+                          className="min-w-[118px] rounded-xl border border-zinc-600 bg-purple-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+                        >
+                          {savingPasswordForPlayerId === player.id
+                            ? "Ukládám..."
+                            : "Uložit heslo/roli"}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="mt-2 text-xs text-zinc-500">
-                      Nech prázdné, pokud nechceš heslo měnit.
+                      Nahoře je aktuální heslo hráče, dole můžeš zadat nové heslo pro změnu.
                     </div>
                   </div>
                 ))}
@@ -806,7 +929,9 @@ export default function AdminModal({
                         placeholder="Heslo hráče"
                         value={newPlayerPassword}
                         onChange={(e) => setNewPlayerPassword(e.target.value)}
-                        className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-12 text-white outline-none transition focus:border-yellow-400"
+                        autoComplete="new-password"
+                        spellCheck={false}
+                        className="secret-input w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-12 text-white outline-none transition focus:border-yellow-400"
                       />
 
                       <button
@@ -824,7 +949,9 @@ export default function AdminModal({
                         placeholder="Potvrzení hesla"
                         value={newPlayerPasswordConfirm}
                         onChange={(e) => setNewPlayerPasswordConfirm(e.target.value)}
-                        className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-12 text-white outline-none transition focus:border-yellow-400"
+                        autoComplete="new-password"
+                        spellCheck={false}
+                        className="secret-input w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-12 text-white outline-none transition focus:border-yellow-400"
                       />
 
                       <button
@@ -844,8 +971,25 @@ export default function AdminModal({
                       className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
                     />
 
+                    <input
+                      type="email"
+                      placeholder="E-mail hráče"
+                      value={newPlayerEmail}
+                      onChange={(e) => setNewPlayerEmail(e.target.value)}
+                      className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
+                    />
+
                     <button
-                      onClick={onAddPlayer}
+                      onClick={async () => {
+                        try {
+                          await onAddPlayer();
+                          setInfoDialogMessage("Hráč byl úspěšně přidán.");
+                        } catch (error) {
+                          setInfoDialogMessage(
+                            resolveUnknownErrorMessage(error, "Přidání hráče se nezdařilo."),
+                          );
+                        }
+                      }}
                       className="rounded-xl bg-green-600 px-5 py-3 font-black text-white transition hover:scale-[1.02] hover:brightness-110"
                     >
                       Přidat hráče
@@ -1085,6 +1229,68 @@ export default function AdminModal({
                 className="flex-1 rounded-2xl border border-zinc-600 bg-red-600 px-5 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isDeleting ? "Mažu..." : "Ano, smazat"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingPlayerSave && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[520px] rounded-3xl bg-zinc-900 p-8 text-center text-white shadow-2xl">
+            <h2 className="mb-5 text-3xl font-black text-yellow-400">Uložit změny hráče?</h2>
+
+            <p className="mb-3 text-zinc-300">
+              Opravdu chceš uložit profil hráče <span className="font-bold text-white">{pendingPlayerSave.playerName || pendingPlayerSave.playerId}</span>?
+            </p>
+
+            <div className="mb-8 rounded-2xl border border-zinc-700 bg-black/40 p-4 text-left text-sm text-zinc-300">
+              <div>
+                <span className="font-bold text-white">ID:</span> {pendingPlayerSave.playerId}
+              </div>
+              <div className="mt-1">
+                <span className="font-bold text-white">E-mail:</span> {pendingPlayerSave.playerEmail || "(prázdný)"}
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  if (isSavingPlayerProfile) {
+                    return;
+                  }
+
+                  setPendingPlayerSave(null);
+                }}
+                className="flex-1 rounded-2xl border border-zinc-600 bg-zinc-700 px-5 py-4 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Ne
+              </button>
+
+              <button
+                onClick={() => void confirmPlayerProfileSave()}
+                disabled={isSavingPlayerProfile}
+                className="flex-1 rounded-2xl border border-zinc-600 bg-green-600 px-5 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSavingPlayerProfile ? "Ukládám..." : "Ano, uložit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {infoDialogMessage && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 p-4">
+          <div className="w-full max-w-[560px] rounded-3xl border border-zinc-700 bg-zinc-900 p-7 text-white shadow-2xl">
+            <h2 className="mb-3 text-2xl font-black text-yellow-400">Informace</h2>
+            <p className="text-sm text-zinc-200">{infoDialogMessage}</p>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setInfoDialogMessage(null)}
+                className="rounded-xl border border-zinc-600 bg-zinc-700 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Rozumím
               </button>
             </div>
           </div>
