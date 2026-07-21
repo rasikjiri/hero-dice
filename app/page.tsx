@@ -157,6 +157,26 @@ export default function Home() {
 
   const [loginError, setLoginError] = useState<string | null>(null);
 
+  const [authActionMode, setAuthActionMode] = useState<
+    null | "registration" | "password-reset"
+  >(null);
+
+  const [authActionPlayerId, setAuthActionPlayerId] = useState("");
+
+  const [authActionPlayerName, setAuthActionPlayerName] = useState("");
+
+  const [authActionEmail, setAuthActionEmail] = useState("");
+
+  const [authActionPassword, setAuthActionPassword] = useState("");
+
+  const [authActionPasswordConfirm, setAuthActionPasswordConfirm] = useState("");
+
+  const [authActionError, setAuthActionError] = useState<string | null>(null);
+
+  const [authActionSuccess, setAuthActionSuccess] = useState<string | null>(null);
+
+  const [isSubmittingAuthAction, setIsSubmittingAuthAction] = useState(false);
+
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const [isAuthConnectionHealthy, setIsAuthConnectionHealthy] =
@@ -166,7 +186,13 @@ export default function Home() {
     Record<string, boolean>
   >({});
 
+  const [pendingAccessRequestsCount, setPendingAccessRequestsCount] = useState(0);
+
   const canAccessAdmin = authSession?.role === "admin";
+  const adminMenuLabel =
+    pendingAccessRequestsCount > 0
+      ? `Admin (${pendingAccessRequestsCount})`
+      : "Admin";
 
   const [showStatistics, setShowStatistics] = useState(false);
 
@@ -1159,6 +1185,15 @@ export default function Home() {
   }, [showAdmin, canAccessAdmin]);
 
   useEffect(() => {
+    if (canAccessAdmin) {
+      void loadPendingAccessRequestsCount();
+      return;
+    }
+
+    setPendingAccessRequestsCount(0);
+  }, [canAccessAdmin, authSession?.sessionToken]);
+
+  useEffect(() => {
     if (showAdmin && !canAccessAdmin) {
       setShowAdmin(false);
     }
@@ -1360,6 +1395,105 @@ export default function Home() {
   };
 
   const minimumPasswordLength = 6;
+
+  const clearAuthActionState = () => {
+    setAuthActionMode(null);
+    setAuthActionPlayerId("");
+    setAuthActionPlayerName("");
+    setAuthActionEmail("");
+    setAuthActionPassword("");
+    setAuthActionPasswordConfirm("");
+    setAuthActionError(null);
+    setAuthActionSuccess(null);
+  };
+
+  const loadPendingAccessRequestsCount = async () => {
+    if (!authSession?.sessionToken || authSession.role !== "admin") {
+      setPendingAccessRequestsCount(0);
+      return;
+    }
+
+    try {
+      const nextCount = await countPendingPlayerAccessRequests(authSession.sessionToken);
+      setPendingAccessRequestsCount(nextCount);
+    } catch (error) {
+      console.error("PENDING ACCESS REQUEST COUNT ERROR:", error);
+      setPendingAccessRequestsCount(0);
+    }
+  };
+
+  const getNormalizedRequestedPlayerId = (value: string) =>
+    value.toLowerCase().replace(/[^a-z]/g, "").slice(0, 6);
+
+  const submitAuthActionRequest = async (requestType: PlayerAccessRequestType) => {
+    const normalizedPlayerId = getNormalizedRequestedPlayerId(authActionPlayerId.trim());
+    const trimmedPlayerName = authActionPlayerName.trim();
+    const trimmedEmail = authActionEmail.trim().toLowerCase();
+    const trimmedPassword = authActionPassword.trim();
+    const trimmedPasswordConfirm = authActionPasswordConfirm.trim();
+
+    if (!normalizedPlayerId) {
+      setAuthActionError("ID hráče je povinné.");
+      return;
+    }
+
+    if (requestType === "registration" && !trimmedPlayerName) {
+      setAuthActionError("Jméno hráče je povinné.");
+      return;
+    }
+
+    if (!trimmedEmail) {
+      setAuthActionError("E-mail je povinný.");
+      return;
+    }
+
+    if (!trimmedPassword || !trimmedPasswordConfirm) {
+      setAuthActionError("Vyplň heslo i potvrzení hesla.");
+      return;
+    }
+
+    if (trimmedPassword.length < minimumPasswordLength) {
+      setAuthActionError(`Heslo musí mít alespoň ${minimumPasswordLength} znaků.`);
+      return;
+    }
+
+    if (trimmedPassword !== trimmedPasswordConfirm) {
+      setAuthActionError("Heslo a potvrzení hesla se neshodují.");
+      return;
+    }
+
+    try {
+      setIsSubmittingAuthAction(true);
+      setAuthActionError(null);
+      setAuthActionSuccess(null);
+
+      await submitPlayerAccessRequest({
+        requestType,
+        playerId: normalizedPlayerId,
+        playerName: requestType === "registration" ? trimmedPlayerName : undefined,
+        email: trimmedEmail,
+        password: trimmedPassword,
+      });
+
+      setAuthActionSuccess(
+        requestType === "registration"
+          ? "Žádost o registraci byla odeslána ke schválení adminem."
+          : "Žádost o reset hesla byla odeslána ke schválení adminem.",
+      );
+
+      setAuthActionPassword("");
+      setAuthActionPasswordConfirm("");
+
+      if (requestType === "registration") {
+        setAuthActionPlayerName("");
+      }
+    } catch (error) {
+      console.error("AUTH ACTION REQUEST ERROR:", error);
+      setAuthActionError(resolveErrorMessage(error, "Odeslání žádosti se nezdařilo."));
+    } finally {
+      setIsSubmittingAuthAction(false);
+    }
+  };
 
   async function loadPlayerSessionActivity() {
     try {
@@ -7424,9 +7558,134 @@ export default function Home() {
               {isAuthenticating ? "Přihlašuji..." : "Přihlásit"}
             </button>
 
-            <p className="mt-4 text-xs text-zinc-500">
-              Přístup je řízen účtem hráče. Admin účet odemyká správu hráčů.
-            </p>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthActionMode("password-reset");
+                  setAuthActionError(null);
+                  setAuthActionSuccess(null);
+                }}
+                className="rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-black text-zinc-200 transition hover:border-yellow-400 hover:text-white"
+              >
+                Zapomenuté heslo
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthActionMode("registration");
+                  setAuthActionError(null);
+                  setAuthActionSuccess(null);
+                }}
+                className="rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-black text-zinc-200 transition hover:border-yellow-400 hover:text-white"
+              >
+                Nová registrace
+              </button>
+            </div>
+
+            {authActionMode && (
+              <div className="mt-5 rounded-2xl border border-zinc-700 bg-black/50 p-5 text-left">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-black uppercase tracking-[0.18em] text-yellow-400">
+                      {authActionMode === "registration"
+                        ? "Nová registrace"
+                        : "Zapomenuté heslo"}
+                    </div>
+
+                    <div className="mt-1 text-xs text-zinc-500">
+                      ID hráče: pouze malá písmena, max. 6 znaků. Heslo: min. {minimumPasswordLength} znaků.
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={clearAuthActionState}
+                    className="rounded-xl bg-zinc-800 px-3 py-2 text-xs font-black text-zinc-200 transition hover:bg-zinc-700"
+                  >
+                    Zavřít
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={authActionPlayerId}
+                    onChange={(e) =>
+                      setAuthActionPlayerId(getNormalizedRequestedPlayerId(e.target.value))
+                    }
+                    placeholder="ID hráče"
+                    className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-base font-bold text-white outline-none transition focus:border-yellow-400"
+                  />
+
+                  {authActionMode === "registration" && (
+                    <input
+                      type="text"
+                      value={authActionPlayerName}
+                      onChange={(e) => setAuthActionPlayerName(e.target.value)}
+                      placeholder="Jméno hráče"
+                      className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-base font-bold text-white outline-none transition focus:border-yellow-400"
+                    />
+                  )}
+
+                  <input
+                    type="email"
+                    value={authActionEmail}
+                    onChange={(e) => setAuthActionEmail(e.target.value)}
+                    placeholder="E-mail"
+                    className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-base font-bold text-white outline-none transition focus:border-yellow-400"
+                  />
+
+                  <input
+                    type="password"
+                    value={authActionPassword}
+                    onChange={(e) => setAuthActionPassword(e.target.value)}
+                    placeholder={authActionMode === "registration" ? "Heslo" : "Nové heslo"}
+                    className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-base font-bold text-white outline-none transition focus:border-yellow-400"
+                  />
+
+                  <input
+                    type="password"
+                    value={authActionPasswordConfirm}
+                    onChange={(e) => setAuthActionPasswordConfirm(e.target.value)}
+                    placeholder="Potvrzení hesla"
+                    className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-base font-bold text-white outline-none transition focus:border-yellow-400"
+                  />
+
+                  {authActionError && (
+                    <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-300">
+                      {authActionError}
+                    </div>
+                  )}
+
+                  {authActionSuccess && (
+                    <div className="rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm font-bold text-green-300">
+                      {authActionSuccess}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void submitAuthActionRequest(
+                        authActionMode === "registration"
+                          ? "registration"
+                          : "password_reset",
+                      );
+                    }}
+                    disabled={isSubmittingAuthAction}
+                    className="w-full rounded-2xl bg-green-600 px-5 py-4 text-base font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSubmittingAuthAction
+                      ? "Odesílám..."
+                      : authActionMode === "registration"
+                        ? "Odeslat žádost o registraci"
+                        : "Odeslat žádost o reset hesla"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -7475,7 +7734,7 @@ export default function Home() {
                   ...(canAccessAdmin
                     ? [
                         {
-                          label: "Admin",
+                          label: adminMenuLabel,
                           onClick: () => {
                             void openAdminModal();
                             setShowHomeMenu(false);
@@ -7933,7 +8192,7 @@ export default function Home() {
                         },
                       },
                       {
-                        label: "Admin",
+                        label: adminMenuLabel,
                         onClick: () => {
                           void openAdminModal();
                           setShowGameMenu(false);
@@ -7992,7 +8251,7 @@ export default function Home() {
                     ...(canAccessAdmin
                       ? [
                           {
-                            label: "Admin",
+                            label: adminMenuLabel,
                             onClick: () => {
                               void openAdminModal();
                               setShowSetupMenu(false);
