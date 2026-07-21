@@ -89,6 +89,16 @@ begin
     end if;
   end if;
 
+  if exists (
+    select 1
+    from public.player_access_requests r
+    where r.request_type = v_request_type
+      and r.player_id = v_player_id
+      and r.status = 'pending'
+  ) then
+    raise exception using message = 'Pro tohoto hrace jiz existuje nevyrizena zadost.';
+  end if;
+
   insert into public.player_access_requests (
     request_type,
     player_id,

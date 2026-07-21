@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { supabase } from "../lib/supabase";
+import {
+  listPlayerAccessRequests,
+  processPlayerAccessRequest,
+  type PlayerAccessRequest,
+} from "../lib/authSession";
 
 type Player = {
   id: string;
   name: string;
   active: boolean;
   role: "admin" | "player";
+  email?: string | null;
 };
 
 type ManagedGame = {
@@ -31,7 +37,7 @@ type ManagedGame = {
   game_id?: string | null;
 };
 
-type AdminTab = "players" | "fun-games" | "league-games";
+type AdminTab = "players" | "requests" | "fun-games" | "league-games";
 
 type DeleteTarget = {
   id: string;
@@ -43,7 +49,9 @@ type DeleteTarget = {
 type Props = {
   isOpen: boolean;
   onClose: () => void;
+  adminSessionToken: string | null;
   players: Player[];
+  pendingAccessRequestsCount: number;
   playerSessionActivityById: Record<string, boolean>;
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   newPlayerId: string;
@@ -59,19 +67,17 @@ type Props = {
   onSetPlayerPassword: (playerId: string, password: string, passwordConfirm: string) => Promise<void>;
   onRequestDeletePlayer: (playerId: string) => void;
   onRevokePlayerSessions: (playerId: string) => Promise<void>;
+  onPlayersReload: () => Promise<void>;
+  onAccessRequestsChanged: () => Promise<void>;
   onLeagueGamesChanged: () => Promise<void>;
 };
-
-const tabs: { id: AdminTab; label: string }[] = [
-  { id: "players", label: "Hráči" },
-  { id: "fun-games", label: "Fun Game" },
-  { id: "league-games", label: "Liga Game" },
-];
 
 export default function AdminModal({
   isOpen,
   onClose,
+  adminSessionToken,
   players,
+  pendingAccessRequestsCount,
   playerSessionActivityById,
   setPlayers,
   newPlayerId,
@@ -87,8 +93,23 @@ export default function AdminModal({
   onSetPlayerPassword,
   onRequestDeletePlayer,
   onRevokePlayerSessions,
+  onPlayersReload,
+  onAccessRequestsChanged,
   onLeagueGamesChanged,
 }: Props) {
+  const tabs: { id: AdminTab; label: string }[] = [
+    { id: "players", label: "Hráči" },
+    {
+      id: "requests",
+      label:
+        pendingAccessRequestsCount > 0
+          ? `Žádosti (${pendingAccessRequestsCount})`
+          : "Žádosti",
+    },
+    { id: "fun-games", label: "Fun Game" },
+    { id: "league-games", label: "Liga Game" },
+  ];
+
   const [activeTab, setActiveTab] = useState<AdminTab>("players");
   const [funGames, setFunGames] = useState<ManagedGame[]>([]);
   const [leagueGames, setLeagueGames] = useState<ManagedGame[]>([]);
@@ -100,6 +121,10 @@ export default function AdminModal({
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [revokePlayerId, setRevokePlayerId] = useState<string | null>(null);
+  const [accessRequests, setAccessRequests] = useState<PlayerAccessRequest[]>([]);
+  const [isLoadingAccessRequests, setIsLoadingAccessRequests] = useState(false);
+  const [accessRequestsError, setAccessRequestsError] = useState<string | null>(null);
+  const [processingAccessRequestId, setProcessingAccessRequestId] = useState<string | null>(null);
   const [passwordDraftByPlayerId, setPasswordDraftByPlayerId] = useState<
     Record<string, string>
   >({});
@@ -111,6 +136,7 @@ export default function AdminModal({
   const [savingPasswordForPlayerId, setSavingPasswordForPlayerId] = useState<
     string | null
   >(null);
+  const [visibleSecretByKey, setVisibleSecretByKey] = useState<Record<string, boolean>>({});
 
   async function loadFunGames() {
     setIsLoadingFunGames(true);
@@ -152,19 +178,72 @@ export default function AdminModal({
     setIsLoadingLeagueGames(false);
   }
 
+  const loadAccessRequests = useCallback(async () => {
+    if (!adminSessionToken) {
+      setAccessRequests([]);
+      setAccessRequestsError("Chybí aktivní admin session.");
+      return;
+    }
+
+    setIsLoadingAccessRequests(true);
+    setAccessRequestsError(null);
+
+    try {
+      const requests = await listPlayerAccessRequests(adminSessionToken);
+      setAccessRequests(requests);
+    } catch (error) {
+      console.error("ADMIN ACCESS REQUESTS LOAD ERROR:", error);
+      setAccessRequestsError(error instanceof Error ? error.message : "Nepodařilo se načíst žádosti.");
+    } finally {
+      setIsLoadingAccessRequests(false);
+    }
+  }, [adminSessionToken]);
+
+  const toggleSecretVisibility = (key: string) => {
+    setVisibleSecretByKey((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const handleAccessRequestAction = async (
+    requestId: string,
+    action: "approve" | "reject",
+  ) => {
+    if (!adminSessionToken) {
+      return;
+    }
+
+    setProcessingAccessRequestId(requestId);
+
+    try {
+      await processPlayerAccessRequest(adminSessionToken, requestId, action);
+      await Promise.all([
+        loadAccessRequests(),
+        onPlayersReload(),
+        onAccessRequestsChanged(),
+      ]);
+    } catch (error) {
+      console.error("ADMIN ACCESS REQUEST PROCESS ERROR:", error);
+      alert(error instanceof Error ? error.message : "Nepodařilo se zpracovat žádost.");
+    } finally {
+      setProcessingAccessRequestId(null);
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) {
       return;
     }
 
     const timeoutId = window.setTimeout(() => {
-      void Promise.all([loadFunGames(), loadLeagueGames()]);
+      void Promise.all([loadFunGames(), loadLeagueGames(), loadAccessRequests()]);
     }, 0);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [isOpen]);
+  }, [isOpen, adminSessionToken, loadAccessRequests]);
 
   const handleClose = () => {
     setActiveTab("players");
@@ -458,35 +537,55 @@ export default function AdminModal({
                     </div>
 
                     <div className="mt-4 grid gap-2 lg:grid-cols-[1fr_1fr_180px_auto]">
-                      <input
-                        type="password"
-                        value={passwordDraftByPlayerId[player.id] || ""}
-                        onChange={(event) => {
-                          const nextPassword = event.target.value;
+                      <div className="relative">
+                        <input
+                          type={visibleSecretByKey[`password-${player.id}`] ? "text" : "password"}
+                          value={passwordDraftByPlayerId[player.id] || ""}
+                          onChange={(event) => {
+                            const nextPassword = event.target.value;
 
-                          setPasswordDraftByPlayerId((prev) => ({
-                            ...prev,
-                            [player.id]: nextPassword,
-                          }));
-                        }}
-                        placeholder="Nové heslo"
-                        className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
-                      />
+                            setPasswordDraftByPlayerId((prev) => ({
+                              ...prev,
+                              [player.id]: nextPassword,
+                            }));
+                          }}
+                          placeholder="Nové heslo"
+                          className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 pr-12 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
+                        />
 
-                      <input
-                        type="password"
-                        value={passwordConfirmDraftByPlayerId[player.id] || ""}
-                        onChange={(event) => {
-                          const nextPasswordConfirm = event.target.value;
+                        <button
+                          type="button"
+                          onClick={() => toggleSecretVisibility(`password-${player.id}`)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-black text-zinc-400 transition hover:text-white"
+                        >
+                          👁
+                        </button>
+                      </div>
 
-                          setPasswordConfirmDraftByPlayerId((prev) => ({
-                            ...prev,
-                            [player.id]: nextPasswordConfirm,
-                          }));
-                        }}
-                        placeholder="Potvrzení hesla"
-                        className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
-                      />
+                      <div className="relative">
+                        <input
+                          type={visibleSecretByKey[`password-confirm-${player.id}`] ? "text" : "password"}
+                          value={passwordConfirmDraftByPlayerId[player.id] || ""}
+                          onChange={(event) => {
+                            const nextPasswordConfirm = event.target.value;
+
+                            setPasswordConfirmDraftByPlayerId((prev) => ({
+                              ...prev,
+                              [player.id]: nextPasswordConfirm,
+                            }));
+                          }}
+                          placeholder="Potvrzení hesla"
+                          className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 pr-12 text-sm font-bold text-white outline-none transition focus:border-yellow-400"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => toggleSecretVisibility(`password-confirm-${player.id}`)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-black text-zinc-400 transition hover:text-white"
+                        >
+                          👁
+                        </button>
+                      </div>
 
                       <select
                         value={roleDraftByPlayerId[player.id] || player.role}
@@ -600,21 +699,41 @@ export default function AdminModal({
                       className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
                     />
 
-                    <input
-                      type="password"
-                      placeholder="Heslo hráče"
-                      value={newPlayerPassword}
-                      onChange={(e) => setNewPlayerPassword(e.target.value)}
-                      className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
-                    />
+                    <div className="relative">
+                      <input
+                        type={visibleSecretByKey["new-player-password"] ? "text" : "password"}
+                        placeholder="Heslo hráče"
+                        value={newPlayerPassword}
+                        onChange={(e) => setNewPlayerPassword(e.target.value)}
+                        className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-12 text-white outline-none transition focus:border-yellow-400"
+                      />
 
-                    <input
-                      type="password"
-                      placeholder="Potvrzení hesla"
-                      value={newPlayerPasswordConfirm}
-                      onChange={(e) => setNewPlayerPasswordConfirm(e.target.value)}
-                      className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-yellow-400"
-                    />
+                      <button
+                        type="button"
+                        onClick={() => toggleSecretVisibility("new-player-password")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-black text-zinc-400 transition hover:text-white"
+                      >
+                        👁
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type={visibleSecretByKey["new-player-password-confirm"] ? "text" : "password"}
+                        placeholder="Potvrzení hesla"
+                        value={newPlayerPasswordConfirm}
+                        onChange={(e) => setNewPlayerPasswordConfirm(e.target.value)}
+                        className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-12 text-white outline-none transition focus:border-yellow-400"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => toggleSecretVisibility("new-player-password-confirm")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-black text-zinc-400 transition hover:text-white"
+                      >
+                        👁
+                      </button>
+                    </div>
 
                     <input
                       type="text"
@@ -632,6 +751,123 @@ export default function AdminModal({
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {activeTab === "requests" && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-zinc-700 bg-black/40 p-5">
+                  <div className="text-xl font-black text-yellow-400">Žádosti o přístup</div>
+
+                  <div className="mt-2 text-sm text-zinc-400">
+                    Registrace a požadavky na reset hesla čekající na schválení adminem.
+                  </div>
+                </div>
+
+                {isLoadingAccessRequests && (
+                  <div className="rounded-2xl border border-zinc-700 bg-black/40 p-5 text-sm text-zinc-400">
+                    Načítám žádosti...
+                  </div>
+                )}
+
+                {accessRequestsError && (
+                  <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-5 text-sm text-red-300">
+                    {accessRequestsError}
+                  </div>
+                )}
+
+                {!isLoadingAccessRequests && !accessRequestsError && accessRequests.length === 0 && (
+                  <div className="rounded-2xl border border-zinc-700 bg-black/40 p-5 text-sm text-zinc-400">
+                    Nejsou evidovány žádné žádosti.
+                  </div>
+                )}
+
+                {!isLoadingAccessRequests &&
+                  !accessRequestsError &&
+                  accessRequests.map((request) => {
+                    const isPending = request.status === "pending";
+                    const statusClassName =
+                      request.status === "approved"
+                        ? "bg-green-600 text-white"
+                        : request.status === "rejected"
+                          ? "bg-red-600 text-white"
+                          : "bg-yellow-500 text-black";
+
+                    return (
+                      <div
+                        key={request.id}
+                        className="rounded-2xl border border-zinc-700 bg-black/40 p-5"
+                      >
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <div className="text-lg font-black text-white">
+                                {request.requestType === "registration"
+                                  ? "Nová registrace"
+                                  : "Reset hesla"}
+                              </div>
+
+                              <span className={`rounded-full px-3 py-1 text-xs font-black ${statusClassName}`}>
+                                {request.status === "approved"
+                                  ? "Schváleno"
+                                  : request.status === "rejected"
+                                    ? "Zamítnuto"
+                                    : "Čeká"}
+                              </span>
+                            </div>
+
+                            <div className="mt-2 text-sm text-zinc-300">
+                              ID hráče: <span className="font-bold text-white">{request.playerId}</span>
+                            </div>
+
+                            {request.playerName && (
+                              <div className="mt-1 text-sm text-zinc-300">
+                                Jméno hráče: <span className="font-bold text-white">{request.playerName}</span>
+                              </div>
+                            )}
+
+                            <div className="mt-1 text-sm text-zinc-300">
+                              E-mail: <span className="font-bold text-white">{request.email}</span>
+                            </div>
+
+                            <div className="mt-1 text-sm text-zinc-500">
+                              Vytvořeno: {new Date(request.createdAt).toLocaleString("cs-CZ")}
+                            </div>
+
+                            {request.reviewedAt && (
+                              <div className="mt-1 text-sm text-zinc-500">
+                                Zpracováno: {new Date(request.reviewedAt).toLocaleString("cs-CZ")}
+                              </div>
+                            )}
+                          </div>
+
+                          {isPending && (
+                            <div className="flex flex-wrap gap-2 lg:justify-end">
+                              <button
+                                onClick={() => {
+                                  void handleAccessRequestAction(request.id, "approve");
+                                }}
+                                disabled={processingAccessRequestId === request.id}
+                                className="min-w-[118px] rounded-xl border border-zinc-600 bg-green-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {processingAccessRequestId === request.id ? "Ukládám..." : "Schválit"}
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  void handleAccessRequestAction(request.id, "reject");
+                                }}
+                                disabled={processingAccessRequestId === request.id}
+                                className="min-w-[118px] rounded-xl border border-zinc-600 bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Zamítnout
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             )}
 

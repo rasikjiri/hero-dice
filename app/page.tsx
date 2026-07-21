@@ -59,16 +59,13 @@ import {
   fetchPlayerActivity,
   getOrCreateDeviceId,
   heartbeatSession,
-  listPlayerAccessRequests,
   logoutSession,
-  processPlayerAccessRequest,
   revokePlayerSessions,
   setPlayerPassword,
   submitPlayerAccessRequest,
   verifyLogin,
   type AppRole,
   type AuthSession,
-  type PlayerAccessRequest,
   type PlayerAccessRequestType,
 } from "./lib/authSession";
 
@@ -10904,7 +10901,9 @@ export default function Home() {
       <AdminModal
         isOpen={showAdmin}
         onClose={() => setShowAdmin(false)}
+        adminSessionToken={authSession?.sessionToken ?? null}
         players={playersState}
+        pendingAccessRequestsCount={pendingAccessRequestsCount}
         playerSessionActivityById={playerSessionActivityById}
         setPlayers={setPlayersState}
         newPlayerId={newPlayerId}
@@ -10930,6 +10929,8 @@ export default function Home() {
           setDeletePlayerId(playerId);
         }}
         onRevokePlayerSessions={revokeSessionsForPlayer}
+        onPlayersReload={loadPlayersFromSupabase}
+        onAccessRequestsChanged={loadPendingAccessRequestsCount}
         onLeagueGamesChanged={() => refreshLeagueStatistics(playersState)}
       />
 

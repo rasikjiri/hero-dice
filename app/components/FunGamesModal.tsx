@@ -302,24 +302,25 @@ export default function FunGamesModal({
 
       games.forEach(
         (game) => {
+          const normalizedRollCount = Number(game.roll_count ?? 0);
+          const normalizedRewriteEnabled = Boolean(game.rewrite_enabled);
+          const normalizedBonusMode = game.bonus_mode ?? "general-only";
+          const normalizedBonusRolls = Number(game.bonus_rolls ?? 0);
+
           const key = [
-            game.roll_count,
-            game.rewrite_enabled,
-            game.bonus_mode,
-            game.bonus_rolls,
+            normalizedRollCount,
+            normalizedRewriteEnabled,
+            normalizedBonusMode,
+            normalizedBonusRolls,
           ].join("|");
 
           const current =
             configs.get(key) || {
               count: 0,
-              rollCount:
-                game.roll_count,
-              rewrite:
-                game.rewrite_enabled,
-              bonusMode:
-                game.bonus_mode,
-              bonusRolls:
-                game.bonus_rolls,
+              rollCount: normalizedRollCount,
+              rewrite: normalizedRewriteEnabled,
+              bonusMode: normalizedBonusMode,
+              bonusRolls: normalizedBonusRolls,
             };
 
           current.count++;
