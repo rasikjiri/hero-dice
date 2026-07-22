@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { supabase } from "../lib/supabase";
 import {
+  deletePlayerAccessRequest,
   listPlayerAccessRequests,
   processPlayerAccessRequest,
   type PlayerAccessRequest,
@@ -39,6 +40,8 @@ type ManagedGame = {
 };
 
 type AdminTab = "players" | "requests" | "fun-games" | "league-games";
+
+type RequestViewMode = "pending" | "history" | "all";
 
 type DeleteTarget = {
   id: string;
@@ -164,7 +167,10 @@ export default function AdminModal({
   const [accessRequests, setAccessRequests] = useState<PlayerAccessRequest[]>([]);
   const [isLoadingAccessRequests, setIsLoadingAccessRequests] = useState(false);
   const [accessRequestsError, setAccessRequestsError] = useState<string | null>(null);
+  const [requestViewMode, setRequestViewMode] = useState<RequestViewMode>("all");
   const [processingAccessRequestId, setProcessingAccessRequestId] = useState<string | null>(null);
+  const [deletingAccessRequestId, setDeletingAccessRequestId] = useState<string | null>(null);
+  const [pendingAccessRequestDelete, setPendingAccessRequestDelete] = useState<PlayerAccessRequest | null>(null);
   const [passwordDraftByPlayerId, setPasswordDraftByPlayerId] = useState<
     Record<string, string>
   >({});
@@ -330,6 +336,38 @@ export default function AdminModal({
     }
   };
 
+  const visibleAccessRequests = accessRequests.filter((request) => {
+    if (requestViewMode === "pending") {
+      return request.status === "pending";
+    }
+
+    if (requestViewMode === "history") {
+      return request.status !== "pending";
+    }
+
+    return true;
+  });
+
+  const confirmAccessRequestDelete = async () => {
+    if (!adminSessionToken || !pendingAccessRequestDelete) {
+      return;
+    }
+
+    setDeletingAccessRequestId(pendingAccessRequestDelete.id);
+
+    try {
+      await deletePlayerAccessRequest(adminSessionToken, pendingAccessRequestDelete.id);
+      setPendingAccessRequestDelete(null);
+      setInfoDialogMessage("Žádost byla smazána.");
+      await Promise.all([loadAccessRequests(), onAccessRequestsChanged()]);
+    } catch (error) {
+      console.error("ADMIN ACCESS REQUEST DELETE ERROR:", error);
+      setInfoDialogMessage(resolveUnknownErrorMessage(error, "Nepodařilo se smazat žádost."));
+    } finally {
+      setDeletingAccessRequestId(null);
+    }
+  };
+
   const confirmPlayerProfileSave = async () => {
     if (!pendingPlayerSave) {
       return;
@@ -468,7 +506,7 @@ export default function AdminModal({
     ].join("\n");
 
     const mailtoUrl = `mailto:${request.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoUrl;
+    window.open(mailtoUrl, "_self");
   };
 
   const getSortedScores = (game: ManagedGame) => {
@@ -1005,7 +1043,42 @@ export default function AdminModal({
                   <div className="text-xl font-black text-yellow-400">Žádosti o přístup</div>
 
                   <div className="mt-2 text-sm text-zinc-400">
-                    Registrace a požadavky na reset hesla čekající na schválení adminem.
+                    Registrace čekající na schválení, historie zpracovaných požadavků a možnost smazání.
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setRequestViewMode("all")}
+                      className={`rounded-xl px-4 py-2 text-sm font-black transition hover:scale-[1.02] hover:brightness-110 ${
+                        requestViewMode === "all"
+                          ? "bg-yellow-500 text-black"
+                          : "border border-zinc-700 bg-black/30 text-zinc-300"
+                      }`}
+                    >
+                      Vše
+                    </button>
+
+                    <button
+                      onClick={() => setRequestViewMode("pending")}
+                      className={`rounded-xl px-4 py-2 text-sm font-black transition hover:scale-[1.02] hover:brightness-110 ${
+                        requestViewMode === "pending"
+                          ? "bg-yellow-500 text-black"
+                          : "border border-zinc-700 bg-black/30 text-zinc-300"
+                      }`}
+                    >
+                      Čekající
+                    </button>
+
+                    <button
+                      onClick={() => setRequestViewMode("history")}
+                      className={`rounded-xl px-4 py-2 text-sm font-black transition hover:scale-[1.02] hover:brightness-110 ${
+                        requestViewMode === "history"
+                          ? "bg-yellow-500 text-black"
+                          : "border border-zinc-700 bg-black/30 text-zinc-300"
+                      }`}
+                    >
+                      Historie
+                    </button>
                   </div>
                 </div>
 
@@ -1029,7 +1102,7 @@ export default function AdminModal({
 
                 {!isLoadingAccessRequests &&
                   !accessRequestsError &&
-                  accessRequests.map((request) => {
+                  visibleAccessRequests.map((request) => {
                     const isPending = request.status === "pending";
                     const statusClassName =
                       request.status === "approved"
@@ -1086,12 +1159,22 @@ export default function AdminModal({
                             )}
 
                             <div className="mt-3">
-                              <button
-                                onClick={() => openAccessRequestEmail(request)}
-                                className="rounded-xl border border-zinc-600 bg-zinc-800 px-3 py-2 text-xs font-bold text-zinc-100 transition hover:scale-[1.02] hover:bg-zinc-700"
-                              >
-                                Odeslat e-mail žadateli
-                              </button>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => openAccessRequestEmail(request)}
+                                  className="rounded-xl border border-zinc-600 bg-zinc-800 px-3 py-2 text-xs font-bold text-zinc-100 transition hover:scale-[1.02] hover:bg-zinc-700"
+                                >
+                                  Odeslat e-mail žadateli
+                                </button>
+
+                                <button
+                                  onClick={() => setPendingAccessRequestDelete(request)}
+                                  disabled={deletingAccessRequestId === request.id}
+                                  className="rounded-xl border border-zinc-600 bg-red-600 px-3 py-2 text-xs font-bold text-white transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {deletingAccessRequestId === request.id ? "Mažu..." : "Smazat"}
+                                </button>
+                              </div>
                             </div>
                           </div>
 
@@ -1291,6 +1374,45 @@ export default function AdminModal({
                 className="rounded-xl border border-zinc-600 bg-zinc-700 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
               >
                 Rozumím
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingAccessRequestDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-[520px] rounded-3xl bg-zinc-900 p-8 text-center text-white shadow-2xl">
+            <h2 className="mb-5 text-3xl font-black text-red-500">Smazat žádost?</h2>
+
+            <p className="mb-4 text-zinc-300">
+              Opravdu chceš smazat žádost pro hráče <span className="font-bold text-white">{pendingAccessRequestDelete.playerId}</span>?
+            </p>
+
+            <p className="mb-6 text-sm text-zinc-400">
+              Záznam bude trvale odstraněn z historie žádostí.
+            </p>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  if (deletingAccessRequestId) {
+                    return;
+                  }
+
+                  setPendingAccessRequestDelete(null);
+                }}
+                className="flex-1 rounded-2xl border border-zinc-600 bg-zinc-700 px-5 py-4 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Ne
+              </button>
+
+              <button
+                onClick={() => void confirmAccessRequestDelete()}
+                disabled={deletingAccessRequestId === pendingAccessRequestDelete.id}
+                className="flex-1 rounded-2xl border border-zinc-600 bg-red-600 px-5 py-4 font-black text-white transition hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deletingAccessRequestId === pendingAccessRequestDelete.id ? "Mažu..." : "Ano, smazat"}
               </button>
             </div>
           </div>

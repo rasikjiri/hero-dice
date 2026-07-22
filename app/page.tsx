@@ -62,6 +62,7 @@ import {
   logoutSession,
   revokePlayerSessions,
   setPlayerPassword,
+  submitAndAutoApprovePasswordResetRequest,
   submitPlayerAccessRequest,
   verifyLogin,
   type AppRole,
@@ -209,13 +210,9 @@ export default function Home() {
 
   const [newPlayerPasswordConfirm, setNewPlayerPasswordConfirm] = useState("");
 
-  const [, forceUpdate] = useState(0);
-
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
-  const [leaveAction, setLeaveAction] = useState<"home" | "new-game" | null>(
-    null,
-  );
+  const [appDialogMessage, setAppDialogMessage] = useState<string | null>(null);
 
   const [selectedHelpImage, setSelectedHelpImage] = useState<string | null>(
     null,
@@ -235,7 +232,7 @@ export default function Home() {
 
   const [winner, setWinner] = useState("");
 
-  const [winnerScore, setWinnerScore] = useState(0);
+  const [, setWinnerScore] = useState(0);
 
   const [gameId, setGameId] = useState<string>("");
 
@@ -337,7 +334,9 @@ export default function Home() {
 
   const isOnlineGameRef = useRef(false);
 
-  const [onlineChannel, setOnlineChannel] = useState<any>(null);
+  const [onlineChannel, setOnlineChannel] = useState<
+    ReturnType<typeof supabase.channel> | null
+  >(null);
 
   const [joinSessionId, setJoinSessionId] = useState("");
 
@@ -415,7 +414,7 @@ export default function Home() {
 
   const [showHomeRestoreModal, setShowHomeRestoreModal] = useState(false);
 
-  const [savedGames, setSavedGames] = useState<any[]>([]);
+  const [savedGames, setSavedGames] = useState<SavedGameRow[]>([]);
 
   const [showLoadGames, setShowLoadGames] = useState(false);
 
@@ -581,6 +580,67 @@ export default function Home() {
     has_started_play_mode: boolean;
   };
 
+  type SavedGameRow = {
+    id: string;
+    name?: string | null;
+    created_at: string;
+    game_id?: string | null;
+    player_count?: number | "";
+    selected_players?: string[];
+    scores?: ScoreMap;
+    game_started?: boolean;
+    game_finished?: boolean;
+    is_play_mode_active?: boolean;
+    has_started_play_mode?: boolean;
+    game_mode?: "offline" | "online" | null;
+    play_mode_rolls?: number | null;
+    play_mode_allow_rewrite?: boolean | null;
+    play_mode_bonus_mode?: "general-only" | "all" | null;
+    play_mode_bonus_rolls?: number | null;
+    current_play_player_index?: number | null;
+    play_mode_dice?: number[] | null;
+    locked_dice?: boolean[] | null;
+    confirmed_locked_dice?: boolean[] | null;
+    remaining_rolls?: number | null;
+    bonus_used?: boolean | null;
+    selected_general_value?: number | null;
+    has_rolled_dice?: boolean | null;
+    online_session_id?: string | null;
+    local_online_player_id?: string | null;
+    game_state?: Record<string, unknown> | null;
+    [key: string]: unknown;
+  };
+
+  type OnlineGameStateSnapshot = {
+    inviteCode?: string;
+    selectedPlayers?: unknown;
+    playerCount?: number;
+    turnVersion?: number;
+    updatedByPlayerId?: string | null;
+    runtimeRevision?: number;
+    gameStarted?: boolean;
+    currentPlayPlayerIndex?: number;
+    scores?: ScoreMap;
+    playModeDice?: number[];
+    lockedDice?: boolean[];
+    confirmedLockedDice?: boolean[];
+    remainingRolls?: number;
+    bonusUsed?: boolean;
+    selectedGeneralValue?: number | null;
+    hasRolledDice?: boolean;
+    playerReadiness?: Record<string, boolean> | null;
+    connectedPlayers?: Record<string, string> | null;
+    playModeRolls?: number;
+    playModeAllowRewrite?: boolean;
+    playModeBonusMode?: "general-only" | "all";
+    playModeBonusRolls?: number;
+    gameFinished?: boolean;
+    winner?: string;
+    winnerScore?: number;
+    hasStartedPlayMode?: boolean;
+    resume_started_at?: unknown;
+  };
+
   const [pendingSaveMetadata, setPendingSaveMetadata] =
     useState<SavedGameMetadata | null>(null);
 
@@ -605,8 +665,6 @@ export default function Home() {
   const [gameMode, setGameMode] = useState<"offline" | "online">("offline");
 
   // 09. PLAY MODE
-
-  const [showPlayModeHelp, setShowPlayModeHelp] = useState(false);
 
   const [showHelp, setShowHelp] = useState(false);
 
@@ -996,7 +1054,7 @@ export default function Home() {
 
   const handleDeletePlayer = (playerId: string) => {
     if (!canAccessAdmin) {
-      alert("Tato akce je dostupná pouze pro admin účet.");
+      openAppDialog("Tato akce je dostupná pouze pro admin účet.");
 
       return;
     }
@@ -1151,7 +1209,7 @@ export default function Home() {
         }
 
         if (status.status === "revoked") {
-          alert("Session byla ukončena administrátorem.");
+          openAppDialog("Session byla ukončena administrátorem.");
         }
 
         saveAuthSession(null);
@@ -1249,7 +1307,7 @@ export default function Home() {
           selectedPlayer === value && selectedIndex !== index,
       )
     ) {
-      alert("Tento hráč už je vybraný.");
+      openAppDialog("Tento hráč už je vybraný.");
 
       return;
     }
@@ -1313,13 +1371,13 @@ export default function Home() {
     const parsed = Number(scoreInput);
 
     if (isNaN(parsed)) {
-      alert("Musíš zadat číslo.");
+      openAppDialog("Musíš zadat číslo.");
 
       return;
     }
 
     if (parsed < scoreModal.min || parsed > scoreModal.max) {
-      alert(`Skóre musí být mezi ${scoreModal.min} a ${scoreModal.max}.`);
+      openAppDialog(`Skóre musí být mezi ${scoreModal.min} a ${scoreModal.max}.`);
 
       return;
     }
@@ -1467,19 +1525,72 @@ export default function Home() {
       setAuthActionError(null);
       setAuthActionSuccess(null);
 
-      await submitPlayerAccessRequest({
-        requestType,
-        playerId: normalizedPlayerId,
-        playerName: requestType === "registration" ? trimmedPlayerName : undefined,
-        email: trimmedEmail,
-        password: trimmedPassword,
-      });
+      if (requestType === "registration") {
+        await submitPlayerAccessRequest({
+          requestType,
+          playerId: normalizedPlayerId,
+          playerName: trimmedPlayerName,
+          email: trimmedEmail,
+          password: trimmedPassword,
+        });
 
-      setAuthActionSuccess(
-        requestType === "registration"
-          ? "Žádost o registraci byla odeslána ke schválení adminem."
-          : "Žádost o reset hesla byla odeslána ke schválení adminem.",
-      );
+        setAuthActionSuccess("Žádost o registraci byla odeslána ke schválení adminem.");
+      } else {
+        const requestId = await submitAndAutoApprovePasswordResetRequest({
+          playerId: normalizedPlayerId,
+          email: trimmedEmail,
+          password: trimmedPassword,
+        });
+
+        let emailSent = true;
+
+        try {
+          const response = await fetch("/api/auth/password-reset/notify", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              requestId,
+              playerId: normalizedPlayerId,
+              playerName: trimmedPlayerName || normalizedPlayerId,
+              email: trimmedEmail,
+            }),
+          });
+
+          if (!response.ok) {
+            const payload = (await response.json().catch(() => null)) as {
+              error?: string;
+            } | null;
+
+            throw new Error(
+              payload?.error || "Nepodařilo se odeslat notifikační e-mail.",
+            );
+          }
+
+          const payload = (await response.json().catch(() => null)) as {
+            emailSent?: boolean;
+            reason?: string;
+          } | null;
+
+          emailSent = payload?.emailSent ?? true;
+
+          if (payload?.reason) {
+            console.warn("PASSWORD RESET AUTO EMAIL FALLBACK:", payload.reason);
+          }
+        } catch (notifyError) {
+          emailSent = false;
+          console.error("PASSWORD RESET AUTO EMAIL ERROR:", notifyError);
+        }
+
+        setAuthActionSuccess(
+          emailSent
+            ? "Reset hesla byl proveden automaticky a odeslali jsme potvrzovací e-mail."
+            : "Reset hesla byl proveden automaticky. Potvrzovací e-mail se neodeslal, protože chybí konfigurace pro odesílání pošty.",
+        );
+
+        await loadPendingAccessRequestsCount();
+      }
 
       setAuthActionPassword("");
       setAuthActionPasswordConfirm("");
@@ -1570,7 +1681,7 @@ export default function Home() {
 
   const openAdminModal = async () => {
     if (!canAccessAdmin) {
-      alert("Admin sekce je dostupná pouze pro admin účet.");
+      openAppDialog("Admin sekce je dostupná pouze pro admin účet.");
 
       return;
     }
@@ -1620,6 +1731,10 @@ export default function Home() {
     }
 
     return fallback;
+  };
+
+  const openAppDialog = (message: string) => {
+    setAppDialogMessage(message);
   };
 
   const setPlayerPasswordFromAdmin = async (
@@ -2707,7 +2822,7 @@ export default function Home() {
     }
 
     if (existingScore !== undefined && !playModeAllowRewrite) {
-      alert(
+      openAppDialog(
         "Tato kombinace je již zapsána a Play Mode neumožňuje přepis skóre.",
       );
 
@@ -4904,7 +5019,7 @@ export default function Home() {
 
     const columnSupport = await getSavedGamesMetadataColumnSupport();
 
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       game_id: overrideGameId ?? gameId,
       name: gameName,
       player_count: playerCount,
@@ -5022,7 +5137,7 @@ export default function Home() {
       if (error) {
         console.error("OVERWRITE GAME ERROR:", error);
 
-        alert("Nepodařilo se přepsat hru.");
+        openAppDialog("Nepodařilo se přepsat hru.");
 
         return;
       }
@@ -5035,7 +5150,7 @@ export default function Home() {
     } catch (error) {
       console.error(error);
 
-      alert("Nepodařilo se přepsat hru.");
+      openAppDialog("Nepodařilo se přepsat hru.");
     }
   };
 
@@ -5076,7 +5191,7 @@ export default function Home() {
       if (error) {
         console.error("SAVE GAME ERROR:", error);
 
-        alert("Nepodařilo se uložit hru.");
+        openAppDialog("Nepodařilo se uložit hru.");
 
         return;
       }
@@ -5089,7 +5204,7 @@ export default function Home() {
     } catch (error) {
       console.error(error);
 
-      alert("Nepodařilo se uložit hru.");
+      openAppDialog("Nepodařilo se uložit hru.");
     }
   };
 
@@ -5125,7 +5240,7 @@ export default function Home() {
       if (error) {
         console.error(error);
 
-        alert("Nepodařilo se načíst hry.");
+        openAppDialog("Nepodařilo se načíst hry.");
 
         return;
       }
@@ -5136,24 +5251,8 @@ export default function Home() {
     } catch (error) {
       console.error(error);
 
-      alert("Nepodařilo se načíst hry.");
+      openAppDialog("Nepodařilo se načíst hry.");
     }
-  };
-
-  const deleteSavedGame = async (gameId: string) => {
-    const result = await supabase.from("saved_games").delete().eq("id", gameId);
-
-    const { error } = result;
-
-    if (error) {
-      console.error(error);
-
-      alert("Nepodařilo se smazat hru.");
-
-      return;
-    }
-
-    setSavedGames((prev) => prev.filter((game) => game.id !== gameId));
   };
 
   const loadPlayersFromSupabase = async () => {
@@ -5264,7 +5363,7 @@ export default function Home() {
 
   const deletePlayerFromSupabase = async (playerId: string) => {
     if (!canAccessAdmin) {
-      alert("Tato akce je dostupná pouze pro admin účet.");
+      openAppDialog("Tato akce je dostupná pouze pro admin účet.");
 
       return;
     }
@@ -5328,13 +5427,13 @@ export default function Home() {
   // 11. ONLINE
   const handleCreateOnlineSession = async (): Promise<boolean> => {
     if (!isValidSelectedPlayersForCount(selectedPlayers, playerCount)) {
-      alert("Vyber platný seznam hráčů před vytvořením online hry.");
+      openAppDialog("Vyber platný seznam hráčů před vytvořením online hry.");
 
       return false;
     }
 
     if (selectedPlayers[0] !== authSession?.playerId) {
-      alert(
+      openAppDialog(
         "Online lobby může vytvořit pouze přihlášený hráč č. 1. Zvol správného hráče na první pozici.",
       );
 
@@ -5445,31 +5544,37 @@ export default function Home() {
     } catch (error) {
       console.error(error);
 
-      alert("Nepodařilo se vytvořit online hru.");
+      openAppDialog("Nepodařilo se vytvořit online hru.");
 
       return false;
     }
   };
 
-  const applyOnlineGameState = (gameState: any) => {
+  const applyOnlineGameState = (gameState: unknown) => {
+    if (!gameState || typeof gameState !== "object") {
+      return;
+    }
+
+    const safeGameState = gameState as OnlineGameStateSnapshot;
+
     lastStateChangeSourceRef.current = "remote-sync";
 
     const incomingInviteCode =
-      typeof gameState.inviteCode === "string" && isInviteCode(gameState.inviteCode)
-        ? gameState.inviteCode
+      typeof safeGameState.inviteCode === "string" && isInviteCode(safeGameState.inviteCode)
+        ? safeGameState.inviteCode
         : null;
 
     setOnlineInviteCode(incomingInviteCode);
 
-    const remoteSelectedPlayers = Array.isArray(gameState.selectedPlayers)
-      ? gameState.selectedPlayers.filter(
+    const remoteSelectedPlayers = Array.isArray(safeGameState.selectedPlayers)
+      ? safeGameState.selectedPlayers.filter(
           (playerId: unknown): playerId is string =>
             typeof playerId === "string",
         )
       : [];
 
     const remotePlayerCount =
-      typeof gameState.playerCount === "number" ? gameState.playerCount : "";
+      typeof safeGameState.playerCount === "number" ? safeGameState.playerCount : "";
 
     if (
       !isValidSelectedPlayersForCount(remoteSelectedPlayers, remotePlayerCount)
@@ -5483,9 +5588,9 @@ export default function Home() {
       return;
     }
 
-    const incomingTurnVersion = Number(gameState.turnVersion ?? 0);
+    const incomingTurnVersion = Number(safeGameState.turnVersion ?? 0);
 
-    const incomingUpdatedByPlayerId = gameState.updatedByPlayerId ?? null;
+    const incomingUpdatedByPlayerId = safeGameState.updatedByPlayerId ?? null;
 
     const shouldIgnoreOwnEcho =
       localOnlinePlayerId !== null &&
@@ -5504,10 +5609,10 @@ export default function Home() {
       incomingTurnVersion,
     );
 
-    const incomingRuntimeRevision = Number(gameState.runtimeRevision ?? 0);
+    const incomingRuntimeRevision = Number(safeGameState.runtimeRevision ?? 0);
 
     const shouldEnforceRuntimeRevision =
-      Boolean(gameState.gameStarted) || gameStarted;
+      Boolean(safeGameState.gameStarted) || gameStarted;
 
     const isStaleRuntimeRevision =
       incomingRuntimeRevision < localRuntimeRevisionRef.current;
@@ -5517,7 +5622,7 @@ export default function Home() {
     }
 
     const incomingTurnIndex =
-      gameState.currentPlayPlayerIndex ?? currentPlayPlayerIndex;
+      safeGameState.currentPlayPlayerIndex ?? currentPlayPlayerIndex;
 
     const isStaleForActiveTurn =
       isOnlineGame &&
@@ -5535,18 +5640,18 @@ export default function Home() {
       incomingRuntimeRevision,
     );
 
-    setScores(gameState.scores ?? {});
+    setScores(safeGameState.scores ?? {});
 
-    setCurrentPlayPlayerIndex(gameState.currentPlayPlayerIndex ?? 0);
+    setCurrentPlayPlayerIndex(safeGameState.currentPlayPlayerIndex ?? 0);
 
-    setPlayModeDice(gameState.playModeDice ?? [1, 1, 1, 1, 1, 1]);
+    setPlayModeDice(safeGameState.playModeDice ?? [1, 1, 1, 1, 1, 1]);
 
     setLockedDice(
-      gameState.lockedDice ?? [false, false, false, false, false, false],
+      safeGameState.lockedDice ?? [false, false, false, false, false, false],
     );
 
     setConfirmedLockedDice(
-      gameState.confirmedLockedDice ?? [
+      safeGameState.confirmedLockedDice ?? [
         false,
         false,
         false,
@@ -5556,13 +5661,13 @@ export default function Home() {
       ],
     );
 
-    setRemainingRolls(gameState.remainingRolls ?? 0);
+    setRemainingRolls(safeGameState.remainingRolls ?? 0);
 
-    setBonusUsed(gameState.bonusUsed ?? false);
+    setBonusUsed(safeGameState.bonusUsed ?? false);
 
-    setSelectedGeneralValue(gameState.selectedGeneralValue ?? null);
+    setSelectedGeneralValue(safeGameState.selectedGeneralValue ?? null);
 
-    setHasRolledDice(gameState.hasRolledDice ?? false);
+    setHasRolledDice(safeGameState.hasRolledDice ?? false);
 
     const nextSelectedPlayers = remoteSelectedPlayers;
 
@@ -5572,12 +5677,12 @@ export default function Home() {
 
     const nextLobbyReadiness = buildLobbyReadinessMap(
       nextSelectedPlayers,
-      gameState.playerReadiness ?? null,
+      safeGameState.playerReadiness ?? null,
     );
 
     const nextConnectedPlayers = buildConnectedDeviceMap(
       nextSelectedPlayers,
-      gameState.connectedPlayers,
+      safeGameState.connectedPlayers,
     );
 
     setPlayerReadiness(nextLobbyReadiness);
@@ -5598,23 +5703,23 @@ export default function Home() {
       setLocalOnlinePlayerId(null);
     }
 
-    setPlayModeRolls(gameState.playModeRolls ?? playModeRolls);
+    setPlayModeRolls(safeGameState.playModeRolls ?? playModeRolls);
 
     setPlayModeAllowRewrite(
-      gameState.playModeAllowRewrite ?? playModeAllowRewrite,
+      safeGameState.playModeAllowRewrite ?? playModeAllowRewrite,
     );
 
-    setPlayModeBonusMode(gameState.playModeBonusMode ?? playModeBonusMode);
+    setPlayModeBonusMode(safeGameState.playModeBonusMode ?? playModeBonusMode);
 
-    setPlayModeBonusRolls(gameState.playModeBonusRolls ?? playModeBonusRolls);
+    setPlayModeBonusRolls(safeGameState.playModeBonusRolls ?? playModeBonusRolls);
 
-    if (gameState.gameFinished) {
+    if (safeGameState.gameFinished) {
       const incomingWinnerId =
-        typeof gameState.winner === "string" ? gameState.winner : null;
+        typeof safeGameState.winner === "string" ? safeGameState.winner : null;
 
       const incomingWinnerScore =
-        typeof gameState.winnerScore === "number"
-          ? gameState.winnerScore
+        typeof safeGameState.winnerScore === "number"
+          ? safeGameState.winnerScore
           : 0;
 
       const winnerDisplayName = incomingWinnerId
@@ -5716,13 +5821,13 @@ export default function Home() {
       return;
     }
 
-    debugSetGameStarted(gameState.gameStarted ?? gameStarted);
+    debugSetGameStarted(safeGameState.gameStarted ?? gameStarted);
 
     const hasResumeSnapshotState = Boolean(
-      gameState.gameStarted && gameState.hasStartedPlayMode,
+      safeGameState.gameStarted && safeGameState.hasStartedPlayMode,
     );
 
-    const hasResumeStartSignal = Boolean(gameState.resume_started_at);
+    const hasResumeStartSignal = Boolean(safeGameState.resume_started_at);
 
     const shouldHoldInLobby =
       forceOnlineLobbyUntilHostStartRef.current &&
@@ -5734,19 +5839,19 @@ export default function Home() {
     }
 
     const shouldAutoOpenPlayMode = Boolean(
-      gameState.gameStarted &&
-      gameState.hasStartedPlayMode &&
+      safeGameState.gameStarted &&
+      safeGameState.hasStartedPlayMode &&
       !hasStartedPlayMode,
     );
 
     const shouldOpenFromResumeSignal = Boolean(
       hasResumeStartSignal &&
-      gameState.gameStarted &&
-      gameState.hasStartedPlayMode,
+      safeGameState.gameStarted &&
+      safeGameState.hasStartedPlayMode,
     );
 
     debugSetHasStartedPlayMode(
-      gameState.hasStartedPlayMode ?? hasStartedPlayMode,
+      safeGameState.hasStartedPlayMode ?? hasStartedPlayMode,
     );
 
     if (
@@ -5766,7 +5871,7 @@ export default function Home() {
       return;
     }
 
-    if (gameState.gameStarted) {
+    if (safeGameState.gameStarted) {
       debugSetScreen("game");
     }
   };
@@ -5831,7 +5936,7 @@ export default function Home() {
 
   const ensureActiveLobbySessionIdentity = async () => {
     if (!authSession?.sessionToken || !authSession.playerId) {
-      alert("Nejdřív se přihlas svým hráčským účtem.");
+      openAppDialog("Nejdřív se přihlas svým hráčským účtem.");
 
       return null;
     }
@@ -5840,9 +5945,9 @@ export default function Home() {
 
     if (heartbeat.status !== "active" || heartbeat.playerId !== authSession.playerId) {
       if (heartbeat.status === "revoked") {
-        alert("Session byla ukončena administrátorem.");
+        openAppDialog("Session byla ukončena administrátorem.");
       } else {
-        alert("Session už není platná. Přihlas se znovu.");
+        openAppDialog("Session už není platná. Přihlas se znovu.");
       }
 
       await performLogout();
@@ -5910,7 +6015,7 @@ export default function Home() {
           : "";
 
       if (message) {
-        alert(message);
+        openAppDialog(message);
       }
     }
   };
@@ -5919,7 +6024,7 @@ export default function Home() {
     const normalizedJoinCode = joinSessionId.trim();
 
     if (!normalizedJoinCode) {
-      alert("Zadej kód místnosti.");
+      openAppDialog("Zadej kód místnosti.");
 
       return false;
     }
@@ -5933,7 +6038,7 @@ export default function Home() {
         : await joinOnlineSession(normalizedJoinCode);
 
       if (!session) {
-        alert("Místnost s tímto kódem nebyla nalezena.");
+        openAppDialog("Místnost s tímto kódem nebyla nalezena.");
 
         return false;
       }
@@ -5964,7 +6069,7 @@ export default function Home() {
         setConnectedDeviceByPlayerId({});
         setConnectedDeviceByPlayerId({});
 
-        alert("Online session neobsahuje platný výběr hráčů.");
+        openAppDialog("Online session neobsahuje platný výběr hráčů.");
 
         return false;
       }
@@ -6040,7 +6145,7 @@ export default function Home() {
     } catch (error) {
       console.error(error);
 
-      alert("Nepodařilo se připojit k online hře.");
+      openAppDialog("Nepodařilo se připojit k online hře.");
 
       return false;
     }
@@ -6052,13 +6157,13 @@ export default function Home() {
     }
 
     if (selectedPlayers[0] !== authSession?.playerId) {
-      alert("Online hru může spustit pouze přihlášený hráč č. 1.");
+      openAppDialog("Online hru může spustit pouze přihlášený hráč č. 1.");
 
       return;
     }
 
     if (!isValidSelectedPlayersForCount(selectedPlayers, playerCount)) {
-      alert("Vyber platný seznam hráčů před spuštěním online hry.");
+      openAppDialog("Vyber platný seznam hráčů před spuštěním online hry.");
 
       return;
     }
@@ -6095,7 +6200,7 @@ export default function Home() {
         setPlayerCount("");
         setPlayerReadiness({});
 
-        alert("Online session neobsahuje platný výběr hráčů.");
+        openAppDialog("Online session neobsahuje platný výběr hráčů.");
 
         return;
       }
@@ -6178,7 +6283,7 @@ export default function Home() {
       } catch (error) {
         console.error("RESUME ONLINE GAME ERROR:", error);
 
-        alert("Nepodařilo se pokračovat v online hře.");
+        openAppDialog("Nepodařilo se pokračovat v online hře.");
       }
 
       return;
@@ -6233,7 +6338,7 @@ export default function Home() {
     } catch (error) {
       console.error("START ONLINE GAME ERROR:", error);
 
-      alert("Nepodařilo se spustit online hru.");
+      openAppDialog("Nepodařilo se spustit online hru.");
     }
   };
 
@@ -6389,7 +6494,7 @@ export default function Home() {
       const resumeSessionId = savedGame.onlineSessionId ?? null;
 
       if (!resumeSessionId) {
-        alert("Uložená online hra neobsahuje platné session ID.");
+        openAppDialog("Uložená online hra neobsahuje platné session ID.");
 
         setOnlineSessionId(null);
         setOnlineInviteCode(null);
@@ -6441,7 +6546,7 @@ export default function Home() {
           setGameMode("offline");
           setSelectedGameMode("offline");
 
-          alert("Online session neobsahuje platný výběr hráčů.");
+          openAppDialog("Online session neobsahuje platný výběr hráčů.");
 
           debugSetScreen("home");
 
@@ -6504,7 +6609,7 @@ export default function Home() {
       } catch (error) {
         console.error("OPEN SAVED ONLINE RESUME ERROR:", error);
 
-        alert("Nepodařilo se obnovit online session.");
+        openAppDialog("Nepodařilo se obnovit online session.");
 
         setOnlineSessionId(null);
         setOnlineInviteCode(null);
@@ -6896,7 +7001,7 @@ export default function Home() {
 
       setOnlineChatError(detailedError);
 
-      alert("Nepodařilo se odeslat zprávu do chatu.");
+      openAppDialog("Nepodařilo se odeslat zprávu do chatu.");
     }
   };
 
@@ -8448,7 +8553,7 @@ export default function Home() {
                 <button
                   onClick={() => {
                     if (!canStartGame) {
-                      alert("Vyber platný seznam hráčů.");
+                      openAppDialog("Vyber platný seznam hráčů.");
 
                       return;
                     }
@@ -8781,9 +8886,7 @@ export default function Home() {
                           className={`rounded-full px-3 py-1 ${
                             Array.isArray(game.selected_players) &&
                             game.selected_players.some(
-                              (playerId: unknown) =>
-                                typeof playerId === "string" &&
-                                isComputerPlayerId(playerId),
+                              (playerId: string) => isComputerPlayerId(playerId),
                             )
                               ? "bg-purple-600/20 text-purple-300"
                               : game.play_mode_rolls === 4 &&
@@ -8797,9 +8900,7 @@ export default function Home() {
                         >
                           {Array.isArray(game.selected_players) &&
                           game.selected_players.some(
-                            (playerId: unknown) =>
-                              typeof playerId === "string" &&
-                              isComputerPlayerId(playerId),
+                            (playerId: string) => isComputerPlayerId(playerId),
                           )
                             ? "Fun hra"
                             : game.play_mode_rolls === 4 &&
@@ -9588,7 +9689,7 @@ export default function Home() {
                     }
 
                     if (!canStartGame) {
-                      alert("Vyber platný seznam hráčů.");
+                      openAppDialog("Vyber platný seznam hráčů.");
 
                       return;
                     }
@@ -10406,6 +10507,24 @@ export default function Home() {
             >
               Zavřít
             </button>
+          </div>
+        </div>
+      )}
+
+      {appDialogMessage && (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/85 p-4">
+          <div className="w-full max-w-[560px] rounded-3xl border border-zinc-700 bg-zinc-900 p-7 text-white shadow-2xl">
+            <h2 className="mb-3 text-2xl font-black text-yellow-400">Informace</h2>
+            <p className="text-sm text-zinc-200">{appDialogMessage}</p>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setAppDialogMessage(null)}
+                className="rounded-xl border border-zinc-600 bg-zinc-700 px-5 py-3 font-bold text-white transition hover:scale-[1.02] hover:brightness-110"
+              >
+                Rozumím
+              </button>
+            </div>
           </div>
         </div>
       )}

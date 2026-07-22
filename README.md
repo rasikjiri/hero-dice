@@ -225,10 +225,18 @@ Highlights:
 
 Pro automatické e-maily po schválení nebo zamítnutí žádosti nastav v prostředí serveru:
 
+```env
+RESEND_API_KEY=re_Fpbaig8H_352AKkLGJKmtB3scr3Ujpk5t
+RESEND_FROM_EMAIL=Hero Dice <play@hero-dice.eu>
+```
+
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
 
-Bez těchto proměnných zůstane funkční ruční fallback (mailto) v admin rozhraní.
+`RESEND_API_KEY` je nutný pro skutečné odesílání e-mailů.
+`RESEND_FROM_EMAIL` je doporučený, ale v resetu hesla je k dispozici bezpečný fallback sender `Hero Dice <onboarding@resend.dev>`.
+Bez těchto proměnných zůstane funkční ruční fallback (mailto) v admin rozhraní a reset hesla proběhne dál bez pádu, jen bez e-mailu.
+Po změně `.env.local` restartuj dev server, aby se nové hodnoty načetly.
   
 Projekt je aktivně vyvíjen.  
 

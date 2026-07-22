@@ -207,6 +207,27 @@ export const submitPlayerAccessRequest = async (input: {
   return String(data);
 };
 
+export const submitAndAutoApprovePasswordResetRequest = async (input: {
+  playerId: string;
+  email: string;
+  password: string;
+}) => {
+  const { data, error } = await supabase.rpc(
+    "submit_and_auto_approve_password_reset_request",
+    {
+      p_player_id: input.playerId,
+      p_email: input.email,
+      p_password: input.password,
+    },
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  return String(data);
+};
+
 export const listPlayerAccessRequests = async (adminSessionToken: string) => {
   const { data, error } = await supabase.rpc("list_player_access_requests", {
     p_admin_session_token: adminSessionToken,
@@ -250,6 +271,22 @@ export const processPlayerAccessRequest = async (
     p_admin_session_token: adminSessionToken,
     p_request_id: requestId,
     p_action: action,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return Boolean(data);
+};
+
+export const deletePlayerAccessRequest = async (
+  adminSessionToken: string,
+  requestId: string,
+) => {
+  const { data, error } = await supabase.rpc("delete_player_access_request", {
+    p_admin_session_token: adminSessionToken,
+    p_request_id: requestId,
   });
 
   if (error) {

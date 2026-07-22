@@ -28,13 +28,13 @@ const buildEmailText = (input: {
 
   const resultLine =
     input.action === "approve"
-      ? "Vaše žádost byla schválena. Můžete se přihlásit do aplikace."
-      : "Vaše žádost byla zamítnuta. Pokud potřebujete pomoc, odpovězte prosím na tento e-mail.";
+      ? "Do Hero Dice se teď můžeš přihlásit s nově vytvořeným účtem."
+      : "Kdybys potřeboval/a upřesnit důvod, odpověz prosím na tento e-mail.";
 
   return [
-    "Dobrý den,",
+    "Ahoj,",
     "",
-    `žádost o ${requestLabel} pro hráče ${input.playerName} (${input.playerId}) byla ${statusLabel}.`,
+    `Žádost o ${requestLabel} pro hráče ${input.playerName} (ID: ${input.playerId}) byla ${statusLabel}.`,
     resultLine,
     "",
     "S pozdravem",
