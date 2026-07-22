@@ -695,3 +695,21 @@ Poznámky:
 - Ověřeno odstranění záznamu přímo v Supabase databázi.
 - Ověřeno správné obnovení seznamu her po smazání.
 - Nebyly provedeny žádné změny aplikačního kódu – oprava spočívala výhradně v doplnění chybějících RLS DELETE policy v databázi.
+
+---
+
+## 4.7.0
+
+### Changed
+- Přidán výchozí kontextový dokument pro etapu 4.7: `HERO_DICE_4_7_CONTEXT.md`.
+- Vytvořeny předávací dokumenty etapy 4.6:
+	- `docs/RELEASE_NOTES_v4.6.md`
+	- `docs/TECHNICAL_CHANGELOG_v4.6.md`
+- Do dokumentace doplněny orientační odkazy na aktivní kontext 4.7 v:
+	- `README.md`
+	- `docs/PROJECT_CONTEXT.md`
+
+### Verified
+- Ověřeno vytvoření a dostupnost nových dokumentů v projektu.
+- Ověřena návaznost dokumentace na validovaný baseline stav Hero Dice 4.6.
+- Ověřeno, že změny jsou čistě dokumentační a bez zásahu do herní logiky.

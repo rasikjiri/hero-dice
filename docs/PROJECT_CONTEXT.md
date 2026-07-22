@@ -9,6 +9,16 @@ PROJECT_CONTEXT
 **Status:** Active  
   
 ---  
+
+# Aktuální verze kontextu
+
+Detailní architektonický a workflow kontext pro aktuální etapu Hero Dice 4.7 je v samostatném dokumentu:
+
+[../HERO_DICE_4_7_CONTEXT.md](../HERO_DICE_4_7_CONTEXT.md)
+
+Tento soubor slouží jako výchozí kontext pro nové TASK BRIEFs, analýzy a navazující implementace.
+
+---
   
 # Účel dokumentu  
   

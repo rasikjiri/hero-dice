@@ -88,6 +88,8 @@ docs/DEVELOPMENT_WORKFLOW.md
   
 docs/AI_GUIDE.md  
 ```  
+
+Aktuální kontext etapy 4.7: [HERO_DICE_4_7_CONTEXT.md](HERO_DICE_4_7_CONTEXT.md)
   
 Každý dokument má přesně definovaný účel.  
   
@@ -100,15 +102,16 @@ Jednotlivé dokumenty se vzájemně neduplikují.
 Doporučené pořadí:  
   
 1. README.md  
-2. CONSTITUTION.md  
-3. PROJECT_CONTEXT.md  
-4. ARCHITECTURE.md  
-5. DATABASE.md  
-6. PLAYMODE.md  
-7. KNOWN_RULES.md  
-8. DEVELOPMENT_WORKFLOW.md  
-9. AI_GUIDE.md  
-10. CHANGELOG.md  
+2. HERO_DICE_4_7_CONTEXT.md
+3. CONSTITUTION.md  
+4. PROJECT_CONTEXT.md  
+5. ARCHITECTURE.md  
+6. DATABASE.md  
+7. PLAYMODE.md  
+8. KNOWN_RULES.md  
+9. DEVELOPMENT_WORKFLOW.md  
+10. AI_GUIDE.md  
+11. CHANGELOG.md  
   
 ---  
   
