@@ -226,8 +226,8 @@ Highlights:
 Pro automatické e-maily po schválení nebo zamítnutí žádosti nastav v prostředí serveru:
 
 ```env
-RESEND_API_KEY=re_Fpbaig8H_352AKkLGJKmtB3scr3Ujpk5t
-RESEND_FROM_EMAIL=Hero Dice <play@hero-dice.eu>
+RESEND_API_KEY=re_jEw1TMQf_3LcNEVsrgzLhVyVP4ed5Gxre
+RESEND_FROM_EMAIL="Hero Dice <play@hero-dice.eu>"
 ```
 
 - `RESEND_API_KEY`

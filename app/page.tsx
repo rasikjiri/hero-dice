@@ -42,6 +42,7 @@ import { gameCategories } from "./data/gameCategories";
 import { supabase } from "./lib/supabase";
 
 import { detectCombination } from "./lib/playMode";
+import { normalizeCzechErrorMessage } from "./lib/czechErrorMessage";
 
 import {
   getWritableCategoryIds,
@@ -1704,11 +1705,11 @@ export default function Home() {
     fallback = "Operace se nezdařila.",
   ) => {
     if (typeof error === "string" && error.trim().length > 0) {
-      return error;
+      return normalizeCzechErrorMessage(error);
     }
 
     if (error instanceof Error && error.message.trim().length > 0) {
-      return error.message;
+      return normalizeCzechErrorMessage(error.message);
     }
 
     if (error && typeof error === "object") {
@@ -1719,14 +1720,14 @@ export default function Home() {
 
       if (typeof message === "string" && message.trim().length > 0) {
         if (typeof details === "string" && details.trim().length > 0) {
-          return `${message} (${details})`;
+          return normalizeCzechErrorMessage(`${message} (${details})`);
         }
 
         if (typeof hint === "string" && hint.trim().length > 0) {
-          return `${message} (${hint})`;
+          return normalizeCzechErrorMessage(`${message} (${hint})`);
         }
 
-        return message;
+        return normalizeCzechErrorMessage(message);
       }
     }
 

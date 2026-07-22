@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { supabase } from "../lib/supabase";
+import { normalizeCzechErrorMessage } from "../lib/czechErrorMessage";
 import {
   deletePlayerAccessRequest,
   listPlayerAccessRequests,
@@ -86,11 +87,11 @@ type Props = {
 
 const resolveUnknownErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
+    return normalizeCzechErrorMessage(error.message);
   }
 
   if (typeof error === "string" && error.trim().length > 0) {
-    return error;
+    return normalizeCzechErrorMessage(error);
   }
 
   if (typeof error === "object" && error !== null) {
@@ -106,7 +107,7 @@ const resolveUnknownErrorMessage = (error: unknown, fallback: string) => {
       .filter((value): value is string => typeof value === "string" && value.trim().length > 0);
 
     if (parts.length > 0) {
-      return parts.join(" | ");
+      return normalizeCzechErrorMessage(parts.join(" | "));
     }
   }
 
@@ -140,14 +141,12 @@ export default function AdminModal({
   onAccessRequestsChanged,
   onLeagueGamesChanged,
 }: Props) {
-  const tabs: { id: AdminTab; label: string }[] = [
+  const tabs: { id: AdminTab; label: string; badgeCount?: number }[] = [
     { id: "players", label: "Hráči" },
     {
       id: "requests",
-      label:
-        pendingAccessRequestsCount > 0
-          ? `Žádosti (${pendingAccessRequestsCount})`
-          : "Žádosti",
+      label: "Žádosti",
+      badgeCount: pendingAccessRequestsCount,
     },
     { id: "fun-games", label: "Fun Game" },
     { id: "league-games", label: "Liga Game" },
@@ -577,8 +576,8 @@ export default function AdminModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-        <div className="w-full max-w-6xl rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-white shadow-2xl">
+      <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/90 p-4 md:py-8">
+        <div className="flex h-[88vh] w-full max-w-6xl flex-col rounded-3xl border border-zinc-700 bg-zinc-950 p-8 text-white shadow-2xl">
           <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-4xl font-black text-yellow-400">Admin</h2>
@@ -606,12 +605,27 @@ export default function AdminModal({
                     : "border border-zinc-700 bg-black/40 text-zinc-300"
                 }`}
               >
-                {tab.label}
+                <span className="flex items-center gap-2">
+                  <span>{tab.label}</span>
+
+                  {tab.id === "requests" && (
+                    <span
+                      className={`inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-black transition ${
+                        (tab.badgeCount || 0) > 0
+                          ? "bg-red-500 text-white"
+                          : "bg-zinc-700/60 text-transparent"
+                      }`}
+                      aria-hidden={(tab.badgeCount || 0) === 0}
+                    >
+                      {(tab.badgeCount || 0) > 0 ? tab.badgeCount : "0"}
+                    </span>
+                  )}
+                </span>
               </button>
             ))}
           </div>
 
-          <div className="max-h-[70vh] overflow-y-auto pr-2">
+          <div className="min-h-0 flex-1 overflow-y-auto pr-2">
             {activeTab === "players" && (
               <div className="space-y-4">
                 {players.map((player) => (
